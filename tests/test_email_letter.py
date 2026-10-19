@@ -443,6 +443,7 @@ def _docket_letters(app):
 
 
 def _golf_letters(app, *, league_id):
+    from games.golf.models import GolfLeague
     from games.golf.services.reminders import (
         _reminder_letter as golf_reminder_letter,
     )
@@ -487,12 +488,13 @@ def _golf_letters(app, *, league_id):
                    {'hours': 12, 'type': 'reminder', 'countdown': '11 hours, 40 minutes'},
                    {'hours': 1, 'type': 'final', 'countdown': '55 minutes'}):
         letter = golf_reminder_letter(
+            league=db.session.get(GolfLeague, league_id),
             tournament_name='The Memorial',
             deadline_short=GOLF_DEADLINE_TEXT,
             time_remaining=window['countdown'],
             purse=20_000_000,
             golfers_used=4,
-            pick_url=f'{SITE}/golf/pick/{open_t.id}',
+            pick_url=f'{SITE}/golf/handicap/pick/{open_t.id}',
             window=window,
             season_year=2026)
         plain, html = render_letter(letter)
@@ -1076,17 +1078,18 @@ def test_merged_reminder_keeps_one_cta_and_the_rider_before_the_tab(app):
     assert 'Sent to you as a member of CFB Survivor 2026.' in plain
 
 
-def test_golf_final_reminder_says_the_time_actually_left(app):
+def test_golf_final_reminder_says_the_time_actually_left(app, golf_leagues):
     """The final window spans T-1h +/- 35 min, so the headline and lede say
     the countdown, never a flat "one hour" (the CFB final tier's rule)."""
     from games.golf.services.reminders import _reminder_letter
     with app.app_context():
         letter = _reminder_letter(
+            league=golf_leagues['handicap'],
             tournament_name='The Memorial', deadline_short='Thursday, Jun 4 · 7:00 AM CT',
             time_remaining='1 hour, 30 minutes', purse=20_000_000, golfers_used=4,
-            pick_url='https://cccfantasy.com/golf/pick/1',
+            pick_url='https://cccfantasy.com/golf/handicap/pick/1',
             window={'hours': 1, 'type': 'final'}, season_year=2026)
-    assert letter.headline == ("The Pay Sheet, The Memorial: final call, "
+    assert letter.headline == ("Handicap Pay Sheet, the Memorial: final call, "
                                "about 1 hour, 30 minutes left")
     assert letter.lede == ['Your pick for The Memorial is not in and the '
                            'deadline is about 1 hour, 30 minutes away.']

@@ -235,7 +235,7 @@ def test_reminder_mail_only_golf_enrollees(app, golf_leagues):
     _make_enrollment(old, season_year=SEASON - 1, league_id=golf_leagues['handicap'].id)
     tournament = _make_tournament(status='active')
 
-    recipients = get_users_without_picks(tournament.id, SEASON)
+    recipients = get_users_without_picks(tournament.id, SEASON, golf_leagues['handicap'].id)
     ids = {u.id for u in recipients}
     assert enrolled.id in ids
     assert 'non_golf' not in {u.username for u in recipients}
@@ -251,7 +251,7 @@ def test_reminder_mail_excludes_users_who_picked(app, golf_leagues):
     p1, p2 = _make_player('P1', 'A', 'One'), _make_player('P2', 'B', 'Two')
     _make_pick(picked, tournament, p1, p2, league_id=golf_leagues['handicap'].id)
 
-    recipients = get_users_without_picks(tournament.id, SEASON)
+    recipients = get_users_without_picks(tournament.id, SEASON, golf_leagues['handicap'].id)
     ids = {u.id for u in recipients}
     assert waiting.id in ids
     assert picked.id not in ids

@@ -179,10 +179,10 @@ Tasks A2 to A4 change service signatures the routes still call the old way, so r
 - `run_import(path, season=2026, *, league='handicap', ...)`; `verify_scoring(season, league='handicap', legacy_path=None)`.
 - CLI: `flask golf league list` prints slug, name, fee, penalty, ordinal; `flask golf league set SLUG [--name] [--entry-fee N] [--penalty N]` (exit 1 on unknown slug).
 
-- [ ] **Step 1:** Failing tests: `test_process_tournament_picks_retotals_each_line_separately`; `test_picks_open_goes_once_per_line_so_brad_gets_two_letters` (two letters to Brad, one to a Pollyanna member, headlines start with the league name, each link carries its league slug); `test_reminder_passes_loop_both_leagues_and_latch_once`; `test_import_legacy_takes_a_league` (every imported enrollment/pick/usage row carries the given league id; the oracle still 0 diffs); `test_league_set_cli_changes_the_fee`.
-- [ ] **Step 2:** Run; expect failures.
-- [ ] **Step 3:** Implement.
-- [ ] **Step 4:** Run the five test files; PASS. Commit: `feat(golf): sync, letters and the import learn the league`
+- [x] **Step 1:** Failing tests: `test_process_tournament_picks_retotals_each_line_separately`; `test_picks_open_goes_once_per_line_so_brad_gets_two_letters` (two letters to Brad, one to a Pollyanna member, headlines start with the league name, each link carries its league slug); `test_reminder_passes_loop_both_leagues_and_latch_once`; `test_import_legacy_takes_a_league` (every imported enrollment/pick/usage row carries the given league id; the oracle still 0 diffs); `test_league_set_cli_changes_the_fee`.
+- [x] **Step 2:** Run; expect failures.
+- [x] **Step 3:** Implement.
+- [x] **Step 4:** Run the five test files; PASS. Commit: `feat(golf): sync, letters and the import learn the league`
 
 ### Task A5: The league in the URL, the resolver, and every route scoped
 

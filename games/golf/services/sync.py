@@ -32,6 +32,7 @@ from zoneinfo import ZoneInfo
 
 import requests
 from flask import current_app, has_app_context
+from sqlalchemy import select
 
 from extensions import db
 from games.golf.constants import (
@@ -590,6 +591,9 @@ class TournamentSync:
                 from games.golf.services.reminders import send_picks_open_email
                 # Pass tournament_id instead of tournament object to avoid session issues
                 emails_sent = send_picks_open_email(tournament_id)
+                # gstack-shortcut(dec-6e3392bc): per-tournament latch, upgrade when a duplicate letter lands
+                # The sender mails every league in one call and returns the total,
+                # so the flag latches once after both leagues were sent.
                 if emails_sent > 0:
                     # Re-query tournament to update flag
                     tournament = db.session.get(GolfTournament, tournament_id)
@@ -799,6 +803,7 @@ class TournamentSync:
                         cleanup_ids.add(pick.active_player_id)
                     GolfSeasonPlayerUsage.query.filter(
                         GolfSeasonPlayerUsage.user_id == pick.user_id,
+                        GolfSeasonPlayerUsage.league_id == pick.league_id,
                         GolfSeasonPlayerUsage.season_year == tournament.season_year,
                         GolfSeasonPlayerUsage.player_id.in_(cleanup_ids),
                     ).delete(synchronize_session=False)
@@ -806,10 +811,11 @@ class TournamentSync:
                     if not pick.resolve_pick():
                         raise RuntimeError("Pick resolution incomplete")
 
-                    enrollment = GolfEnrollment.query.filter_by(
+                    enrollment = db.session.scalar(select(GolfEnrollment).filter_by(
                         user_id=pick.user_id,
-                        season_year=tournament.season_year
-                    ).first()
+                        league_id=pick.league_id,
+                        season_year=tournament.season_year,
+                    ))
                     if enrollment:
                         enrollment.calculate_total_points()
 
@@ -842,6 +848,9 @@ class TournamentSync:
                 from games.golf.services.reminders import send_results_recap_email
                 tournament_id = tournament.id
                 emails_sent = send_results_recap_email(tournament_id)
+                # gstack-shortcut(dec-6e3392bc): per-tournament latch, upgrade when a duplicate letter lands
+                # The sender mails every league in one call and returns the total,
+                # so the flag latches once after both leagues were sent.
                 if emails_sent > 0:
                     tournament = db.session.get(GolfTournament, tournament_id)
                     tournament.recap_email_sent = True

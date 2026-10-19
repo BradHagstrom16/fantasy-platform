@@ -280,3 +280,221 @@ def test_the_other_leagues_picks_never_reach_a_leagues_aggregates(app, golf_leag
 
     tally = stats.override_tally(season, handicap, [event.id], names)
     assert [(row.user_id, row.count) for row in tally] == [(brad.id, 1)]
+
+
+# --- Task A4: sync, letters and the import learn the league ------------------
+
+def _season_event(app, name, *, status='complete', deadline_in=None):
+    """An event in the configured season; ``deadline_in`` puts its lock that far
+    ahead in league wall clock (the reminder pass reads it as CT)."""
+    from games.golf.utils import GOLF_LEAGUE_TZ
+    now = datetime.now(GOLF_LEAGUE_TZ).replace(tzinfo=None)
+    deadline = now + deadline_in if deadline_in is not None else now - timedelta(days=4)
+    event = GolfTournament(
+        api_tourn_id=f'A4-{name}'[:20], name=name, season_year=app.config['SEASON_YEAR'],
+        start_date=deadline, end_date=deadline + timedelta(days=3),
+        pick_deadline=deadline, purse=10_000_000, status=status,
+    )
+    db.session.add(event)
+    db.session.commit()
+    return event
+
+
+def _line(user, league, app, total=0):
+    line = GolfEnrollment(user_id=user.id, league_id=league.id,
+                          season_year=app.config['SEASON_YEAR'], total_points=total)
+    db.session.add(line)
+    db.session.commit()
+    return line
+
+
+def _mail_config(app):
+    app.config.update(EMAIL_ADDRESS='commish@test.com', EMAIL_PASSWORD='x',
+                      SITE_URL='https://cccfantasy.com')
+
+
+def _capture_mail(monkeypatch):
+    from games.golf.services import reminders
+    sent = []
+
+    def _send(to, subject, plain, html=None, *args, **kwargs):
+        sent.append({'to': to, 'subject': subject, 'plain': plain, 'html': html})
+        return True
+
+    monkeypatch.setattr(reminders, 'send_platform_email', _send)
+    return sent
+
+
+def _usage_ids(user, league):
+    return {u.player_id for u in GolfSeasonPlayerUsage.query.filter_by(
+        user_id=user.id, league_id=league.id)}
+
+
+def test_process_tournament_picks_retotals_each_line_separately(app, golf_leagues):
+    from games.golf.services.sync import SlashGolfAPI, TournamentSync
+
+    handicap, pollyanna = golf_leagues['handicap'], golf_leagues['pollyanna']
+    brad = _user('both_lines')
+    h_line, p_line = _line(brad, handicap, app), _line(brad, pollyanna, app)
+    event = _season_event(app, 'Line Open')
+    scheffler, rory, spare = _golfer('R1', 'Scheffler'), _golfer('R2', 'McIlroy'), _golfer('R3', 'Spare')
+    _result(event, scheffler, earnings=500)
+    _result(event, rory, earnings=100)
+    _result(event, spare, earnings=7)
+    _pick(brad, handicap, event, scheffler, spare)
+    _pick(brad, pollyanna, event, rory, scheffler)
+    event.recap_email_sent = True  # the letters are the next test's
+    db.session.commit()
+
+    TournamentSync(SlashGolfAPI(api_key='test-key')).process_tournament_picks(event)
+
+    db.session.expire_all()
+    assert db.session.get(GolfEnrollment, h_line.id).total_points == 500
+    assert db.session.get(GolfEnrollment, p_line.id).total_points == 100
+    # Re-resolving the Pollyanna pick (Rory, backup Scheffler) never wipes the
+    # Handicap line's spend of Scheffler.
+    assert _usage_ids(brad, handicap) == {scheffler.id}
+    assert _usage_ids(brad, pollyanna) == {rory.id}
+
+
+def test_picks_open_goes_once_per_line_so_brad_gets_two_letters(app, golf_leagues, monkeypatch):
+    from games.golf.services.reminders import send_picks_open_email
+
+    _mail_config(app)
+    sent = _capture_mail(monkeypatch)
+    handicap, pollyanna = golf_leagues['handicap'], golf_leagues['pollyanna']
+    brad, han, cy = _user('brad_two'), _user('han_handicap'), _user('cy_polly')
+    _line(brad, handicap, app, total=500)
+    _line(brad, pollyanna, app, total=100)
+    _line(han, handicap, app)
+    _line(cy, pollyanna, app)
+    event = _season_event(app, 'The Memorial', status='upcoming', deadline_in=timedelta(days=2))
+
+    assert send_picks_open_email(event) == 4
+
+    by_to = {}
+    for letter in sent:
+        by_to.setdefault(letter['to'], []).append(letter)
+    assert sorted(len(v) for v in by_to.values()) == [1, 1, 2]
+    assert len(by_to[brad.email]) == 2 and len(by_to[cy.email]) == 1
+    for letter in sent:
+        slug = 'handicap' if letter['plain'].startswith('Handicap Pay Sheet') else 'pollyanna'
+        league = golf_leagues[slug]
+        assert letter['plain'].startswith(f'{league.name}, the Memorial: picks are open\n')
+        assert f'https://cccfantasy.com/golf/{slug}/pick/{event.id}' in letter['plain']
+        other = 'pollyanna' if slug == 'handicap' else 'handicap'
+        assert f'/golf/{other}/' not in letter['plain'] + letter['html']
+    brad_totals = sorted(m['plain'].split('Season total: ')[1].split('\n')[0]
+                         for m in by_to[brad.email])
+    assert brad_totals == ['$100', '$500']
+    assert by_to[cy.email][0]['plain'].startswith('Pollyanna Pay Sheet, ')
+
+
+def test_reminder_passes_loop_both_leagues_and_latch_once(app, golf_leagues, monkeypatch):
+    from unittest.mock import patch
+
+    from games.golf.services.reminders import run_reminder_check
+    from games.golf.services.sync import SlashGolfAPI, TournamentSync
+
+    _mail_config(app)
+    sent = _capture_mail(monkeypatch)
+    handicap, pollyanna = golf_leagues['handicap'], golf_leagues['pollyanna']
+    brad, han, cy = _user('brad_rem'), _user('han_rem'), _user('cy_rem')
+    _line(brad, handicap, app)
+    _line(brad, pollyanna, app)
+    _line(han, handicap, app)
+    _line(cy, pollyanna, app)
+    event = _season_event(app, 'Reminder Open', status='upcoming', deadline_in=timedelta(hours=24))
+    a, b = _golfer('M1', 'Alpha'), _golfer('M2', 'Bravo')
+    _pick(brad, handicap, event, a, b)   # Brad is in on Handicap, not on Pollyanna
+    _pick(cy, pollyanna, event, a, b)
+
+    with patch('games.golf.services.reminders.is_field_ready', return_value=True), \
+            patch('games.golf.services.reminders.get_field_count', return_value=60):
+        run_reminder_check()
+        assert sorted((m['to'], m['plain'].split(',')[0]) for m in sent) == [
+            (brad.email, 'Pollyanna Pay Sheet'), (han.email, 'Handicap Pay Sheet')]
+        for m in sent:
+            slug = 'pollyanna' if m['to'] == brad.email else 'handicap'
+            assert f'https://cccfantasy.com/golf/{slug}/pick/{event.id}' in m['plain']
+        db.session.expire_all()
+        assert db.session.get(GolfTournament, event.id).last_reminder_type == '24h'
+        run_reminder_check()          # the tier latched once for both leagues
+    assert len(sent) == 2
+
+    # The recap: one per line, each linking its league's board, latched once.
+    sent.clear()
+    event = db.session.get(GolfTournament, event.id)
+    event.status = 'complete'
+    db.session.commit()
+    _result(event, a, earnings=300)
+    _result(event, b, earnings=10)
+    sync = TournamentSync(SlashGolfAPI(api_key='test-key'))
+    sync.process_tournament_picks(event)
+    assert sorted((m['to'], m['plain'].split(',')[0]) for m in sent) == sorted([
+        (brad.email, 'Handicap Pay Sheet'), (brad.email, 'Pollyanna Pay Sheet'),
+        (han.email, 'Handicap Pay Sheet'), (cy.email, 'Pollyanna Pay Sheet')])
+    for m in sent:
+        slug = 'handicap' if m['plain'].startswith('Handicap') else 'pollyanna'
+        assert m['plain'].startswith(f'{golf_leagues[slug].name}, the Reminder Open: results are in\n')
+        assert f'https://cccfantasy.com/golf/{slug}/tournament/{event.id}' in m['plain']
+        # Each league ranks its own two lines: the pick that banked $300 leads.
+        picked = (m['to'], slug) in {(brad.email, 'handicap'), (cy.email, 'pollyanna')}
+        assert f"Rank: {1 if picked else 2} of 2\n" in m['plain']
+    assert db.session.get(GolfTournament, event.id).recap_email_sent is True
+    sync.process_tournament_picks(db.session.get(GolfTournament, event.id))
+    assert len(sent) == 4
+
+
+def test_import_legacy_takes_a_league(app, golf_leagues, tmp_path):
+    from games.golf.services.legacy_import import run_import, verify_scoring
+    from tests._golf_legacy_fixtures import build_legacy_db
+
+    path = build_legacy_db(tmp_path / 'legacy.db')
+    pollyanna = golf_leagues['pollyanna']
+
+    report = run_import(str(path), season=2026, league='pollyanna')
+
+    assert report.outcome == 'committed', report.render()
+    for model in (GolfEnrollment, GolfPick, GolfSeasonPlayerUsage):
+        rows = model.query.all()
+        assert rows and {r.league_id for r in rows} == {pollyanna.id}, model.__name__
+    on_polly = verify_scoring(2026, league='pollyanna')
+    assert on_polly.diff_count == 0 and on_polly.picks_checked == 6
+    assert verify_scoring(2026).picks_checked == 0   # the house league holds nothing
+
+    with pytest.raises(ValueError, match='nope'):
+        run_import(str(path), season=2026, league='nope')
+    runner = app.test_cli_runner()
+    bad = runner.invoke(args=['golf', 'import-legacy', str(path), '--league', 'nope'])
+    assert bad.exit_code == 1 and 'nope' in bad.output
+    assert runner.invoke(args=['golf', 'verify-legacy', '--league', 'pollyanna']).exit_code == 0
+    assert runner.invoke(args=['golf', 'verify-legacy', '--league', 'nope']).exit_code == 1
+
+
+def test_league_set_cli_changes_the_fee(app, golf_leagues):
+    runner = app.test_cli_runner()
+
+    listed = runner.invoke(args=['golf', 'league', 'list'])
+    assert listed.exit_code == 0, listed.output
+    lines = listed.output.strip().splitlines()
+    assert len(lines) == 2
+    assert lines[0].split()[0] == 'handicap' and 'Handicap Pay Sheet' in lines[0]
+    assert lines[1].split()[0] == 'pollyanna'
+
+    done = runner.invoke(args=['golf', 'league', 'set', 'pollyanna', '--entry-fee', '30'])
+    assert done.exit_code == 0, done.output
+    db.session.expire_all()
+    polly, house = league_by_slug('pollyanna'), league_by_slug('handicap')
+    assert (polly.entry_fee, polly.penalty_per_incident, polly.name) == (30, 15, 'Pollyanna Pay Sheet')
+    assert house.entry_fee == 25
+
+    renamed = runner.invoke(args=['golf', 'league', 'set', 'handicap', '--name', 'The Handicap Sheet',
+                                  '--penalty', '20'])
+    assert renamed.exit_code == 0, renamed.output
+    db.session.expire_all()
+    house = league_by_slug('handicap')
+    assert (house.name, house.penalty_per_incident, house.entry_fee) == ('The Handicap Sheet', 20, 25)
+
+    unknown = runner.invoke(args=['golf', 'league', 'set', 'nope', '--entry-fee', '1'])
+    assert unknown.exit_code == 1 and 'nope' in unknown.output

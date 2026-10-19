@@ -12,6 +12,8 @@ Usage:
     flask golf sync-run --mode results
     flask golf check-wd
     flask golf remind
+    flask golf league list
+    flask golf league set pollyanna --entry-fee 30
 """
 import os
 import sys
@@ -409,6 +411,8 @@ def _parse_pairs(values, option):
 @click.argument('path', type=click.Path(exists=True, dir_okay=False))
 @click.option('--season', type=int, default=2026, show_default=True,
               help='Season to import from the file (the standalone only ever held 2026).')
+@click.option('--league', 'league', default='handicap', show_default=True, metavar='SLUG',
+              help='The league every imported enrollment, pick and usage row lands in.')
 @click.option('--dry-run', is_flag=True, help='Run the whole import + oracle, then roll everything back.')
 @click.option('--link', 'links', multiple=True, metavar='LEGACY=PLATFORM',
               help='Attach a colliding legacy username to an existing platform username (same person).')
@@ -416,7 +420,7 @@ def _parse_pairs(values, option):
               help='Create a colliding legacy username under a new platform username.')
 @click.option('--no-verify', is_flag=True, help='Skip the parity oracle.')
 @click.option('--force', is_flag=True, help='Commit even if the oracle reports diffs.')
-def import_legacy_cmd(path, season, dry_run, links, renames, no_verify, force):
+def import_legacy_cmd(path, season, league, dry_run, links, renames, no_verify, force):
     """Import the retired standalone app's season from its SQLite file (Phase I, ADR-055).
 
     Matches legacy members to platform accounts by email, creates the rest with
@@ -425,10 +429,11 @@ def import_legacy_cmd(path, season, dry_run, links, renames, no_verify, force):
     inside a rolled-back SAVEPOINT and commits only if that oracle is clean.
     Exit 1 (nothing written) on an unresolved username collision or a
     non-finalized season; a real run exits 1 on oracle diffs unless --force is
-    set. A --dry-run always rolls back and exits 0.
+    set. A --dry-run always rolls back and exits 0. An unknown --league exits 1.
     """
-    from games.golf.services.legacy_import import run_import
+    from games.golf.services.legacy_import import league_for, run_import
     try:
+        league_for(league)
         link_map = _parse_pairs(links, '--link')
         rename_map = _parse_pairs(renames, '--rename')
         both = sorted(set(link_map) & set(rename_map))
@@ -437,7 +442,7 @@ def import_legacy_cmd(path, season, dry_run, links, renames, no_verify, force):
     except ValueError as exc:
         click.echo(f"Error: {exc}")
         sys.exit(1)
-    report = run_import(path, season=season, dry_run=dry_run, links=link_map,
+    report = run_import(path, season=season, league=league, dry_run=dry_run, links=link_map,
                         renames=rename_map, verify=not no_verify, force=force)
     click.echo(report.render())
     sys.exit(0 if report.outcome in ('dry-run', 'committed') else 1)
@@ -446,17 +451,67 @@ def import_legacy_cmd(path, season, dry_run, links, renames, no_verify, force):
 @golf_cli.command('verify-legacy')
 @click.argument('path', required=False, type=click.Path(exists=True, dir_okay=False))
 @click.option('--season', type=int, default=2026, show_default=True)
-def verify_legacy_cmd(path, season):
+@click.option('--league', 'league', default='handicap', show_default=True, metavar='SLUG',
+              help="The league whose rows are checked.")
+def verify_legacy_cmd(path, season, league):
     """Read-only parity oracle over an imported season (exit 1 on any diff).
 
     Re-runs resolve_pick() + calculate_total_points() inside a SAVEPOINT that is
     always rolled back and diffs the result against the stored rows. With PATH,
-    every stored column is also compared against the legacy file first.
+    every stored column is also compared against the legacy file first. Reads
+    one league's rows; an unknown --league exits 1.
     """
-    from games.golf.services.legacy_import import verify_scoring
-    parity = verify_scoring(season, legacy_path=path)
+    from games.golf.services.legacy_import import league_for, verify_scoring
+    try:
+        league_for(league)
+    except ValueError as exc:
+        click.echo(f"Error: {exc}")
+        sys.exit(1)
+    parity = verify_scoring(season, league=league, legacy_path=path)
     click.echo(parity.render())
     sys.exit(0 if parity.diff_count == 0 else 1)
+
+
+# ── the leagues (ADR-075) ─────────────────────────────────────────────────
+
+@golf_cli.group('league')
+def league_cli():
+    """The Pay Sheet's leagues: list them, or change a name, fee or penalty."""
+
+
+@league_cli.command('list')
+def league_list_cmd():
+    """One line per league: slug, name, entry fee, penalty, ordinal."""
+    from games.golf.services.leagues import leagues
+    for league in leagues():
+        click.echo(f"{league.slug:<10} {league.name:<24} fee ${league.entry_fee:<4} "
+                   f"penalty ${league.penalty_per_incident:<4} ordinal {league.ordinal}")
+
+
+@league_cli.command('set')
+@click.argument('slug')
+@click.option('--name', default=None, help="The league's full name.")
+@click.option('--entry-fee', 'entry_fee', type=int, default=None, help='Entry fee in dollars.')
+@click.option('--penalty', type=int, default=None, help='Dollars per penalty incident.')
+def league_set_cmd(slug, name, entry_fee, penalty):
+    """Change a league's name, entry fee or penalty; only the options given change.
+
+    Exit 1 on an unknown slug.
+    """
+    from games.golf.services.leagues import league_by_slug
+    league = league_by_slug(slug)
+    if league is None:
+        click.echo(f"Error: no golf league {slug!r} (see flask golf league list)")
+        sys.exit(1)
+    if name is not None:
+        league.name = name
+    if entry_fee is not None:
+        league.entry_fee = entry_fee
+    if penalty is not None:
+        league.penalty_per_incident = penalty
+    db.session.commit()
+    click.echo(f"{league.slug}: {league.name}, fee ${league.entry_fee}, "
+               f"penalty ${league.penalty_per_incident}")
 
 
 def register_golf_cli(app):

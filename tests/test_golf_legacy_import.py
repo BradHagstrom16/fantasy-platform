@@ -33,6 +33,7 @@ from games.golf.models import (
     GolfTournamentField,
     GolfTournamentResult,
 )
+from games.golf.services.leagues import league_by_slug
 from games.golf.services.legacy_import import (
     import_season,
     load_snapshot,
@@ -50,6 +51,8 @@ GOLF_TABLES = (GolfEnrollment, GolfPlayer, GolfTournament, GolfTournamentField,
                GolfTournamentResult, GolfSeasonPlayerUsage, GolfPick)
 # Generated so no literal password sits beside a username (GitGuardian).
 PLATFORM_PW = secrets.token_urlsafe(16)
+# The import lands in a league (ADR-075), so every test needs the seeded rows.
+pytestmark = pytest.mark.usefixtures('golf_leagues')
 
 
 # --- helpers ---------------------------------------------------------------
@@ -507,7 +510,8 @@ def test_fidelity_reports_missing_player_instead_of_raising(app, tmp_path):
     snapshot = load_snapshot(conn, SEASON, str(path))
     conn.close()
 
-    _, diffs = import_season(snapshot, resolve_users_readonly(snapshot.users), SEASON, check_only=True)
+    _, diffs = import_season(snapshot, resolve_users_readonly(snapshot.users), SEASON,
+                             league=league_by_slug('handicap'), check_only=True)
 
     kinds = {d.kind for d in diffs}
     assert 'golf_player' in kinds        # the player loop flags the missing row
