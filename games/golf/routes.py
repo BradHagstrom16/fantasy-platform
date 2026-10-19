@@ -21,6 +21,7 @@ from flask import (
     current_app,
     flash,
     g,
+    has_request_context,
     jsonify,
     redirect,
     render_template,
@@ -149,7 +150,8 @@ def _pull_league(endpoint, values):
 @golf_bp.url_defaults
 def _push_league(endpoint, values):
     """Inside the room, a league page's url_for stays in the page's league."""
-    if ('league' not in values and g.get('golf_league') is not None
+    if ('league' not in values and has_request_context() and request.blueprint == 'golf'
+            and g.get('golf_league') is not None
             and current_app.url_map.is_endpoint_expecting(endpoint, 'league')):
         values['league'] = g.golf_league.slug
 
@@ -164,7 +166,9 @@ def _remember_league(response):
         lines = _viewer_lines()
         if len(lines) > 1 and any(line.league_id == league.id for line in lines):
             response.set_cookie(LEAGUE_COOKIE, league.slug,
-                                max_age=LEAGUE_COOKIE_MAX_AGE, samesite='Lax')
+                                max_age=LEAGUE_COOKIE_MAX_AGE, samesite='Lax',
+                                httponly=True,
+                                secure=current_app.config.get('SESSION_COOKIE_SECURE', False))
     return response
 
 
@@ -184,7 +188,7 @@ def golf_admin_required(f):
     def decorated_function(*args, **kwargs):
         if current_user.is_admin:
             return f(*args, **kwargs)
-        enrollment = get_enrollment(current_user.id, g.golf_league)
+        enrollment = _viewer_line()
         if not enrollment or not enrollment.is_admin:
             flash('Golf admin access required.', 'error')
             return redirect(url_for('golf.index'))
@@ -211,7 +215,7 @@ def golf_league_member_required(f):
     other's sheet. Stacked under ``enrollment_required('golf')``."""
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if get_enrollment(current_user.id, g.golf_league) is None:
+        if _viewer_line() is None:
             flash(f'Join the {g.golf_league.name} to pick there.', 'info')
             return redirect(url_for('golf.join'))
         return f(*args, **kwargs)

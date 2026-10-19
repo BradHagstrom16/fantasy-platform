@@ -491,8 +491,8 @@ def league_list_cmd():
 @league_cli.command('set')
 @click.argument('slug')
 @click.option('--name', default=None, help="The league's full name.")
-@click.option('--entry-fee', 'entry_fee', type=int, default=None, help='Entry fee in dollars.')
-@click.option('--penalty', type=int, default=None, help='Dollars per penalty incident.')
+@click.option('--entry-fee', 'entry_fee', type=click.IntRange(min=0), default=None, help='Entry fee in dollars.')
+@click.option('--penalty', type=click.IntRange(min=0), default=None, help='Dollars per penalty incident.')
 def league_set_cmd(slug, name, entry_fee, penalty):
     """Change a league's name, entry fee or penalty; only the options given change.
 
@@ -504,6 +504,9 @@ def league_set_cmd(slug, name, entry_fee, penalty):
         click.echo(f"Error: no golf league {slug!r} (see flask golf league list)")
         sys.exit(1)
     if name is not None:
+        if not name.strip():
+            click.echo('Error: --name cannot be blank')
+            sys.exit(1)
         league.name = name
     if entry_fee is not None:
         league.entry_fee = entry_fee

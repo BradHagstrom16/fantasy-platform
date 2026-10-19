@@ -13,8 +13,8 @@ file never changes when the constant does): Handicap is the house league
 
 Every enrollment, pick and golfer usage row belongs to one league. The
 column is added nullable, every existing row is backfilled to Handicap (all
-golf history so far is Handicap's; production's golf tables were empty when
-this shipped), then it is made NOT NULL. Each table's unique key gains the
+golf history so far is Handicap's; production's golf tables are expected to
+be empty at deploy, and any existing row is filed as Handicap by the backfill), then it is made NOT NULL. Each table's unique key gains the
 league, under the same constraint name, so one member can hold a line, a
 pick and a spent golfer in each league.
 

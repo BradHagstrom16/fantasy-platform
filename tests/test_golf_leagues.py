@@ -357,6 +357,22 @@ def test_process_tournament_picks_retotals_each_line_separately(app, golf_league
     assert _usage_ids(brad, handicap) == {scheffler.id}
     assert _usage_ids(brad, pollyanna) == {rory.id}
 
+    # Review Focus 1: the SAME golfer as the primary on both lines of one event
+    # is two usage rows (one per league), not one.
+    second = _season_event(app, 'Both Lines Open')
+    _result(second, scheffler, earnings=300)
+    _pick(brad, handicap, second, scheffler, spare)
+    _pick(brad, pollyanna, second, scheffler, rory)
+    second.recap_email_sent = True
+    db.session.commit()
+
+    TournamentSync(SlashGolfAPI(api_key='test-key')).process_tournament_picks(second)
+
+    db.session.expire_all()
+    rows = GolfSeasonPlayerUsage.query.filter_by(
+        user_id=brad.id, player_id=scheffler.id, season_year=app.config['SEASON_YEAR']).all()
+    assert sorted(row.league_id for row in rows) == sorted([handicap.id, pollyanna.id])
+
 
 def test_picks_open_goes_once_per_line_so_brad_gets_two_letters(app, golf_leagues, monkeypatch):
     from games.golf.services.reminders import send_picks_open_email
@@ -500,6 +516,14 @@ def test_league_set_cli_changes_the_fee(app, golf_leagues):
     unknown = runner.invoke(args=['golf', 'league', 'set', 'nope', '--entry-fee', '1'])
     assert unknown.exit_code == 1 and 'nope' in unknown.output
 
+    # The input boundary: a negative amount or a blank name changes nothing.
+    for bad in (['--entry-fee', '-5'], ['--penalty', '-1'], ['--name', '   ']):
+        refused = runner.invoke(args=['golf', 'league', 'set', 'handicap', *bad])
+        assert refused.exit_code != 0, bad
+    db.session.expire_all()
+    house = league_by_slug('handicap')
+    assert (house.name, house.penalty_per_incident, house.entry_fee) == ('The Handicap Sheet', 20, 25)
+
 
 
 # --- Task A5: the league in the URL, the resolver, every route scoped --------
@@ -572,6 +596,7 @@ def test_room_root_resolves_to_the_viewers_league(app, golf_leagues):
         cookie = _league_cookie(visited)
         assert 'golf_league=pollyanna' in cookie and 'SameSite=Lax' in cookie
         assert 'Max-Age=15552000' in cookie   # 180 days
+        assert 'HttpOnly' in cookie
         assert _league_cookie(client.get('/golf/pollyanna/')) is None
         assert _lands(client.get('/golf/'), '/golf/pollyanna/')
 
@@ -603,6 +628,15 @@ def test_url_for_outside_the_room_needs_a_league(app, golf_leagues):
         assert url_for('golf.index', league='pollyanna') == '/golf/pollyanna/'
         assert url_for('golf.room') == '/golf/'
         assert url_for('golf.join') == '/golf/join'
+
+
+def test_url_defaults_fill_the_league_only_during_a_golf_request(app, client, golf_leagues):
+    from flask import url_for
+    from werkzeug.routing import BuildError
+
+    assert client.get('/golf/pollyanna/').status_code == 200   # leaves g.golf_league set
+    with app.test_request_context('/'), pytest.raises(BuildError):
+        url_for('golf.index')
 
 
 def test_each_leagues_sheet_board_and_stats_show_only_its_lines(app, client, golf_leagues):

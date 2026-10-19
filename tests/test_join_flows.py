@@ -208,7 +208,7 @@ def test_golf_join_post_creates_enrollment(app, client, monkeypatch, golf_league
         assert enr.season_year == 2026
 
 
-def test_golf_join_duplicate_redirects_to_dashboard(app, client, monkeypatch, golf_leagues):
+def test_golf_join_page_marks_held_sheet_and_duplicate_post_writes_nothing(app, client, monkeypatch, golf_leagues):
     _set_status(monkeypatch, 'golf', 'open')
     uid = _make_user(app, 'g4')
     _login(client, uid)
