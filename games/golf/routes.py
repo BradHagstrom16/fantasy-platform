@@ -30,6 +30,7 @@ from flask import (
 )
 from flask_login import current_user, login_required
 from sqlalchemy import and_, func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import contains_eager, joinedload
 
 from extensions import db
@@ -458,8 +459,18 @@ def join():
             db.session.add(GolfEnrollment(
                 user_id=current_user.id, league_id=league.id, season_year=season_year,
             ))
-            db.session.commit()
-            flash(f'Welcome to the {league.name}!', 'success')
+            try:
+                db.session.commit()
+            except IntegrityError:
+                # Concurrent double-submit: the unique (user, league, season)
+                # key is the backstop, the first POST won. Anything else (no
+                # line appeared) is a real failure: re-raise.
+                db.session.rollback()
+                if get_enrollment(current_user.id, league) is None:
+                    raise
+                flash('You are already on that sheet.', 'info')
+            else:
+                flash(f'Welcome to the {league.name}!', 'success')
         return redirect(url_for('golf.index', league=league.slug))
 
     return render_template('golf/join.html', leagues=all_leagues, joined=joined)

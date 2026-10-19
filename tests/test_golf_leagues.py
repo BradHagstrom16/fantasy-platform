@@ -524,6 +524,16 @@ def test_league_set_cli_changes_the_fee(app, golf_leagues):
     house = league_by_slug('handicap')
     assert (house.name, house.penalty_per_incident, house.entry_fee) == ('The Handicap Sheet', 20, 25)
 
+    # A name longer than the column is refused before the write, on both
+    # engines (SQLite would store it; Postgres would raise at commit).
+    too_long = runner.invoke(args=['golf', 'league', 'set', 'handicap', '--name', 'x' * 61])
+    assert too_long.exit_code == 1 and 'Error:' in too_long.output
+    # Surrounding spaces are not part of the name.
+    padded = runner.invoke(args=['golf', 'league', 'set', 'handicap', '--name', '  The Handicap Sheet  '])
+    assert padded.exit_code == 0, padded.output
+    db.session.expire_all()
+    assert league_by_slug('handicap').name == 'The Handicap Sheet'
+
 
 
 # --- Task A5: the league in the URL, the resolver, every route scoped --------

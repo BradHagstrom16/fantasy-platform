@@ -498,14 +498,20 @@ def league_set_cmd(slug, name, entry_fee, penalty):
 
     Exit 1 on an unknown slug.
     """
+    from games.golf.models import GolfLeague
     from games.golf.services.leagues import league_by_slug
     league = league_by_slug(slug)
     if league is None:
         click.echo(f"Error: no golf league {slug!r} (see flask golf league list)")
         sys.exit(1)
     if name is not None:
-        if not name.strip():
+        name = name.strip()
+        if not name:
             click.echo('Error: --name cannot be blank')
+            sys.exit(1)
+        limit = GolfLeague.name.type.length
+        if len(name) > limit:
+            click.echo(f'Error: --name is {len(name)} characters; the most is {limit}')
             sys.exit(1)
         league.name = name
     if entry_fee is not None:

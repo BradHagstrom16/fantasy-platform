@@ -232,3 +232,26 @@ def test_golf_join_page_marks_held_sheet_and_duplicate_post_writes_nothing(app, 
         assert any('already on that sheet' in message for _, message in sess['_flashes'])
     with app.app_context():
         assert GolfEnrollment.query.filter_by(user_id=uid).count() == 1
+
+
+def test_golf_join_double_submit_race_flashes_held_not_500(app, client, monkeypatch, golf_leagues):
+    """Two POSTs for one sheet: the second passes the held check before the
+    first commits, and the unique key turns it into the held flash, not a 500."""
+    _set_status(monkeypatch, 'golf', 'open')
+    uid = _make_user(app, 'g5')
+    _login(client, uid)
+    from games.golf.models import GolfEnrollment
+    with app.app_context():
+        db.session.add(GolfEnrollment(user_id=uid, league_id=golf_leagues['handicap'].id, season_year=2026))
+        db.session.commit()
+    # The race: this request read its lines before the other one's row landed.
+    monkeypatch.setattr('games.golf.routes._viewer_lines', lambda: [])
+    resp = client.post('/golf/join', data={'csrf_token': 'x', 'league': 'handicap'},
+                       follow_redirects=False)
+    assert resp.status_code == 302
+    with client.session_transaction() as sess:
+        messages = [message for _, message in sess['_flashes']]
+    assert any('already on that sheet' in m for m in messages)
+    assert not any('Welcome' in m for m in messages)
+    with app.app_context():
+        assert GolfEnrollment.query.filter_by(user_id=uid).count() == 1
