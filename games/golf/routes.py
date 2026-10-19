@@ -137,14 +137,15 @@ def viewer_league() -> GolfLeague:
 
 @golf_bp.url_value_preprocessor
 def _pull_league(endpoint, values):
-    """Resolve ``g.golf_league`` before the view: the URL's league, else the
-    viewer's. An unknown slug is the club's 404, with ``g.golf_league`` None
-    (the one boundary the sub-nav and the context processor tolerate)."""
+    """Resolve ``g.golf_league`` before the view: the path's league, else a
+    ``?league=`` query (an unknown value is ignored), else the viewer's. An
+    unknown path slug is the club's 404, with ``g.golf_league`` None (the one
+    boundary the sub-nav and the context processor tolerate)."""
     g.pop('golf_lines', None)
     slug = values.pop('league', None)
     if slug is None:
-        # A shared page (the schedule, the room's door) stays in the league the
-        # viewer stepped off when the link says so; else the viewer's own.
+        # The shared schedule stays in the league the viewer stepped off (every
+        # in-room link carries it, ``_push_league``); else the viewer's own.
         asked = request.args.get('league')
         g.golf_league = (league_by_slug(asked) if asked else None) or viewer_league()
         return
@@ -155,10 +156,12 @@ def _pull_league(endpoint, values):
 
 @golf_bp.url_defaults
 def _push_league(endpoint, values):
-    """Inside the room, a league page's url_for stays in the page's league."""
+    """Inside the room, a league page's url_for stays in the page's league; a
+    link to the shared schedule carries it as a query arg (``_pull_league``)."""
     if ('league' not in values and has_request_context() and request.blueprint == 'golf'
             and g.get('golf_league') is not None
-            and current_app.url_map.is_endpoint_expecting(endpoint, 'league')):
+            and (endpoint == 'golf.schedule'
+                 or current_app.url_map.is_endpoint_expecting(endpoint, 'league'))):
         values['league'] = g.golf_league.slug
 
 
@@ -928,8 +931,7 @@ def admin_dashboard():
     banked_count = sum(1 for t in tournaments if t.results_finalized)
     penalties = _penalty_summary(enrollments, season_year, league)
 
-    # Settling the book and the month's reads are platform admin's (Brad's
-    # ruling 10): a league commissioner's dashboard is the tab alone.
+    # The month's reads are platform admin's (Brad's ruling 10).
     now = get_current_time()
     return render_template('golf/admin/dashboard.html',
         tournaments=sorted(tournaments, key=lambda t: t.start_date),
@@ -1044,11 +1046,17 @@ def admin_move_line(user_id):
     elif get_enrollment(user_id, other) is not None:
         flash(f'{name} is already on the {other.name}; there is nothing to move.', 'error')
     else:
-        # The pen is a sheet's appointment and does not travel with the line.
+        # The pen is a sheet's appointment and does not travel with the line;
+        # the paid mark travels only when the other sheet charges the same fee.
+        dropped_paid = line.has_paid and other.entry_fee != league.entry_fee
         line.league_id = other.id
         line.is_admin = False
+        if dropped_paid:
+            line.has_paid = False
         db.session.commit()
-        flash(f'Moved {name} to the {other.name}.', 'success')
+        note = (f' Marked unpaid: the {other.name} fee is ${other.entry_fee}.'
+                if dropped_paid else '')
+        flash(f'Moved {name} to the {other.name}.{note}', 'success')
     return redirect(url_for('golf.admin_users'))
 
 

@@ -7,7 +7,7 @@ colors:
   golf-pen: "#2439C8"            # --game-primary AND --game-accent: the one identity hue (blue is personal)
   golf-pen-pressed: "#1A2A8F"    # --game-primary-dark: hero gradient origin on the join page, pressed fills
   golf-pen-lift: "#4A5CD6"       # --game-primary-light: hover lift for pen fills (white on it 5.5:1)
-  golf-pen-bright: "#8C9BFF"     # --game-accent-light: pen text on the dark sub-nav (6.7:1 on #0F110D)
+  golf-pen-bright: "#8C9BFF"     # --game-accent-light: pen text on the dark sub-nav (7.5:1 on #0F110D)
   golf-paper: "#E9EBE4"          # --bg-page under body.game-golf: cool grey-white waterproof paper
   golf-surface: "#F7F8F3"        # --surface-card under body.game-golf: the pick list, admin tables, insets
   golf-ink: "#15190F"            # --text-primary under body.game-golf: graphite; banked money
@@ -204,7 +204,7 @@ ink. Course green is not an identity color: never a fill, never a wash, never on
 - Ink `#15190F` on paper ≈ 15:1. Pencil `#5A6253` on paper ≈ 5.1:1 (AA body; the floor for muted text).
 - Pen `#2439C8` text on paper ≈ 6.9:1; white on pen ≈ 8.4:1; white on pen-lift `#4A5CD6` ≈ 5.5:1.
 - Marker `#B3261E` on paper ≈ 5.4:1; course `#006747` on paper ≈ 5.7:1 (chips carry a word anyway).
-- Sub-nav `#0F110D`: paper text; pen-bright `#8C9BFF` ≈ 6.7:1 for small accent text; the active pill
+- Sub-nav `#0F110D`: paper text; pen-bright `#8C9BFF` ≈ 7.5:1 for small accent text; the active pill
   is a pen fill with white text.
 
 ### 6.5 The pen is identity, not outcome

@@ -443,8 +443,7 @@ def tab_block(nudge, game_slug, *, name=None) -> Block | None:
     two sheets, ADR-075)."""
     if not nudge:
         return None
-    # Zelle carries no prefilled memo: a league's strip asks for the league
-    # too, so a member of two sheets never pays one believing it covered both.
+    # Zelle carries no prefilled memo, so a league's strip asks for the league in it.
     memo = f'your name and the {name}' if name else 'your name'
     name, accent = name or GAME_NAMES[game_slug], GAME_ACCENTS[game_slug]
     fee, venmo, zelle = (nudge['entry_fee'], nudge['venmo_url'],

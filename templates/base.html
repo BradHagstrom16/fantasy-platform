@@ -227,7 +227,7 @@
                 <div class="subnav-pills">
                     <a class="subnav-pill {% if request.endpoint == 'golf.index' %}active{% endif %}"
                        href="{{ url_for('golf.index') }}">Standings</a>
-                    {# The shared pages carry the page's league as a query arg so the step off a league page keeps it (ADR-075). #}
+                    {# The shared schedule carries the page's league as a query arg so the step off a league page keeps it (ADR-075). #}
                     <a class="subnav-pill {% if request.endpoint == 'golf.schedule' %}active{% endif %}"
                        href="{{ url_for('golf.schedule', league=golf_league.slug) }}">Schedule</a>
                     <a class="subnav-pill {% if request.endpoint == 'golf.results' %}active{% endif %}"

@@ -15,6 +15,7 @@ from sqlalchemy.exc import IntegrityError
 from extensions import db
 from games.golf.models import (
     GolfEnrollment,
+    GolfLeague,
     GolfPick,
     GolfPlayer,
     GolfSeasonPlayerUsage,
@@ -1146,6 +1147,9 @@ def test_shared_pages_keep_the_league_the_viewer_came_from(app, golf_leagues):
         assert f'Pollyanna Pay Sheet · {season}' in schedule
         assert f'/golf/pollyanna/tournament/{banked_id}' in schedule
         assert '/golf/handicap/' not in schedule
+        # Every in-room schedule link carries it too, not only the pill.
+        board = anonymous.get(f'/golf/pollyanna/tournament/{banked_id}').get_data(as_text=True)
+        assert 'href="/golf/schedule?league=pollyanna">The Season Book' in board
         assert _lands(anonymous.get('/golf/leaderboard?league=pollyanna'), '/golf/pollyanna/')
         assert _lands(anonymous.get('/golf/?league=pollyanna'), '/golf/pollyanna/')
         wrong = anonymous.get('/golf/schedule?league=nowhere').get_data(as_text=True)
@@ -1360,6 +1364,34 @@ def test_move_switches_the_line(app, golf_leagues):
     assert GolfEnrollment.query.filter_by(user_id=cy).count() == 1
 
 
+def test_move_carries_the_paid_mark_only_at_the_same_fee(app, golf_leagues):
+    """Paying one sheet never reads as covering the other: the paid mark
+    travels with a moved line at an equal fee, and is cleared, and said so,
+    when the other sheet charges a different one."""
+    handicap, pollyanna = golf_leagues['handicap'], golf_leagues['pollyanna']
+    brad = _platform_admin('brad_moves_paid')
+    same = _member('cy_paid_same', pollyanna, app=app, display_name='Cy Paid Same')
+    differs = _member('cy_paid_differs', pollyanna, app=app, display_name='Cy Paid Differs')
+    for uid in (same, differs):
+        _line_of(uid, pollyanna).has_paid = True
+    handicap.entry_fee = pollyanna.entry_fee
+    db.session.commit()
+
+    with _viewer(app, brad) as client:
+        kept = client.post(f'/golf/pollyanna/admin/move/{same}', follow_redirects=True)
+        assert 'Marked unpaid' not in kept.get_data(as_text=True)
+    assert _line_of(same, handicap).has_paid is True
+
+    handicap = db.session.get(GolfLeague, handicap.id)
+    handicap.entry_fee = pollyanna.entry_fee + 10
+    db.session.commit()
+    with _viewer(app, brad) as client:
+        dropped = client.post(f'/golf/pollyanna/admin/move/{differs}', follow_redirects=True)
+        assert f'Marked unpaid: the Handicap Pay Sheet fee is ${handicap.entry_fee}.' in (
+            dropped.get_data(as_text=True))
+    assert _line_of(differs, handicap).has_paid is False
+
+
 def test_move_refuses_once_a_pick_exists_or_the_other_line_is_held(app, golf_leagues):
     """The move writes nothing when the line already holds a pick this season,
     or when the member already has a line on the other sheet."""
@@ -1425,6 +1457,22 @@ def test_league_commissioner_cannot_post_to_the_other_league_or_settle_the_book(
         assert 'Settle the Book' in office
 
 
+def test_the_pen_is_the_sheets_not_the_members(app, golf_leagues):
+    """A commissioner who plays both sheets holds the pen on one: the Handicap
+    commissioner's Pollyanna line opens no Pollyanna admin page and writes
+    nothing there, while their own Back Office opens."""
+    handicap, pollyanna = golf_leagues['handicap'], golf_leagues['pollyanna']
+    pen = _member('pen_handicap', handicap, pollyanna, app=app, admin_in=handicap)
+    cy = _member('cy_pen_scope', pollyanna, app=app)
+
+    with _viewer(app, pen) as client:
+        assert client.get('/golf/handicap/admin/users').status_code == 200
+        assert _lands(client.get('/golf/pollyanna/admin/users'), '/golf/pollyanna/')
+        paid = client.post(f'/golf/pollyanna/admin/update-payment/{cy}', json={'has_paid': True})
+        assert _lands(paid, '/golf/pollyanna/')
+    assert _line_of(cy, pollyanna).has_paid is False
+
+
 def test_admin_enrollments_seats_the_house_league_and_says_so(app, golf_leagues, monkeypatch):
     """/admin/enrollments seats golf into the house league and says so beside
     it; its already-enrolled check is the house line, so a Pollyanna-only
@@ -1451,11 +1499,14 @@ def test_admin_enrollments_seats_the_house_league_and_says_so(app, golf_leagues,
 
 def test_platform_dashboard_counts_each_league_once(app, golf_leagues):
     """The platform dashboard lists one row per golf league, each counting its
-    own seats, so a member of both is never counted twice in a row."""
+    own seats this season, so a member of both is never counted twice in a
+    row and a prior season's paid line is not counted at all (ADR-069)."""
     handicap, pollyanna = golf_leagues['handicap'], golf_leagues['pollyanna']
     brad = _platform_admin('brad_counts')
     both = _member('both_counted', handicap, pollyanna, app=app)
     _line_of(both, handicap).has_paid = True
+    db.session.add(GolfEnrollment(user_id=brad, league_id=handicap.id,
+                                  season_year=app.config['SEASON_YEAR'] - 1, has_paid=True))
     db.session.commit()
 
     with _viewer(app, brad) as client:

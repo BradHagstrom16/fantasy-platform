@@ -7221,7 +7221,7 @@ body.game-cfb {
    actions, and one new mark, the meter (the burn hatch, the room's one
    texture, drawn as the month's reads). */
 
-/* The book line: the five pages of the book, the one in hand unlinked. */
+/* The book line: the pages of the book (five, four for a league commissioner), the one in hand unlinked. */
 .golf-book {
   margin: 0 0 1.75rem;
   padding: .75rem 0 .25rem;
@@ -13707,7 +13707,7 @@ main { flex: 1; }
 /* The Pay Sheet's switch (ADR-075): a member on more than one sheet gets a
    pill per other league after the page pills. It is a door, not a page of
    this sheet: a hairline stands before it and it reads in pen-bright, the
-   small-text pen on the sub-nav (6.7:1 on #0F110D; "blue is personal"). */
+   small-text pen on the sub-nav (7.5:1 on #0F110D; "blue is personal"). */
 .subnav-golf .subnav-pill--switch {
   color: var(--game-accent-light);
   margin-left: .35rem;

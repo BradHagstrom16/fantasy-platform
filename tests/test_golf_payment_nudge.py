@@ -67,6 +67,17 @@ def test_nudge_shows_for_an_unpaid_line_in_that_league_only(app, golf_leagues):
         assert 'golf-settle-tab' not in handicap_sheet and 'Settle the tab' not in handicap_sheet
 
 
+def test_nudge_hides_only_on_the_sheet_the_commissioner_holds(app, golf_leagues):
+    """The pen hides the tab on its own sheet only: the Handicap commissioner
+    owing on the Pollyanna still sees that sheet's card."""
+    handicap, pollyanna = golf_leagues['handicap'], golf_leagues['pollyanna']
+    pen = _two_sheets(app, golf_leagues, username='pen_owes', paid_handicap=False,
+                      admin_in=handicap)
+
+    assert payment_nudge_for(_line_of(pen, handicap), is_platform_admin=False) is None
+    assert payment_nudge_for(_line_of(pen, pollyanna), is_platform_admin=False)['entry_fee'] == 30
+
+
 def test_nudge_hides_for_admins_commissioners_and_blank_rails(app, golf_leagues):
     pollyanna = golf_leagues['pollyanna']
     owing = _two_sheets(app, golf_leagues, username='owing_member')

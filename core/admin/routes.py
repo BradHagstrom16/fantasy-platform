@@ -5,7 +5,7 @@ Platform-level admin: user management, overview.
 """
 from functools import wraps
 
-from flask import flash, redirect, render_template, request, url_for
+from flask import current_app, flash, redirect, render_template, request, url_for
 from flask_login import current_user
 from sqlalchemy import func, select
 
@@ -41,7 +41,8 @@ def dashboard():
     total_users = User.query.count()
 
     # The Pay Sheet is one game of two leagues (ADR-075): one row per league,
-    # each counting its own seats, each opening its own Back Office.
+    # each counting its own seats this season, each opening its own Back Office.
+    golf_season = current_app.config['SEASON_YEAR']
     golf_rows = [
         {
             'name': f'The Pay Sheet · {league.name}',
@@ -51,10 +52,12 @@ def dashboard():
             'payments_url': url_for('golf.admin_payments', league=league.slug),
             'enrolled': db.session.scalar(
                 select(func.count()).select_from(GolfEnrollment)
-                .filter(GolfEnrollment.league_id == league.id)),
+                .filter(GolfEnrollment.league_id == league.id,
+                        GolfEnrollment.season_year == golf_season)),
             'paid': db.session.scalar(
                 select(func.count()).select_from(GolfEnrollment)
                 .filter(GolfEnrollment.league_id == league.id,
+                        GolfEnrollment.season_year == golf_season,
                         GolfEnrollment.has_paid.is_(True))),
         }
         for league in golf_leagues()
