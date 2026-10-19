@@ -214,10 +214,21 @@ def test_golf_join_duplicate_redirects_to_dashboard(app, client, monkeypatch, go
     _login(client, uid)
     from games.golf.models import GolfEnrollment
     with app.app_context():
-        # On every league's sheet (ADR-075): a member of one may still join the other.
-        for league in golf_leagues.values():
-            db.session.add(GolfEnrollment(user_id=uid, league_id=league.id, season_year=2026))
+        db.session.add(GolfEnrollment(user_id=uid, league_id=golf_leagues['handicap'].id, season_year=2026))
         db.session.commit()
+    # The join page lists every sheet (ADR-075): a member on one sees it,
+    # the held sheet marked joined and not offered again.
     resp = client.get('/golf/join', follow_redirects=False)
+    assert resp.status_code == 200
+    page = resp.get_data(as_text=True)
+    assert 'Joined.' in page and 'href="/golf/handicap/"' in page
+    assert 'value="handicap"' not in page and 'value="pollyanna"' in page
+    # Joining the held sheet again is refused with a flash and sent to it.
+    resp = client.post('/golf/join', data={'csrf_token': 'x', 'league': 'handicap'},
+                       follow_redirects=False)
     assert resp.status_code == 302
     assert '/golf' in resp.location
+    with client.session_transaction() as sess:
+        assert any('already on that sheet' in message for _, message in sess['_flashes'])
+    with app.app_context():
+        assert GolfEnrollment.query.filter_by(user_id=uid).count() == 1

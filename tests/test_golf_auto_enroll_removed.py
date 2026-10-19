@@ -53,13 +53,17 @@ def test_make_pick_redirects_unenrolled_user_to_join(app, client, monkeypatch, g
     assert '/golf/join' in resp.location
 
 
-def test_make_pick_does_not_create_enrollment_when_user_not_joined(app, client, monkeypatch):
+def test_make_pick_does_not_create_enrollment_when_user_not_joined(app, client, monkeypatch,
+                                                                    golf_leagues):
     _set_status(monkeypatch, 'golf', 'open')
     uid = _make_user(app, 'not_enrolled2')
     tid = _seed_open_tournament(app)
     _login(client, uid)
 
-    client.get(f'/golf/handicap/pick/{tid}', follow_redirects=False)
+    resp = client.get(f'/golf/handicap/pick/{tid}', follow_redirects=False)
+    # The request reached the pick path's guard (not a 404 on an unseeded league).
+    assert resp.status_code == 302
+    assert '/golf/join' in resp.location
 
     with app.app_context():
         assert GolfEnrollment.query.filter_by(user_id=uid).count() == 0

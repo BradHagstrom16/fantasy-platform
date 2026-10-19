@@ -438,7 +438,7 @@ def join():
     """The Pay Sheet's one join page: every league, the member chooses one.
 
     A member may hold a line in each league; the page marks the ones they
-    hold. A member already on every sheet goes back to the room.
+    hold, and a member on every sheet still sees it.
     """
     season_year = current_app.config['SEASON_YEAR']
     all_leagues = leagues()
@@ -458,9 +458,6 @@ def join():
             flash(f'Welcome to the {league.name}!', 'success')
         return redirect(url_for('golf.index', league=league.slug))
 
-    if all(lg.id in joined for lg in all_leagues):
-        flash('You are already on every sheet.', 'info')
-        return redirect(url_for('golf.index'))
     return render_template('golf/join.html', leagues=all_leagues, joined=joined)
 
 
@@ -1076,12 +1073,9 @@ def admin_override_pick():
                 flash('Tournament is not eligible for admin overrides.', 'error')
                 return redirect(url_for('golf.admin_override_pick'))
 
-            existing_pick = GolfPick.query.filter_by(
-                user_id=user_id, league_id=league.id, tournament_id=tournament_id
-            ).first()
-            enrollment = GolfEnrollment.query.filter_by(
-                user_id=user_id, league_id=league.id, season_year=season_year
-            ).first()
+            existing_pick = db.session.scalar(select(GolfPick).filter_by(
+                user_id=user_id, league_id=league.id, tournament_id=tournament_id))
+            enrollment = get_enrollment(user_id, league)
 
             # Server-side eligibility validation (audit §2 HIGH): never trust the
             # disabled-option UI. Check field membership + season usage BEFORE
@@ -1224,15 +1218,12 @@ def admin_override_pick():
     if user_id:
         selected_user = db.session.get(User, user_id)
         if selected_user:
-            enrollment = GolfEnrollment.query.filter_by(
-                user_id=user_id, league_id=league.id, season_year=season_year
-            ).first()
+            enrollment = get_enrollment(user_id, league)
             used_player_ids = enrollment.get_used_player_ids() if enrollment else []
 
             if tournament_id:
-                existing_pick = GolfPick.query.filter_by(
-                    user_id=user_id, league_id=league.id, tournament_id=tournament_id
-                ).first()
+                existing_pick = db.session.scalar(select(GolfPick).filter_by(
+                    user_id=user_id, league_id=league.id, tournament_id=tournament_id))
                 # The pick's own players aren't "used" for its own edit — drop
                 # them so the form doesn't render them disabled (audit §2).
                 if existing_pick:
