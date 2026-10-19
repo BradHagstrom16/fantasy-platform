@@ -232,12 +232,13 @@ def test_reminder_lookup_ignores_prior_season(app):
     assert deadline is not None
 
 
-def test_golf_subnav_label_reads_the_configured_season(app):
+def test_golf_subnav_label_reads_the_configured_season(app, golf_leagues):
     """The subnav label must follow SEASON_YEAR, not a literal year — a
-    hardcoded '2026' would read wrong the day the 2027 season is configured."""
+    hardcoded '2026' would read wrong the day the 2027 season is configured.
+    It names the page's league beside the season (ADR-075)."""
     app.config['SEASON_YEAR'] = 2031
-    html = app.test_client().get('/golf/').get_data(as_text=True)
-    assert 'Golf One &amp; Done · 2031' in html
+    html = app.test_client().get('/golf/handicap/').get_data(as_text=True)
+    assert 'Handicap Pay Sheet · 2031' in html
     assert '2026' not in html.split('subnav-label-sub')[1][:40]
 
 

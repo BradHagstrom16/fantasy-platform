@@ -97,13 +97,13 @@ def test_each_board_links_the_room_archive(client, app):
         assert url_for('cfb.history') in _board(page, 'cfb', 2025)
         assert url_for('worldcup.leaderboard') in _board(page, 'worldcup', 2026)
         # The Pay Sheet's archive is the Record Room pinned to that season.
-        assert url_for('golf.record_room', season=2026) in _board(page, 'golf', 2026)
+        assert url_for('golf.record_room', league='handicap', season=2026) in _board(page, 'golf', 2026)
     # The Docket keeps no public archive of a season yet: its ledger is
     # members-only and always the current season, so its board links nowhere.
     assert 'records-archive-link' not in _board(page, 'docket', 2026)
 
 
-def test_every_season_archive_is_a_public_page(client, app):
+def test_every_season_archive_is_a_public_page(client, app, golf_leagues):
     """The page is public, so an archive it links must answer an anonymous
     visitor, never bounce them to a join page."""
 

@@ -1,4 +1,4 @@
-"""The Record Room (/golf/stats): Golf Phase U5.
+"""The Record Room (/golf/handicap/stats): Golf Phase U5.
 
 Locks the page built from ``games/golf/services/stats.py``
 (games/golf/DESIGN.md §8, §9); the aggregates themselves are locked in
@@ -103,7 +103,7 @@ def _login(client, user):
 
 
 def _page(client, **query):
-    resp = client.get('/golf/stats', query_string=query)
+    resp = client.get('/golf/handicap/stats', query_string=query)
     assert resp.status_code == 200
     return resp.get_data(as_text=True)
 
@@ -177,7 +177,7 @@ def test_record_room_is_public_with_a_contents_line_and_five_leaves(app, client,
 def test_stats_pill_is_lit_in_the_record_room(app, client, season, golf_leagues):
     _two_events(season, league_id=golf_leagues['handicap'].id)
     body = _page(client)
-    assert re.search(r'class="subnav-pill active"\s+href="/golf/stats">Stats</a>', body)
+    assert re.search(r'class="subnav-pill active"\s+href="/golf/handicap/stats">Stats</a>', body)
 
 
 def test_race_is_drawn_finished_for_a_guest(app, client, season, golf_leagues):
@@ -191,7 +191,7 @@ def test_race_is_drawn_finished_for_a_guest(app, client, season, golf_leagues):
     assert 'Alice, in the lead' in race
     assert 'Alice leads with $2,300,000.' in race           # the drawing's own description
     # The standings, in the sheet's order, each a link to a scorecard.
-    rows = re.findall(r'data-race-rank>([^<]+)</span>.*?href="/golf/member/(\d+)">([^<]+)</a>.*?'
+    rows = re.findall(r'data-race-rank>([^<]+)</span>.*?href="/golf/handicap/member/(\d+)">([^<]+)</a>.*?'
                       r'data-race-value>([^<]+)<', race, re.S)
     assert rows == [('1', str(alice.id), 'Alice', '$2,300,000'),
                     ('2', str(bob.id), 'Bob', '$400,000')]
@@ -391,16 +391,16 @@ def test_record_room_reads_one_season(app, client, season, golf_leagues):
 
     now = _page(client)
     assert 'PastMember' not in now and 'Old Timer' not in now and 'Last Year Open' not in now
-    assert f'href="/golf/stats?season={season - 1}">{season - 1} season</a>' in now
+    assert f'href="/golf/handicap/stats?season={season - 1}">{season - 1} season</a>' in now
 
     then = _page(client, season=season - 1)
     assert 'Alice' not in then and 'Scheffler' not in then and 'Sony Open' not in then
     assert 'PastMember' in then and 'Old Timer' in then
-    assert f'href="/golf/member/{past.id}?season={season - 1}"' in then
-    assert f'href="/golf/stats">{season} season</a>' in then
+    assert f'href="/golf/handicap/member/{past.id}?season={season - 1}"' in then
+    assert f'href="/golf/handicap/stats">{season} season</a>' in then
 
-    assert client.get('/golf/stats', query_string={'season': season - 5}).status_code == 404
-    assert client.get('/golf/stats', query_string={'season': 'next'}).status_code == 404
+    assert client.get('/golf/handicap/stats', query_string={'season': season - 5}).status_code == 404
+    assert client.get('/golf/handicap/stats', query_string={'season': 'next'}).status_code == 404
 
 
 def test_record_room_of_a_banked_season_names_the_champion(app, client, season, golf_leagues):
@@ -410,7 +410,7 @@ def test_record_room_of_a_banked_season_names_the_champion(app, client, season, 
     body = _page(client)
     fold = _leaf(body, 'golf-champion')
     assert '>Champion</h2>' in fold
-    assert f'href="/golf/member/{alice.id}">Alice</a>' in fold
+    assert f'href="/golf/handicap/member/{alice.id}">Alice</a>' in fold
     assert 'golf-money--banked">$2,300,000' in fold
     assert 'Bob' not in fold
     assert 'not on the club' in fold and '/records' not in fold
@@ -438,7 +438,7 @@ def test_record_room_of_a_running_season_has_no_champion(app, client, season, go
     assert 'golf-champion' not in body
 
 
-def test_record_room_of_a_season_with_no_tournaments_is_not_a_404(app, client, season):
+def test_record_room_of_a_season_with_no_tournaments_is_not_a_404(app, client, season, golf_leagues):
     """The configured season is always a room, even before its schedule is seeded."""
     body = _page(client)
     assert 'the schedule is not posted yet' in body and '0 of 0' not in body

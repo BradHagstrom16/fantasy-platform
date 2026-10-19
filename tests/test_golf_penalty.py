@@ -566,7 +566,7 @@ def test_admin_update_payment_sets_penalty_paid(app, client, monkeypatch, golf_l
     _make_enrollment(member, league_id=golf_leagues['handicap'].id)
     _login(client, admin)
 
-    resp = client.post(f'/golf/admin/update-payment/{member.id}',
+    resp = client.post(f'/golf/handicap/admin/update-payment/{member.id}',
                        json={'penalty_paid': 30})
     assert resp.status_code == 200
     data = resp.get_json()
@@ -584,7 +584,7 @@ def test_admin_update_payment_clamps_negative_penalty(app, client, monkeypatch, 
     _make_enrollment(member, league_id=golf_leagues['handicap'].id)
     _login(client, admin)
 
-    resp = client.post(f'/golf/admin/update-payment/{member.id}',
+    resp = client.post(f'/golf/handicap/admin/update-payment/{member.id}',
                        json={'penalty_paid': -5})
     assert resp.status_code == 200
     assert resp.get_json()['penalty_paid'] == 0
@@ -597,7 +597,7 @@ def test_admin_update_payment_rejects_non_integer_penalty(app, client, monkeypat
     _make_enrollment(member, league_id=golf_leagues['handicap'].id)
     _login(client, admin)
 
-    resp = client.post(f'/golf/admin/update-payment/{member.id}',
+    resp = client.post(f'/golf/handicap/admin/update-payment/{member.id}',
                        json={'penalty_paid': 'abc'})
     assert resp.status_code == 400
 
@@ -610,7 +610,7 @@ def test_admin_update_payment_rejects_fractional_penalty(app, client, monkeypatc
     _make_enrollment(member, league_id=golf_leagues['handicap'].id)
     _login(client, admin)
 
-    resp = client.post(f'/golf/admin/update-payment/{member.id}',
+    resp = client.post(f'/golf/handicap/admin/update-payment/{member.id}',
                        json={'penalty_paid': 12.75})
     assert resp.status_code == 400
     with app.app_context():
@@ -628,7 +628,7 @@ def test_admin_update_payment_penalty_only_preserves_has_paid(app, client, monke
     db.session.commit()
     _login(client, admin)
 
-    resp = client.post(f'/golf/admin/update-payment/{member.id}',
+    resp = client.post(f'/golf/handicap/admin/update-payment/{member.id}',
                        json={'penalty_paid': 15})
     assert resp.status_code == 200
     with app.app_context():
@@ -648,7 +648,7 @@ def test_admin_payments_page_shows_penalty_pot(app, client, monkeypatch, golf_le
         _make_pick(member, t, p1, p2, penalty_triggered=True, league_id=golf_leagues['handicap'].id)
     _login(client, admin)
 
-    resp = client.get('/golf/admin/payments')
+    resp = client.get('/golf/handicap/admin/payments')
     assert resp.status_code == 200
     body = resp.get_data(as_text=True)
     assert 'Penalty' in body
@@ -669,7 +669,7 @@ def test_index_prize_pool_includes_penalty_pot(app, client, monkeypatch, golf_le
         t = _make_tournament(name=f'Major {i}', is_major=True, status='complete', results_finalized=True)
         _make_pick(member, t, p1, p2, penalty_triggered=True, league_id=golf_leagues['handicap'].id)
 
-    resp = client.get('/golf/')
+    resp = client.get('/golf/handicap/')
     assert resp.status_code == 200
     body = resp.get_data(as_text=True)
     assert 'Prize Pool' in body
@@ -688,7 +688,7 @@ def test_tournament_detail_shows_penalty_badge_for_finalized_major(app, client, 
     pick.resolve_pick()
     db.session.commit()
 
-    resp = client.get(f'/golf/tournament/{t.id}')
+    resp = client.get(f'/golf/handicap/tournament/{t.id}')
     assert resp.status_code == 200
     assert 'badge-penalty' in resp.get_data(as_text=True)
 
@@ -706,7 +706,7 @@ def test_tournament_detail_hides_penalty_badge_when_not_finalized(app, client, m
     pick.resolve_pick()
     db.session.commit()
 
-    resp = client.get(f'/golf/tournament/{t.id}')
+    resp = client.get(f'/golf/handicap/tournament/{t.id}')
     assert resp.status_code == 200
     assert 'badge-penalty' not in resp.get_data(as_text=True)
 
@@ -724,8 +724,8 @@ def test_scorecard_shows_penalty_badge_for_finalized_major(app, client, monkeypa
     db.session.commit()
     _login(client, member)
 
-    # /golf/my-picks is the old address; the page is the member's scorecard.
-    resp = client.get('/golf/my-picks', follow_redirects=True)
+    # /golf/handicap/my-picks is the old address; the page is the member's scorecard.
+    resp = client.get('/golf/handicap/my-picks', follow_redirects=True)
     assert resp.status_code == 200
-    assert resp.request.path == f'/golf/member/{member.id}'
+    assert resp.request.path == f'/golf/handicap/member/{member.id}'
     assert 'badge-penalty' in resp.get_data(as_text=True)

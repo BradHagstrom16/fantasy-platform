@@ -430,7 +430,7 @@ def test_action_send_dedupes_all_audience(mock_send, app, client):
 # Dashboard entry point
 # ---------------------------------------------------------------------------
 
-def test_dashboard_shows_announce_card(app, client):
+def test_dashboard_shows_announce_card(app, client, golf_leagues):
     """The admin dashboard links to /admin/announce via the megaphone card."""
     aid = _make_user(app, 'admin', is_admin=True)
     _login(client, aid)

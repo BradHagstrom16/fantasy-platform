@@ -46,35 +46,35 @@ def _login(client, user):
 
 
 GET_ROUTES = [
-    '/golf/admin/',
-    '/golf/admin/tournaments',
-    '/golf/admin/users',
-    '/golf/admin/payments',
-    '/golf/admin/override-pick',
+    '/golf/handicap/admin/',
+    '/golf/handicap/admin/tournaments',
+    '/golf/handicap/admin/users',
+    '/golf/handicap/admin/payments',
+    '/golf/handicap/admin/override-pick',
 ]
 
 # Bogus ids on purpose: the guard must fire before the view can 404 on them.
 POST_ROUTES = [
-    '/golf/admin/update-payment/999',
-    '/golf/admin/process-results/999',
-    '/golf/admin/override-pick',
+    '/golf/handicap/admin/update-payment/999',
+    '/golf/handicap/admin/process-results/999',
+    '/golf/handicap/admin/override-pick',
 ]
 
 POST_ONLY_ROUTES = [
-    '/golf/admin/update-payment/999',
-    '/golf/admin/process-results/999',
+    '/golf/handicap/admin/update-payment/999',
+    '/golf/handicap/admin/process-results/999',
 ]
 
 
 @pytest.mark.parametrize('path', GET_ROUTES)
-def test_admin_page_requires_login(app, client, path):
+def test_admin_page_requires_login(app, client, path, golf_leagues):
     resp = client.get(path, follow_redirects=False)
     assert resp.status_code == 302
     assert '/login' in resp.headers['Location']
 
 
 @pytest.mark.parametrize('path', POST_ROUTES)
-def test_admin_post_requires_login(app, client, path):
+def test_admin_post_requires_login(app, client, path, golf_leagues):
     resp = client.post(path, data={'csrf_token': 'x'}, follow_redirects=False)
     assert resp.status_code == 302
     assert '/login' in resp.headers['Location']
@@ -106,14 +106,14 @@ def test_current_season_enrollment_admin_allowed(app, client, golf_leagues):
     user = _user('current_admin')
     _enroll(user, app.config['SEASON_YEAR'], is_admin=True, league_id=golf_leagues['handicap'].id)
     _login(client, user)
-    assert client.get('/golf/admin/').status_code == 200
+    assert client.get('/golf/handicap/admin/').status_code == 200
 
 
 def test_prior_season_enrollment_admin_rejected(app, client, golf_leagues):
     user = _user('prior_admin')
     _enroll(user, app.config['SEASON_YEAR'] - 1, is_admin=True, league_id=golf_leagues['handicap'].id)
     _login(client, user)
-    resp = client.get('/golf/admin/')
+    resp = client.get('/golf/handicap/admin/')
     assert resp.status_code == 302
     assert '/golf' in resp.headers['Location']
 
@@ -131,15 +131,15 @@ def test_admin_lists_are_this_seasons_enrollees_only(app, client, golf_leagues):
     _user('no_line', display_name='Morgan Noline')
     _login(client, admin)
 
-    users_page = client.get('/golf/admin/users').get_data(as_text=True)
+    users_page = client.get('/golf/handicap/admin/users').get_data(as_text=True)
     assert 'Casey Onsheet' in users_page
     assert 'Dana Lastyear' not in users_page
     assert 'Morgan Noline' not in users_page
 
-    override_page = client.get('/golf/admin/override-pick').get_data(as_text=True)
+    override_page = client.get('/golf/handicap/admin/override-pick').get_data(as_text=True)
     assert 'Casey Onsheet' in override_page
     assert 'Dana Lastyear' not in override_page
     assert 'Morgan Noline' not in override_page
 
-    dashboard = client.get('/golf/admin/').get_data(as_text=True)
+    dashboard = client.get('/golf/handicap/admin/').get_data(as_text=True)
     assert 'Morgan Noline' not in dashboard

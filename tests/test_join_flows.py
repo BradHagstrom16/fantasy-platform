@@ -185,7 +185,7 @@ def test_golf_join_coming_soon_rejects(app, client):
     assert resp.location.endswith('/')
 
 
-def test_golf_join_open_renders_form(app, client, monkeypatch):
+def test_golf_join_open_renders_form(app, client, monkeypatch, golf_leagues):
     _set_status(monkeypatch, 'golf', 'open')
     uid = _make_user(app, 'g2')
     _login(client, uid)
@@ -194,11 +194,12 @@ def test_golf_join_open_renders_form(app, client, monkeypatch):
     assert b"Pick 'Em" in resp.data or b"Golf" in resp.data
 
 
-def test_golf_join_post_creates_enrollment(app, client, monkeypatch):
+def test_golf_join_post_creates_enrollment(app, client, monkeypatch, golf_leagues):
     _set_status(monkeypatch, 'golf', 'open')
     uid = _make_user(app, 'g3')
     _login(client, uid)
-    resp = client.post('/golf/join', data={'csrf_token': 'x'}, follow_redirects=False)
+    resp = client.post('/golf/join', data={'csrf_token': 'x', 'league': 'handicap'},
+                       follow_redirects=False)
     assert resp.status_code == 302
     from games.golf.models import GolfEnrollment
     with app.app_context():
@@ -213,7 +214,9 @@ def test_golf_join_duplicate_redirects_to_dashboard(app, client, monkeypatch, go
     _login(client, uid)
     from games.golf.models import GolfEnrollment
     with app.app_context():
-        db.session.add(GolfEnrollment(user_id=uid, league_id=golf_leagues['handicap'].id, season_year=2026))
+        # On every league's sheet (ADR-075): a member of one may still join the other.
+        for league in golf_leagues.values():
+            db.session.add(GolfEnrollment(user_id=uid, league_id=league.id, season_year=2026))
         db.session.commit()
     resp = client.get('/golf/join', follow_redirects=False)
     assert resp.status_code == 302

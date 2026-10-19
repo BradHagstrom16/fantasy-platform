@@ -25,7 +25,8 @@ from sqlalchemy import select
 
 from extensions import db
 from games.golf.models import GolfPick
-from games.golf.services.enrollment import get_enrollment
+from games.golf.services.enrollment import enrollments_for
+from games.golf.services.leagues import house_league
 from games.golf.services.reads import (
     next_tournament,
     season_enrollments,
@@ -79,23 +80,32 @@ def _first_event(tournaments) -> dict:
 
 
 def build_lounge_context(user: Any, state: GolfLoungeState | None) -> dict:
-    """Per-state lounge panel data. state=None is the logged-out surface."""
+    """Per-state lounge panel data. state=None is the logged-out surface.
+
+    The panel shows one league (ADR-075): the viewer's lowest-ordinal line's,
+    else the house league. ``league`` is its slug, for the panel's links
+    (the lounge is outside the room, so every league url_for names it).
+    """
     season_year = _season()
     tournaments = season_tournaments(season_year)
-    enrollments = season_enrollments(season_year)
+    lines = enrollments_for(user.id) if state is not None else []
+    enrollment = lines[0] if lines else None
+    league = enrollment.league if enrollment is not None else house_league()
+    enrollments = season_enrollments(season_year, league.id)
     total_enrolled = len(enrollments)
     if state is None:
         return {
             'season_year': season_year,
+            'league': league.slug,
             'total_enrolled': total_enrolled,
             'roster_count': total_enrolled if total_enrolled >= ROSTER_COUNT_FLOOR else 0,
             **_first_event(tournaments),
         }
 
-    enrollment = get_enrollment(user.id)
     is_enrolled = enrollment is not None
     ctx = {
         'season_year': season_year,
+        'league': league.slug,
         'enrollment': enrollment,
         'is_enrolled': is_enrolled,
         'viewer_mode': 'member' if is_enrolled else 'view',
@@ -106,7 +116,7 @@ def build_lounge_context(user: Any, state: GolfLoungeState | None) -> dict:
     if state == 'pre':
         ctx.update(_context_pre(tournaments))
     elif state == 'live':
-        ctx.update(_context_live(user, is_enrolled, tournaments, enrollments))
+        ctx.update(_context_live(user, is_enrolled, tournaments, enrollments, league))
     else:
         ctx.update(_context_post(user, tournaments, enrollments))
     return ctx
@@ -123,14 +133,14 @@ def _context_pre(tournaments) -> dict:
     }
 
 
-def _context_live(user, is_enrolled: bool, tournaments, enrollments) -> dict:
+def _context_live(user, is_enrolled: bool, tournaments, enrollments, league) -> dict:
     """In season: the event on the course or settling (the sheet's pencilled
     week), the next lock, and for a member their line and the leader."""
     event = live_event([t for t in tournaments if t.is_deadline_passed()])
     lines = clock = None
     if event is not None:
         results = tournament_results(event.id)
-        lines = week_lines(event, tournament_picks(event.id), results)
+        lines = week_lines(event, tournament_picks(event.id, league.id), results)
         clock = event_clock(event, results, get_current_time())
     coming = next_tournament(tournaments)
     week = event if event is not None else coming
@@ -172,7 +182,8 @@ def _context_live(user, is_enrolled: bool, tournaments, enrollments) -> dict:
     if is_enrolled and sheet.mine is not None:
         me = sheet.mine
         pick_in = coming is not None and db.session.scalar(
-            select(GolfPick.id).filter_by(user_id=user.id, tournament_id=coming.id)
+            select(GolfPick.id).filter_by(user_id=user.id, league_id=league.id,
+                                          tournament_id=coming.id)
         ) is not None
         ctx['mine'] = {
             'money': _money(me.total),

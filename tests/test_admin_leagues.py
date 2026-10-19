@@ -10,7 +10,7 @@ def _login_admin(client):
     login(client, admin)
 
 
-def test_dashboard_lists_all_four_leagues(app, client):
+def test_dashboard_lists_all_four_leagues(app, client, golf_leagues):
     _login_admin(client)
     data = client.get('/admin/').data.decode()
     for name in ('World Cup Fantasy', 'The Pay Sheet', 'CFB Survivor Pool',
@@ -18,14 +18,14 @@ def test_dashboard_lists_all_four_leagues(app, client):
         assert name in data, name
 
 
-def test_dashboard_docket_card_carries_both_actions(app, client):
+def test_dashboard_docket_card_carries_both_actions(app, client, golf_leagues):
     _login_admin(client)
     data = client.get('/admin/').data.decode()
     assert '/docket/admin/' in data
     assert '/docket/admin/payments' in data
 
 
-def test_dashboard_counts_docket_enrollments(app, client):
+def test_dashboard_counts_docket_enrollments(app, client, golf_leagues):
     paid = make_user('paidmember')
     make_enrollment(paid, has_paid=True)
     unpaid = make_user('unpaidmember')
@@ -35,7 +35,7 @@ def test_dashboard_counts_docket_enrollments(app, client):
     assert '2 enrolled · 1 paid' in data
 
 
-def test_dashboard_lists_the_live_games_before_the_world_cup(app, client):
+def test_dashboard_lists_the_live_games_before_the_world_cup(app, client, golf_leagues):
     _login_admin(client)
     data = client.get('/admin/').data.decode()
     world_cup = data.index('World Cup Fantasy')
@@ -59,7 +59,7 @@ def _run(job, outcome, minutes_ago, *, summary=None, credits=None, via='systemd'
     return run
 
 
-def test_dashboard_shows_each_jobs_latest_run(app, client):
+def test_dashboard_shows_each_jobs_latest_run(app, client, golf_leagues):
     _run('cfb-scores', 'error', 120, summary='Odds API unreachable')
     _run('cfb-scores', 'ok', 60, summary='Week 4: processed', credits=412)
     _run('club-remind', 'idle', 5, summary='no tier is due', via='shell')
@@ -76,7 +76,7 @@ def test_dashboard_shows_each_jobs_latest_run(app, client):
     assert 'Docket deadline' not in data
 
 
-def test_dashboard_shows_the_newest_credit_balance(app, client):
+def test_dashboard_shows_the_newest_credit_balance(app, client, golf_leagues):
     _run('docket-scores', 'ok', 600, credits=500)
     _run('scores-gameday', 'ok', 30, credits=1234)
     _run('club-remind', 'ok', 5)
@@ -85,7 +85,7 @@ def test_dashboard_shows_the_newest_credit_balance(app, client):
     assert '1,234 Odds API credits left' in data
 
 
-def test_dashboard_with_no_runs_says_so(app, client):
+def test_dashboard_with_no_runs_says_so(app, client, golf_leagues):
     _login_admin(client)
     data = client.get('/admin/').data.decode()
     assert 'No job has recorded a run yet' in data

@@ -42,13 +42,13 @@ def _seed_open_tournament(app):
         return t.id
 
 
-def test_make_pick_redirects_unenrolled_user_to_join(app, client, monkeypatch):
+def test_make_pick_redirects_unenrolled_user_to_join(app, client, monkeypatch, golf_leagues):
     _set_status(monkeypatch, 'golf', 'open')
     uid = _make_user(app, 'not_enrolled')
     tid = _seed_open_tournament(app)
     _login(client, uid)
 
-    resp = client.get(f'/golf/pick/{tid}', follow_redirects=False)
+    resp = client.get(f'/golf/handicap/pick/{tid}', follow_redirects=False)
     assert resp.status_code == 302
     assert '/golf/join' in resp.location
 
@@ -59,26 +59,26 @@ def test_make_pick_does_not_create_enrollment_when_user_not_joined(app, client, 
     tid = _seed_open_tournament(app)
     _login(client, uid)
 
-    client.get(f'/golf/pick/{tid}', follow_redirects=False)
+    client.get(f'/golf/handicap/pick/{tid}', follow_redirects=False)
 
     with app.app_context():
         assert GolfEnrollment.query.filter_by(user_id=uid).count() == 0
 
 
-def test_admin_update_payment_rejects_unenrolled_user(app, client, monkeypatch):
+def test_admin_update_payment_rejects_unenrolled_user(app, client, monkeypatch, golf_leagues):
     _set_status(monkeypatch, 'golf', 'open')
     admin_id = _make_user(app, 'golfadmin', is_admin=True)
     target_id = _make_user(app, 'orphan')
     _login(client, admin_id)
 
-    resp = client.post(f'/golf/admin/update-payment/{target_id}',
+    resp = client.post(f'/golf/handicap/admin/update-payment/{target_id}',
                        json={'has_paid': True})
     assert resp.status_code == 400
     with app.app_context():
         assert GolfEnrollment.query.filter_by(user_id=target_id).count() == 0
 
 
-def test_admin_override_pick_blocks_unenrolled_user(app, client, monkeypatch):
+def test_admin_override_pick_blocks_unenrolled_user(app, client, monkeypatch, golf_leagues):
     _set_status(monkeypatch, 'golf', 'open')
     admin_id = _make_user(app, 'golfadmin2', is_admin=True)
     target_id = _make_user(app, 'orphan2')
@@ -91,7 +91,7 @@ def test_admin_override_pick_blocks_unenrolled_user(app, client, monkeypatch):
         p1_id, p2_id = p1.id, p2.id
 
     _login(client, admin_id)
-    resp = client.post('/golf/admin/override-pick', data={
+    resp = client.post('/golf/handicap/admin/override-pick', data={
         'tournament_id': tid,
         'user_id': target_id,
         'primary_player_id': p1_id,
@@ -100,7 +100,7 @@ def test_admin_override_pick_blocks_unenrolled_user(app, client, monkeypatch):
     }, follow_redirects=False)
 
     assert resp.status_code == 302
-    assert '/golf/admin/override-pick' in resp.location
+    assert '/golf/handicap/admin/override-pick' in resp.location
     with app.app_context():
         assert GolfEnrollment.query.filter_by(user_id=target_id).count() == 0
         assert GolfPick.query.filter_by(user_id=target_id).count() == 0

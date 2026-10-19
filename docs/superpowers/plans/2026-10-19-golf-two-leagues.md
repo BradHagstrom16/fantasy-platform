@@ -206,7 +206,7 @@ Tasks A2 to A4 change service signatures the routes still call the old way, so r
 - `join`: GET lists `leagues()` with `enrollments_for` marking the joined ones; POST reads `league` (slug), 400 on unknown, flashes "already on that sheet" if enrolled there, else creates `GolfEnrollment(user_id, league_id, season_year)` and redirects to `golf.index` for that league. `can_join` on `index` becomes "not on this league's sheet".
 - `member_scorecard`: `seasons` comes from the member's enrollments in `g.golf_league`; 404 when the member has no line in this league that season.
 
-- [ ] **Step 1:** Failing tests in `tests/test_golf_leagues.py`:
+- [x] **Step 1:** Failing tests in `tests/test_golf_leagues.py`:
   - `test_room_root_resolves_to_the_viewers_league` (anonymous → `/golf/handicap/`; a Pollyanna-only member → `/golf/pollyanna/`; Brad with the cookie `golf_league=pollyanna` → `/golf/pollyanna/`).
   - `test_unknown_league_is_404` (Review Focus 2; asserts the status AND that the body is the club's 404 page, not a 500: review S2).
   - `test_url_for_outside_the_room_needs_a_league` (in a plain app request context `url_for('golf.index')` raises `BuildError`; `url_for('golf.index', league='pollyanna') == '/golf/pollyanna/'`).
@@ -214,10 +214,10 @@ Tasks A2 to A4 change service signatures the routes still call the old way, so r
   - `test_pick_route_needs_a_line_in_that_league`.
   - `test_join_seats_the_chosen_league_and_allows_the_second`.
   - `test_admin_pages_scope_to_the_league_and_settle_the_book_is_platform_only` (a Pollyanna commissioner: 200 on `/golf/pollyanna/admin/users`, 302 on `/golf/handicap/admin/users`, 302 on `/golf/pollyanna/admin/tournaments`).
-- [ ] **Step 2:** Run; expect 404s on the new URLs.
-- [ ] **Step 3:** Implement. Then update every existing golf route test's URLs (`/golf/` → `/golf/handicap/` where the page is league-scoped) and `tests/test_records_page.py`'s golf archive link.
-- [ ] **Step 4:** Run `ENVIRONMENT=testing venv/bin/python -m pytest tests/ -n auto --dist loadfile -q` and the Postgres run; expect PASS. `venv/bin/ruff check .` clean.
-- [ ] **Step 5:** Commit: `feat(golf): the league in the URL; every room read scoped`
+- [x] **Step 2:** Run; expect 404s on the new URLs.
+- [x] **Step 3:** Implement. Then update every existing golf route test's URLs (`/golf/` → `/golf/handicap/` where the page is league-scoped) and `tests/test_records_page.py`'s golf archive link.
+- [x] **Step 4:** Run `ENVIRONMENT=testing venv/bin/python -m pytest tests/ -n auto --dist loadfile -q` and the Postgres run; expect PASS. `venv/bin/ruff check .` clean.
+- [x] **Step 5:** Commit: `feat(golf): the league in the URL; every room read scoped`
 - [ ] **Step 6:** Smoke on the dev server (`FLASK_APP=app.py FLASK_DEBUG=1 venv/bin/flask run --port 5099`, `ccc_local` after `flask db upgrade`) as a platform admin: `/golf/` redirects; `/golf/handicap/` and `/golf/pollyanna/` both render; join into Pollyanna; a pick in each league on the same golfer succeeds. Open PR A; CodeRabbit clean; merge.
 
 ---

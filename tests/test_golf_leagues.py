@@ -4,6 +4,7 @@ Golf is one game with two leagues inside it, Handicap (the house league) and
 Pollyanna. Each league is a row in ``golf_league`` carrying its own entry fee
 and penalty; every enrollment, pick and golfer usage belongs to exactly one.
 """
+from contextlib import contextmanager
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -498,3 +499,254 @@ def test_league_set_cli_changes_the_fee(app, golf_leagues):
 
     unknown = runner.invoke(args=['golf', 'league', 'set', 'nope', '--entry-fee', '1'])
     assert unknown.exit_code == 1 and 'nope' in unknown.output
+
+
+
+# --- Task A5: the league in the URL, the resolver, every route scoped --------
+
+def _member(username, *lines, app, admin_in=None, display_name=None):
+    """A user with a line in each of ``lines`` this season (``admin_in`` is
+    the league whose line carries the commissioner flag); returns the id."""
+    user = User(username=username, email=f'{username}@example.com',
+                display_name=display_name or username)
+    user.set_password('x')
+    db.session.add(user)
+    db.session.flush()
+    for league in lines:
+        db.session.add(GolfEnrollment(
+            user_id=user.id, league_id=league.id, season_year=app.config['SEASON_YEAR'],
+            is_admin=league is admin_in))
+    db.session.commit()
+    return user.id
+
+
+@contextmanager
+def _viewer(app, user_id=None):
+    """A fresh client for one viewer, inside its own app context.
+
+    Flask-Login caches the loaded user on ``g``, and every request under the
+    fixture's app context shares that ``g``, so a test that reads as several
+    viewers gives each its own context (tests/test_cfb_player_card.py::_page).
+    The nested teardown removes its session, which is why callers pass ids.
+    """
+    client = app.test_client()
+    with app.app_context():
+        if user_id is not None:
+            with client.session_transaction() as sess:
+                sess['_user_id'] = db.session.get(User, user_id).auth_id
+                sess['_fresh'] = True
+        yield client
+
+
+def _lands(resp, path):
+    return resp.status_code == 302 and resp.headers['Location'].endswith(path)
+
+
+def _league_cookie(resp):
+    """The response's golf_league Set-Cookie, or None (the session cookie aside)."""
+    return next((c for c in resp.headers.getlist('Set-Cookie')
+                 if c.startswith('golf_league=')), None)
+
+
+def test_room_root_resolves_to_the_viewers_league(app, golf_leagues):
+    handicap, pollyanna = golf_leagues['handicap'], golf_leagues['pollyanna']
+    cy = _member('cy_only', pollyanna, app=app)
+    brad = _member('brad_two_rooms', handicap, pollyanna, app=app)
+
+    with _viewer(app) as anonymous:
+        assert _lands(anonymous.get('/golf/'), '/golf/handicap/')
+
+    with _viewer(app, cy) as client:
+        assert _lands(client.get('/golf/'), '/golf/pollyanna/')
+        # One line: nothing to remember, so no cookie.
+        assert _league_cookie(client.get('/golf/pollyanna/')) is None
+        # A cookie naming a league the member is not on is ignored.
+        client.set_cookie('golf_league', 'handicap')
+        assert _lands(client.get('/golf/'), '/golf/pollyanna/')
+
+    with _viewer(app, brad) as client:
+        assert _lands(client.get('/golf/'), '/golf/handicap/')
+        # A league page remembers the league for a member of both, once.
+        visited = client.get('/golf/pollyanna/')
+        assert visited.status_code == 200
+        cookie = _league_cookie(visited)
+        assert 'golf_league=pollyanna' in cookie and 'SameSite=Lax' in cookie
+        assert 'Max-Age=15552000' in cookie   # 180 days
+        assert _league_cookie(client.get('/golf/pollyanna/')) is None
+        assert _lands(client.get('/golf/'), '/golf/pollyanna/')
+
+    with _viewer(app, brad) as client:
+        client.set_cookie('golf_league', 'pollyanna')
+        assert _lands(client.get('/golf/'), '/golf/pollyanna/')
+
+
+def test_unknown_league_is_404(app, golf_leagues):
+    brad = _member('lost_brad', golf_leagues['handicap'], app=app)
+    for viewer in (None, brad):
+        with _viewer(app, viewer) as client:
+            for path in ('/golf/nowhere/', '/golf/nowhere/stats'):
+                resp = client.get(path)
+                assert resp.status_code == 404, path
+                body = resp.get_data(as_text=True)
+                assert 'Not in the Ledger' in body
+                # The golf sub-nav renders its label and no pills at this boundary.
+                assert 'subnav-golf' in body and 'class="subnav-pill' not in body
+
+
+def test_url_for_outside_the_room_needs_a_league(app, golf_leagues):
+    from flask import url_for
+    from werkzeug.routing import BuildError
+
+    with app.test_request_context('/'):
+        with pytest.raises(BuildError):
+            url_for('golf.index')
+        assert url_for('golf.index', league='pollyanna') == '/golf/pollyanna/'
+        assert url_for('golf.room') == '/golf/'
+        assert url_for('golf.join') == '/golf/join'
+
+
+def test_each_leagues_sheet_board_and_stats_show_only_its_lines(app, client, golf_leagues):
+    handicap, pollyanna = golf_leagues['handicap'], golf_leagues['pollyanna']
+    season = app.config['SEASON_YEAR']
+    brad = db.session.get(User, _member('brad_both_sheets', handicap, pollyanna, app=app,
+                                        display_name='Brad Both'))
+    han = db.session.get(User, _member('han_sheet', handicap, app=app,
+                                       display_name='Han Handicapper'))
+    cy = db.session.get(User, _member('cy_sheet', pollyanna, app=app,
+                                      display_name='Cy Pollyannist'))
+    event = _season_event(app, 'Banked Open')
+    event.results_finalized = True
+    event.week_number = 1
+    a, b, c, d = (_golfer(f'W{i}', f'Weekgolfer{i}') for i in range(4))
+    for player, money in ((a, 900), (b, 50), (c, 400), (d, 20)):
+        _result(event, player, earnings=money)
+    for user, league, primary, backup in (
+            (brad, handicap, a, b), (han, handicap, c, d),
+            (brad, pollyanna, c, d), (cy, pollyanna, a, b)):
+        assert _pick(user, league, event, primary, backup).resolve_pick()
+    db.session.commit()
+    for line in GolfEnrollment.query.all():
+        line.calculate_total_points()
+    db.session.commit()
+
+    for slug, ours, theirs in (('handicap', han, cy), ('pollyanna', cy, han)):
+        name = golf_leagues[slug].name
+        for path in (f'/golf/{slug}/', f'/golf/{slug}/tournament/{event.id}',
+                     f'/golf/{slug}/stats', f'/golf/{slug}/member/{brad.id}'):
+            resp = client.get(path)
+            assert resp.status_code == 200, path
+            body = resp.get_data(as_text=True)
+            assert theirs.display_name not in body, path
+            assert f'{name} · {season}' in body, path
+        sheet = client.get(f'/golf/{slug}/').get_data(as_text=True)
+        assert ours.display_name in sheet and 'Brad Both' in sheet
+    # Brad's money on each sheet is that league's pick: Weekgolfer0 on Handicap.
+    assert '$900' in client.get('/golf/handicap/').get_data(as_text=True)
+    assert '$900' not in client.get(f'/golf/pollyanna/member/{brad.id}').get_data(as_text=True)
+    # A member's scorecard lives in the leagues they hold a line in.
+    assert client.get(f'/golf/pollyanna/member/{han.id}').status_code == 404
+
+
+def test_pick_route_needs_a_line_in_that_league(app, golf_leagues, monkeypatch):
+    from tests._registry_helpers import set_status
+
+    set_status(monkeypatch, 'golf', 'open')
+    handicap, pollyanna = golf_leagues['handicap'], golf_leagues['pollyanna']
+    han = _member('han_picker', handicap, app=app)
+    brad = _member('brad_picker', handicap, pollyanna, app=app)
+    event = _season_event(app, 'Pick Open', status='upcoming', deadline_in=timedelta(days=2))
+    field = [_golfer(f'P{i:02d}', f'Fieldgolfer{i:02d}') for i in range(50)]
+    db.session.add_all(GolfTournamentField(tournament_id=event.id, player_id=p.id) for p in field)
+    db.session.commit()
+    event_id, primary, backup = event.id, field[0].id, field[1].id
+    filing = {'primary_player_id': primary, 'backup_player_id': backup}
+
+    with _viewer(app, han) as client:
+        assert client.get(f'/golf/handicap/pick/{event_id}').status_code == 200
+        away = client.get(f'/golf/pollyanna/pick/{event_id}', follow_redirects=True)
+        assert 'Join the Pollyanna Pay Sheet to pick there.' in away.get_data(as_text=True)
+        assert _lands(client.post(f'/golf/pollyanna/pick/{event_id}', data=filing), '/golf/join')
+        assert _lands(client.get('/golf/pollyanna/my-picks'), '/golf/join')
+        assert GolfPick.query.count() == 0
+
+    # A member of both files the same golfer on each sheet.
+    with _viewer(app, brad) as client:
+        for slug in ('handicap', 'pollyanna'):
+            assert _lands(client.post(f'/golf/{slug}/pick/{event_id}', data=filing),
+                          f'/golf/{slug}/')
+        assert _lands(client.get('/golf/pollyanna/my-picks'), f'/golf/pollyanna/member/{brad}')
+        assert sorted(p.league_id for p in GolfPick.query.filter_by(user_id=brad)) == sorted(
+            [handicap.id, pollyanna.id])
+
+
+def test_join_seats_the_chosen_league_and_allows_the_second(app, client, golf_leagues, monkeypatch):
+    from tests._registry_helpers import set_status
+
+    set_status(monkeypatch, 'golf', 'open')
+    handicap_id, pollyanna_id = golf_leagues['handicap'].id, golf_leagues['pollyanna'].id
+    joiner = _user('joiner_two')
+    with client.session_transaction() as sess:
+        sess['_user_id'] = joiner.auth_id
+        sess['_fresh'] = True
+
+    page = client.get('/golf/join').get_data(as_text=True)
+    assert 'Handicap Pay Sheet' in page and 'Pollyanna Pay Sheet' in page
+    assert page.count('name="league"') == 2
+    assert 'id="join-current-name"' in page and '/profile' in page
+
+    assert client.post('/golf/join', data={'league': 'nope'}).status_code == 400
+    assert GolfEnrollment.query.count() == 0
+
+    assert _lands(client.post('/golf/join', data={'league': 'pollyanna'}), '/golf/pollyanna/')
+    assert [(e.league_id, e.season_year) for e in GolfEnrollment.query.all()] == [
+        (pollyanna_id, app.config['SEASON_YEAR'])]
+
+    again = client.post('/golf/join', data={'league': 'pollyanna'}, follow_redirects=True)
+    assert 'already on that sheet' in again.get_data(as_text=True)
+    assert GolfEnrollment.query.count() == 1
+
+    page = client.get('/golf/join').get_data(as_text=True)
+    assert page.count('name="league"') == 1   # only the Handicap seat is still open
+    assert _lands(client.post('/golf/join', data={'league': 'handicap'}), '/golf/handicap/')
+    assert sorted(e.league_id for e in GolfEnrollment.query.filter_by(user_id=joiner.id)) == sorted(
+        [handicap_id, pollyanna_id])
+
+
+def test_admin_pages_scope_to_the_league_and_settle_the_book_is_platform_only(app, golf_leagues):
+    handicap, pollyanna = golf_leagues['handicap'], golf_leagues['pollyanna']
+    commish = _member('polly_commish', pollyanna, app=app, admin_in=pollyanna)
+    han = _member('han_member', handicap, app=app, display_name='Han Onhandicap')
+    cy = _member('cy_member', pollyanna, app=app, display_name='Cy Onpollyanna')
+    brad = _user('platform_brad')
+    brad.is_admin = True
+    db.session.commit()
+    brad = brad.id
+    event_id = _season_event(app, 'Admin Open').id
+
+    with _viewer(app, commish) as client:
+        users = client.get('/golf/pollyanna/admin/users')
+        assert users.status_code == 200
+        assert 'Cy Onpollyanna' in users.get_data(as_text=True)
+        assert 'Han Onhandicap' not in users.get_data(as_text=True)
+        assert client.get('/golf/handicap/admin/users').status_code == 302
+        assert client.get('/golf/pollyanna/admin/payments').status_code == 200
+        assert client.get('/golf/pollyanna/admin/override-pick').status_code == 200
+
+        assert _lands(client.get('/golf/pollyanna/admin/tournaments'), '/golf/pollyanna/admin/')
+        settle = client.post(f'/golf/pollyanna/admin/process-results/{event_id}',
+                             follow_redirects=True)
+        assert 'Platform admin only.' in settle.get_data(as_text=True)
+
+        # The Tab touches this league's lines only.
+        other = client.post(f'/golf/pollyanna/admin/update-payment/{han}', json={'has_paid': True})
+        assert other.status_code == 400
+        ours = client.post(f'/golf/pollyanna/admin/update-payment/{cy}', json={'has_paid': True})
+        assert ours.status_code == 200
+
+    db.session.expire_all()
+    assert get_enrollment(cy, pollyanna).has_paid is True
+    assert get_enrollment(han, handicap).has_paid is False
+
+    with _viewer(app, brad) as client:
+        assert client.get('/golf/pollyanna/admin/tournaments').status_code == 200
+        assert client.get('/golf/handicap/admin/users').status_code == 200

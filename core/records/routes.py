@@ -21,7 +21,7 @@ from models.records import champions, finishes_for, seasons_on_record
 SEASON_ARCHIVES = {
     ('cfb', 2025): 'cfb.history',
     ('worldcup', 2026): 'worldcup.leaderboard',
-    ('golf', 2026): ('golf.record_room', {'season': 2026}),
+    ('golf', 2026): ('golf.record_room', {'league': 'handicap', 'season': 2026}),
 }
 
 

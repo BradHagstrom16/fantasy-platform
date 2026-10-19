@@ -1,4 +1,4 @@
-"""Spend a Golfer (/golf/pick/<id>): Golf Phase U2.
+"""Spend a Golfer (/golf/handicap/pick/<id>): Golf Phase U2.
 
 Locks the field builder in ``games/golf/services/field.py`` and what the pick
 page renders from it (games/golf/DESIGN.md §2.3, §7.5 to §7.8, §7.15, §9):
@@ -272,7 +272,7 @@ def test_pick_page_answers_before_the_list(app, client, season, tuesday, golf_le
     _field(t)
     _login(client, _member(season, league_id=golf_leagues['handicap'].id))
 
-    resp = client.get(f'/golf/pick/{t.id}')
+    resp = client.get(f'/golf/handicap/pick/{t.id}')
     assert resp.status_code == 200
     body = resp.get_data(as_text=True)
 
@@ -293,10 +293,10 @@ def test_pick_page_keeps_the_selects_and_loads_no_library(app, client, season, t
     _field(t)
     _login(client, _member(season, league_id=golf_leagues['handicap'].id))
 
-    body = client.get(f'/golf/pick/{t.id}').get_data(as_text=True)
+    body = client.get(f'/golf/handicap/pick/{t.id}').get_data(as_text=True)
     assert 'id="primary_player_id" name="primary_player_id" required' in body
     assert 'id="backup_player_id" name="backup_player_id" required' in body
-    assert f'action="/golf/pick/{t.id}"' in body and 'name="csrf_token"' in body
+    assert f'action="/golf/handicap/pick/{t.id}"' in body and 'name="csrf_token"' in body
     assert body.count('<option value="') == 2 * 51       # the field twice, a blank each
 
     source = TEMPLATE.read_text().lower()
@@ -309,7 +309,7 @@ def test_pick_page_draws_no_hatch_or_money_before_the_season_has_any(app, client
     _field(t)
     _login(client, _member(season, league_id=golf_leagues['handicap'].id))
 
-    body = client.get(f'/golf/pick/{t.id}').get_data(as_text=True)
+    body = client.get(f'/golf/handicap/pick/{t.id}').get_data(as_text=True)
     assert 'golf-burn-bar' not in body and 'still have him' not in body
     assert 'YTD $' not in body
     assert 'Used golfers (' not in body and 'Still on the board' not in body
@@ -326,7 +326,7 @@ def test_a_spent_golfer_is_struck_not_hidden(app, client, season, tuesday, golf_
     _spend(me, spent, season, tournament=valero, league_id=golf_leagues['handicap'].id)
     _login(client, me)
 
-    body = client.get(f'/golf/pick/{t.id}').get_data(as_text=True)
+    body = client.get(f'/golf/handicap/pick/{t.id}').get_data(as_text=True)
 
     row = _row(body, 'Field Player00')
     assert row.startswith(' golf-field-row--used"')
@@ -371,7 +371,7 @@ def test_field_rows_carry_the_money_in_money_order(app, client, season, tuesday,
     _earn(sony, absent, 4_000_000)
     _login(client, me)
 
-    body = client.get(f'/golf/pick/{t.id}').get_data(as_text=True)
+    body = client.get(f'/golf/handicap/pick/{t.id}').get_data(as_text=True)
     field = body.split('<ul class="golf-field">')[1].split('</ul>')[0]
 
     assert 'YTD $2,500,000' in _row(body, 'J.J. Spaun')
@@ -396,7 +396,7 @@ def test_pick_page_shows_a_saved_pick(app, client, season, tuesday, golf_leagues
     db.session.commit()
     _login(client, me)
 
-    body = client.get(f'/golf/pick/{t.id}').get_data(as_text=True)
+    body = client.get(f'/golf/handicap/pick/{t.id}').get_data(as_text=True)
     primary, backup = body.split('id="backup_player_id"')
     assert f'<option value="{players[3].id}" selected>Field Player03</option>' in primary
     assert f'<option value="{players[7].id}" selected>Field Player07</option>' in backup
@@ -424,7 +424,7 @@ def test_the_pick_note_says_whether_the_pick_is_saved(app, client, season, tuesd
     _login(client, me)
 
     # No pick yet: what is chosen is not saved until it is locked in.
-    body = client.get(f'/golf/pick/{t.id}').get_data(as_text=True)
+    body = client.get(f'/golf/handicap/pick/{t.id}').get_data(as_text=True)
     assert _note(body, 'data-note-ready') == (
         False, "Not saved yet. Once it's in, you can change it until Thu Apr 9 · 7:40 AM CT.")
     assert '<p class="golf-pick-note" data-note-change' not in body
@@ -434,7 +434,7 @@ def test_the_pick_note_says_whether_the_pick_is_saved(app, client, season, tuesd
     db.session.add(GolfPick(user_id=me.id, league_id=golf_leagues['handicap'].id, tournament_id=t.id,
                             primary_player_id=players[3].id, backup_player_id=players[7].id))
     db.session.commit()
-    body = client.get(f'/golf/pick/{t.id}').get_data(as_text=True)
+    body = client.get(f'/golf/handicap/pick/{t.id}').get_data(as_text=True)
     assert _note(body, 'data-note-saved') == (
         False, 'Your pick is in. Change either golfer until Thu Apr 9 · 7:40 AM CT.')
     assert _note(body, 'data-note-change') == (
@@ -462,17 +462,17 @@ def test_pick_page_query_count_does_not_grow_with_the_field(app, client, season,
     _login(client, me)
 
     # Warm the before_request status refresh so both measured requests skip it.
-    assert client.get(f'/golf/pick/{tid}').status_code == 200
+    assert client.get(f'/golf/handicap/pick/{tid}').status_code == 200
     db.session.remove()
     with _count_sql() as small:
-        assert client.get(f'/golf/pick/{tid}').status_code == 200
+        assert client.get(f'/golf/handicap/pick/{tid}').status_code == 200
 
     more = _field(db.session.get(GolfTournament, tid), size=30, start=50)
     _spend(db.session.get(User, me_id), more[0], season, league_id=league_id)
     _earn(db.session.get(GolfTournament, sony_id), more[1], 250_000)
     db.session.remove()
     with _count_sql() as large:
-        assert client.get(f'/golf/pick/{tid}').status_code == 200
+        assert client.get(f'/golf/handicap/pick/{tid}').status_code == 200
 
     assert large['n'] == small['n'], (
         f"the pick page issues a query per golfer: {small['n']} -> {large['n']} "
@@ -490,7 +490,7 @@ def test_unpublished_field_renders_the_empty_state_and_takes_no_pick(app, client
     players = _field(t, size=10)                          # short of a field
     _login(client, me)
 
-    resp = client.get(f'/golf/pick/{t.id}')
+    resp = client.get(f'/golf/handicap/pick/{t.id}')
     assert resp.status_code == 200
     body = resp.get_data(as_text=True)
     assert 'Spend a Golfer: <span class="golf-title-event">Masters Tournament</span>' in body
@@ -498,7 +498,7 @@ def test_unpublished_field_renders_the_empty_state_and_takes_no_pick(app, client
     assert 'Thu Apr 9 · 7:40 AM CT' in body
     assert 'primary_player_id' not in body and 'Lock it in' not in body
 
-    resp = client.post(f'/golf/pick/{t.id}', data={
+    resp = client.post(f'/golf/handicap/pick/{t.id}', data={
         'primary_player_id': players[0].id, 'backup_player_id': players[1].id,
     })
     assert resp.status_code == 200
@@ -515,11 +515,11 @@ def test_past_the_lock_the_page_turns_over_to_the_board(app, client, season, mon
     players = _field(t)
     _login(client, me)
 
-    resp = client.get(f'/golf/pick/{t.id}')
+    resp = client.get(f'/golf/handicap/pick/{t.id}')
     assert resp.status_code == 302
-    assert resp.location.endswith(f'/golf/tournament/{t.id}')
+    assert resp.location.endswith(f'/golf/handicap/tournament/{t.id}')
 
-    resp = client.post(f'/golf/pick/{t.id}', data={
+    resp = client.post(f'/golf/handicap/pick/{t.id}', data={
         'primary_player_id': players[0].id, 'backup_player_id': players[1].id,
     })
     assert resp.status_code == 302
@@ -539,11 +539,11 @@ def test_lock_it_in_saves_the_pick_and_lands_on_the_sheet(app, client, season, t
     players = _field(t)
     _login(client, me)
 
-    resp = client.post(f'/golf/pick/{t.id}', data={
+    resp = client.post(f'/golf/handicap/pick/{t.id}', data={
         'primary_player_id': players[3].id, 'backup_player_id': players[7].id,
     })
     assert resp.status_code == 302
-    assert resp.location.endswith('/golf/')
+    assert resp.location.endswith('/golf/handicap/')
 
     pick = GolfPick.query.one()
     assert (pick.user_id, pick.primary_player_id, pick.backup_player_id) == (
@@ -563,7 +563,7 @@ def test_lock_it_in_changes_a_saved_pick_in_place(app, client, season, tuesday, 
     db.session.commit()
     _login(client, me)
 
-    resp = client.post(f'/golf/pick/{t.id}', data={
+    resp = client.post(f'/golf/handicap/pick/{t.id}', data={
         'primary_player_id': players[7].id, 'backup_player_id': players[9].id,
     })
     assert resp.status_code == 302
@@ -592,7 +592,7 @@ def test_a_refused_pick_writes_nothing_and_says_why(app, client, season, tuesday
         'spent': {'primary_player_id': players[0].id, 'backup_player_id': players[3].id},
         'outside': {'primary_player_id': players[3].id, 'backup_player_id': outsider.id},
     }[which]
-    resp = client.post(f'/golf/pick/{t.id}', data=data)
+    resp = client.post(f'/golf/handicap/pick/{t.id}', data=data)
 
     assert resp.status_code == 200
     assert message in resp.get_data(as_text=True)
@@ -609,7 +609,7 @@ def test_a_refused_change_keeps_the_saved_pick(app, client, season, tuesday, gol
     db.session.commit()
     _login(client, me)
 
-    resp = client.post(f'/golf/pick/{t.id}', data={
+    resp = client.post(f'/golf/handicap/pick/{t.id}', data={
         'primary_player_id': players[0].id, 'backup_player_id': players[7].id,
     })
     assert resp.status_code == 200

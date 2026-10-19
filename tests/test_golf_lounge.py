@@ -224,7 +224,7 @@ def test_post_context_names_the_champion_and_the_top_of_the_sheet(app, monkeypat
     assert ctx['top'][2]['money'] == '$750,000'
 
 
-def test_post_context_with_no_lines_has_no_champion(app, monkeypatch):
+def test_post_context_with_no_lines_has_no_champion(app, monkeypatch, golf_leagues):
     season = app.config['SEASON_YEAR']
     visitor = User(username='visitor', email='v@test.com')
     visitor.set_password('pw')
@@ -261,6 +261,9 @@ def test_live_context_query_count_does_not_grow_with_the_room(app, monkeypatch, 
         for i in range(5):
             _member(season, f'more{i}', total=i, league_id=golf_leagues['handicap'].id)
         db.session.expire_all()
+        # The viewer's own row reloads before the count, as in the warm call:
+        # the lounge reads the viewer's lines (by id) before any room row now.
+        db.session.refresh(me)
         counter['n'] = 0
         build_lounge_context(me, 'live')
         big = counter['n']

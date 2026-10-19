@@ -2,6 +2,7 @@
 
 from flask import current_app
 from sqlalchemy import select
+from sqlalchemy.orm import contains_eager
 
 from extensions import db
 from games.golf.models import GolfEnrollment, GolfLeague
@@ -13,10 +14,12 @@ def _season_year() -> int:
 
 
 def enrollments_for(user_id: int) -> list[GolfEnrollment]:
-    """The user's current-season lines, house league first."""
+    """The user's current-season lines, house league first, each with its
+    league loaded (one query)."""
     return list(db.session.scalars(
         select(GolfEnrollment)
         .join(GolfLeague, GolfEnrollment.league_id == GolfLeague.id)
+        .options(contains_eager(GolfEnrollment.league))
         .where(GolfEnrollment.user_id == user_id,
                GolfEnrollment.season_year == _season_year())
         .order_by(GolfLeague.ordinal)

@@ -215,12 +215,14 @@
     {% elif request.blueprint == 'golf' %}
     <nav class="game-subnav subnav-golf" aria-label="Golf section">
         <div class="container">
-            <a class="subnav-game-label" href="{{ url_for('golf.index') }}"
+            {# golf_league is None only on the 404 for an unknown league: the label alone, no pills. #}
+            <a class="subnav-game-label" href="{{ url_for('golf.index') if golf_league else url_for('golf.room') }}"
                aria-label="The Pay Sheet home">
                 <span class="subnav-label-glyph" aria-hidden="true">⛳</span>
                 <span class="subnav-label-text">The Pay Sheet</span>
-                <span class="subnav-label-sub">Golf One &amp; Done · {{ season_year }}</span>
+                {% if golf_league %}<span class="subnav-label-sub">{{ golf_league.name }} · {{ season_year }}</span>{% endif %}
             </a>
+            {% if golf_league %}
             <div class="subnav-scroll">
                 <div class="subnav-pills">
                     <a class="subnav-pill {% if request.endpoint == 'golf.index' %}active{% endif %}"
@@ -241,6 +243,7 @@
                     {% endif %}
                 </div>
             </div>
+            {% endif %}
         </div>
     </nav>
     {% elif request.blueprint == 'cfb' %}

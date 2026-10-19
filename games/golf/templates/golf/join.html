@@ -7,7 +7,7 @@
   <div class="container">
     <h1>Join The Pay Sheet</h1>
     <p class="lead">Golf One &amp; Done. Pick a golfer, bank their earnings, spend them once.</p>
-    <p class="lead mb-0">{{ season_year }} PGA Tour Season &mdash; ${{ entry_fee }} entry</p>
+    <p class="lead mb-0">{{ season_year }} PGA Tour Season &mdash; two leagues, one rule set</p>
   </div>
 </div>
 
@@ -26,13 +26,29 @@
             <li>Majors earn 1.5× points; at team events both partners earn the full team payout</li>
           </ul>
 
-          <form method="POST">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+          {# One name per member (ADR-057): the page states it, never collects it. #}
+          <p id="join-current-name">
+            You stand as <strong>{{ current_user.get_display_name() }}</strong>.
+            <a href="{{ url_for('auth.profile') }}">Change your name</a> on your profile.
+          </p>
 
-            <button type="submit" class="btn btn-game btn-lg w-100">
-              <i class="bi bi-flag-fill me-2"></i>Join the League
-            </button>
-          </form>
+          {# One form per league; a league the member already holds is marked, not offered. #}
+          {% for league in leagues %}
+          <div class="mb-3">
+            <h4 class="h5 mb-1">{{ league.name }}</h4>
+            <p class="mb-2">${{ league.entry_fee }} entry</p>
+            {% if league.id in joined %}
+            <p class="mb-0"><strong>Joined.</strong> <a href="{{ url_for('golf.index', league=league.slug) }}">Your sheet</a></p>
+            {% else %}
+            <form method="POST">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+              <button type="submit" name="league" value="{{ league.slug }}" class="btn btn-game btn-lg w-100">
+                <i class="bi bi-flag-fill me-2"></i>Join the {{ league.name }}
+              </button>
+            </form>
+            {% endif %}
+          </div>
+          {% endfor %}
         </div>
       </div>
 

@@ -188,7 +188,7 @@ def test_index_standings_scoped_to_golf_enrollments(app, client, golf_leagues):
     # A user in another game only — never enrolled in golf.
     _make_user('worldcup_only', display_name='WorldCupOnly')
 
-    resp = client.get('/golf/')
+    resp = client.get('/golf/handicap/')
     assert resp.status_code == 200
     body = resp.get_data(as_text=True)
     assert 'EnrolledGolfer' in body
@@ -202,7 +202,7 @@ def test_index_standings_prior_season_enrollment_excluded(app, client, golf_leag
     old = _make_user('old', display_name='OldSeason')
     _make_enrollment(old, season_year=SEASON - 1, league_id=golf_leagues['handicap'].id)
 
-    body = client.get('/golf/').get_data(as_text=True)
+    body = client.get('/golf/handicap/').get_data(as_text=True)
     assert 'CurrentSeason' in body
     assert 'OldSeason' not in body
 
@@ -368,7 +368,7 @@ def test_tournament_detail_renders_avatar(app, client, golf_leagues):
     p1, p2 = _make_player('P1', 'A', 'One'), _make_player('P2', 'B', 'Two')
     _make_pick(member, tournament, p1, p2, league_id=golf_leagues['handicap'].id)
 
-    body = client.get(f'/golf/tournament/{tournament.id}').get_data(as_text=True)
+    body = client.get(f'/golf/handicap/tournament/{tournament.id}').get_data(as_text=True)
     assert '🎯' in body
     assert 'ZorpTheGolfer' in body
     # Avatar renders before the name.
@@ -399,7 +399,7 @@ def test_final_mode_gated_on_results_finalized(app, client, golf_leagues):
     _make_result(pending, p1, earnings=100000, final_position='1')
     _make_pick(member, pending, p1, p2, league_id=golf_leagues['handicap'].id)
 
-    body = client.get(f'/golf/tournament/{pending.id}').get_data(as_text=True)
+    body = client.get(f'/golf/handicap/tournament/{pending.id}').get_data(as_text=True)
     assert 'Projected' in body
     assert 'Banked' not in body
     assert 'Earnings' not in body
@@ -413,7 +413,7 @@ def test_final_mode_gated_on_results_finalized(app, client, golf_leagues):
     _make_result(final, p3, earnings=100000, final_position='1')
     _make_pick(member, final, p3, p4, active_player_id=p3.id, points_earned=100000, league_id=golf_leagues['handicap'].id)
 
-    body2 = client.get(f'/golf/tournament/{final.id}').get_data(as_text=True)
+    body2 = client.get(f'/golf/handicap/tournament/{final.id}').get_data(as_text=True)
     assert 'Banked' in body2
     assert 'Projected' not in body2
 
@@ -433,7 +433,7 @@ def _override_post(client, tournament, user, primary, backup, note='t', confirm=
     }
     if confirm:
         data['confirm'] = '1'  # the U6 gate: a complete tournament re-resolves only on confirm
-    return client.post('/golf/admin/override-pick', data=data, follow_redirects=True)
+    return client.post('/golf/handicap/admin/override-pick', data=data, follow_redirects=True)
 
 
 def test_admin_override_rejects_used_or_non_field_player(app, client, monkeypatch, golf_leagues):
@@ -612,7 +612,7 @@ def test_admin_override_excludes_own_pick_players_from_used_ids(app, client, mon
     _login(client, admin)
 
     body = client.get(
-        f'/golf/admin/override-pick?tournament_id={tournament.id}&user_id={member.id}'
+        f'/golf/handicap/admin/override-pick?tournament_id={tournament.id}&user_id={member.id}'
     ).get_data(as_text=True)
 
     # own pick's player is NOT marked used; the elsewhere-locked player IS.
@@ -642,7 +642,7 @@ def test_admin_override_on_a_complete_tournament_requires_confirm(app, client, m
     tournament, a, b = _banked_tournament_with_two_golfers()
     _login(client, admin)
 
-    resp = client.post('/golf/admin/override-pick', data={
+    resp = client.post('/golf/handicap/admin/override-pick', data={
         'csrf_token': 'x',
         'tournament_id': tournament.id,
         'user_id': member.id,
@@ -704,7 +704,7 @@ def test_admin_override_confirmed_commits_and_reresolves(app, client, monkeypatc
     tournament, a, b = _banked_tournament_with_two_golfers()
     _login(client, admin)
 
-    resp = client.post('/golf/admin/override-pick', data={
+    resp = client.post('/golf/handicap/admin/override-pick', data={
         'csrf_token': 'x',
         'tournament_id': tournament.id,
         'user_id': member.id,

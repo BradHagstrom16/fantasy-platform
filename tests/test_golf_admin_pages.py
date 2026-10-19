@@ -118,7 +118,7 @@ def test_every_leaf_opens_the_same_book():
 # The rendered book
 # ============================================================================
 
-def test_dashboard_reads_the_meter_from_the_log(app, client, tmp_path, monkeypatch):
+def test_dashboard_reads_the_meter_from_the_log(app, client, tmp_path, monkeypatch, golf_leagues):
     """The reads ledger: the month's count against the free tier, the hatch
     as wide as the share spent, what is left and the last read, in words."""
     monkeypatch.setenv('GOLF_API_LOG_DIR', str(tmp_path))
@@ -131,7 +131,7 @@ def test_dashboard_reads_the_meter_from_the_log(app, client, tmp_path, monkeypat
     (tmp_path / 'api_calls.log').write_text(''.join(lines))
     _login(client, _user('padmin', is_admin=True))
 
-    body = client.get('/golf/admin/').get_data(as_text=True)
+    body = client.get('/golf/handicap/admin/').get_data(as_text=True)
 
     assert '112 of 250 reads this month' in body
     assert '--have: 45%' in body
@@ -141,14 +141,14 @@ def test_dashboard_reads_the_meter_from_the_log(app, client, tmp_path, monkeypat
     assert 'April 2026' in body
 
 
-def test_dashboard_meter_warns_in_words_past_four_fifths(app, client, tmp_path, monkeypatch):
+def test_dashboard_meter_warns_in_words_past_four_fifths(app, client, tmp_path, monkeypatch, golf_leagues):
     monkeypatch.setenv('GOLF_API_LOG_DIR', str(tmp_path))
     monkeypatch.setenv('GOLF_FAKE_NOW', '2026-04-16T17:00:00')
     (tmp_path / 'api_calls.log').write_text(''.join(
         f'2026-04-10 17:00:00,000\tcount={i}\tmode=free\tendpoint=leaderboard\tstatus=200\t'
         f'attempt=1\tduration=0.40s\tparams={{}}\n' for i in range(230)))
     _login(client, _user('padmin', is_admin=True))
-    body = client.get('/golf/admin/').get_data(as_text=True)
+    body = client.get('/golf/handicap/admin/').get_data(as_text=True)
     assert 'Four fifths of the month' in body
     assert '20 left' in body
 
@@ -168,28 +168,28 @@ def test_dashboard_leads_with_what_needs_settling(app, client, tmp_path, monkeyp
     rbc = _event(season, 'RBC Heritage', 16, 4, finalized=False)
     _login(client, admin)
 
-    body = client.get('/golf/admin/').get_data(as_text=True)
+    body = client.get('/golf/handicap/admin/').get_data(as_text=True)
 
     assert 'The Back Office' in body
     assert '1 of 2 events banked' in body
     assert body.index('To settle') < body.index('The tab') < body.index('The reads')
     assert 'RBC Heritage' in body
-    assert f'/golf/admin/process-results/{rbc.id}' in body
+    assert f'/golf/handicap/admin/process-results/{rbc.id}' in body
     assert 'Sony Open in Hawaii' not in body.split('The tab')[0].split('To settle')[1]
     assert 'Paid' in body and '1 <span class="golf-tiles-note">of 2</span>' in body
     assert 'Morgan Stranger' not in body
     assert 'No reads yet this month' in body
 
 
-def test_dashboard_with_nothing_to_settle_says_so(app, client, tmp_path, monkeypatch):
+def test_dashboard_with_nothing_to_settle_says_so(app, client, tmp_path, monkeypatch, golf_leagues):
     monkeypatch.setenv('GOLF_API_LOG_DIR', str(tmp_path / 'none'))
     _login(client, _user('padmin', is_admin=True))
-    body = client.get('/golf/admin/').get_data(as_text=True)
+    body = client.get('/golf/handicap/admin/').get_data(as_text=True)
     assert 'the schedule is not posted yet' in body
     assert 'Nothing to settle' in body
 
 
-def test_settle_the_book_lists_the_season_with_its_states(app, client):
+def test_settle_the_book_lists_the_season_with_its_states(app, client, golf_leagues):
     season = app.config['SEASON_YEAR']
     _login(client, _user('padmin', is_admin=True))
     banked = _event(season, 'Sony Open in Hawaii', 1, 60)
@@ -202,25 +202,25 @@ def test_settle_the_book_lists_the_season_with_its_states(app, client):
     db.session.add(GolfTournamentField(tournament_id=live.id, player_id=p.id))
     db.session.commit()
 
-    body = client.get('/golf/admin/tournaments').get_data(as_text=True)
+    body = client.get('/golf/handicap/admin/tournaments').get_data(as_text=True)
 
     assert 'Settle the Book' in body
     assert '1 to settle' in body
-    assert f'/golf/admin/process-results/{played.id}' in body
-    assert f'/golf/admin/process-results/{banked.id}' not in body
+    assert f'/golf/handicap/admin/process-results/{played.id}' in body
+    assert f'/golf/handicap/admin/process-results/{banked.id}' not in body
     assert 'Banked' in body and 'On the course' in body
     assert 'Major ×1.5' in body
     assert '1 in the field' in body
-    assert f'href="/golf/tournament/{live.id}"' in body
+    assert f'href="/golf/handicap/tournament/{live.id}"' in body
 
 
-def test_process_button_reaches_the_scoring_pass(app, client):
+def test_process_button_reaches_the_scoring_pass(app, client, golf_leagues):
     """The Book's Process button posts here; the handler must call the sync's real method."""
     season = app.config['SEASON_YEAR']
     _login(client, _user('padmin', is_admin=True))
     played = _event(season, 'RBC Heritage', 16, 4, finalized=False)
 
-    resp = client.post(f'/golf/admin/process-results/{played.id}', follow_redirects=True)
+    resp = client.post(f'/golf/handicap/admin/process-results/{played.id}', follow_redirects=True)
 
     assert resp.status_code == 200
     assert 'Processed results for 0 picks.' in resp.get_data(as_text=True)
@@ -234,16 +234,16 @@ def test_the_roster_and_the_tab_carry_the_chip_and_the_check(app, client, golf_l
     _enroll(member, season, has_paid=False, total_points=1_234_567, league_id=golf_leagues['handicap'].id)
     _login(client, admin)
 
-    roster = client.get('/golf/admin/users').get_data(as_text=True)
+    roster = client.get('/golf/handicap/admin/users').get_data(as_text=True)
     assert 'The Roster' in roster
     assert '$1,234,567' in roster
-    assert f'href="/golf/member/{member.id}"' in roster
+    assert f'href="/golf/handicap/member/{member.id}"' in roster
     assert 'golf-chip js-paid-status golf-chip--deduction">Unpaid' in roster
     assert 'golf-chip js-paid-status">Paid' in roster
     assert f'class="payment-toggle" type="checkbox" data-user-id="{member.id}"' in roster
     assert 'Commish</span>' in roster
 
-    tab = client.get('/golf/admin/payments').get_data(as_text=True)
+    tab = client.get('/golf/handicap/admin/payments').get_data(as_text=True)
     assert 'The Tab' in tab
     assert '1 <span class="golf-tiles-note">of 2</span>' in tab
     assert 'golf-chip js-paid-status golf-chip--deduction">Unpaid' in tab
@@ -266,7 +266,7 @@ def test_the_gate_is_the_pens_only_fill(app, client, golf_leagues):
     db.session.commit()
     _login(client, admin)
 
-    body = client.post('/golf/admin/override-pick', data={
+    body = client.post('/golf/handicap/admin/override-pick', data={
         'csrf_token': 'x', 'tournament_id': t.id, 'user_id': member.id,
         'primary_player_id': a.id, 'backup_player_id': b.id, 'override_note': 'late',
     }).get_data(as_text=True)
@@ -283,7 +283,7 @@ def test_emails_break_at_the_at_sign(app, client, golf_leagues):
     member = _user('jacksonkolakowski', display_name='Double J')
     _enroll(member, season, league_id=golf_leagues['handicap'].id)
     _login(client, admin)
-    for path in ('/golf/admin/users', '/golf/admin/payments'):
+    for path in ('/golf/handicap/admin/users', '/golf/handicap/admin/payments'):
         body = client.get(path).get_data(as_text=True)
         assert 'jacksonkolakowski<wbr>@test.com' in body, path
 
@@ -303,7 +303,7 @@ def test_the_pen_renders_the_field_as_real_selects(app, client, golf_leagues):
     db.session.commit()
     _login(client, admin)
 
-    body = client.get(f'/golf/admin/override-pick?tournament_id={t.id}&user_id={member.id}'
+    body = client.get(f'/golf/handicap/admin/override-pick?tournament_id={t.id}&user_id={member.id}'
                       ).get_data(as_text=True)
 
     assert "The Commish's Pen" in body
@@ -318,6 +318,6 @@ def test_the_pen_renders_the_field_as_real_selects(app, client, golf_leagues):
                     backup_player_id=b.id, admin_override=True, admin_override_note='late entry')
     db.session.add(pick)
     db.session.commit()
-    body = client.get('/golf/admin/override-pick').get_data(as_text=True)
+    body = client.get('/golf/handicap/admin/override-pick').get_data(as_text=True)
     assert '1 override this season' in body
     assert '“late entry”' in body

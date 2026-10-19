@@ -1,4 +1,4 @@
-"""The Sheet (/golf/) and The Board (/golf/tournament/<id>): Golf Phase U1 + U3.
+"""The Sheet (/golf/) and The Board (/golf/handicap/tournament/<id>): Golf Phase U1 + U3.
 
 Locks the builders in ``games/golf/services/sheet.py`` and what the two pages
 render from them (games/golf/DESIGN.md §2, §7, §9):
@@ -411,7 +411,7 @@ def test_sheet_page_live(app, client, season, sunday, golf_leagues):
     me, rival, idle, t = _live_week(season, league_id=golf_leagues['handicap'].id)
     _login(client, me)
 
-    body = client.get('/golf/').get_data(as_text=True)
+    body = client.get('/golf/handicap/').get_data(as_text=True)
 
     # The context line: event, round, and how fresh the pencil is.
     assert 'Masters Tournament' in body and 'Round 4' in body
@@ -437,7 +437,7 @@ def test_sheet_page_live(app, client, season, sunday, golf_leagues):
 
 def test_sheet_page_pot_line(app, client, season, sunday, golf_leagues):
     _live_week(season, league_id=golf_leagues['handicap'].id)
-    body = client.get('/golf/').get_data(as_text=True)
+    body = client.get('/golf/handicap/').get_data(as_text=True)
 
     assert 'Prize Pool' in body
     assert 'Entry $25 × 3' in body
@@ -448,7 +448,7 @@ def test_sheet_page_pot_line(app, client, season, sunday, golf_leagues):
 
 def test_sheet_page_signed_out_has_no_line(app, client, season, sunday, golf_leagues):
     _live_week(season, league_id=golf_leagues['handicap'].id)
-    body = client.get('/golf/').get_data(as_text=True)
+    body = client.get('/golf/handicap/').get_data(as_text=True)
 
     assert 'Your line' not in body
     assert 'golf-sheet-row--me' not in body
@@ -462,7 +462,7 @@ def test_sheet_page_next_pick_during_live_play(app, client, season, sunday, golf
                 lock=datetime(2026, 4, 16, 6, 5))
     _login(client, me)
 
-    body = client.get('/golf/').get_data(as_text=True)
+    body = client.get('/golf/handicap/').get_data(as_text=True)
     assert 'Next pick' in body and 'RBC Heritage' in body
     assert 'The field publishes Tuesday' in body
     assert 'Spend a golfer' not in body
@@ -485,9 +485,9 @@ def test_sheet_page_open_pick_offers_the_action(app, client, season, monkeypatch
     me = _member(season, 'viewer', total=10, league_id=golf_leagues['handicap'].id)
     _login(client, me)
 
-    body = client.get('/golf/').get_data(as_text=True)
+    body = client.get('/golf/handicap/').get_data(as_text=True)
     assert 'picks lock Thu Apr 9 · 7:40 AM CT' in body
-    assert body.count(f'/golf/pick/{t.id}') == 2     # the line's link and the margin action
+    assert body.count(f'/golf/handicap/pick/{t.id}') == 2     # the line's link and the margin action
     assert 'Spend a golfer' in body
     # Between events every line is banked and says so once, over the column.
     assert 'golf-money--projected">~$' not in body
@@ -500,7 +500,7 @@ def test_sheet_page_made_pick_offers_change(app, client, season, monkeypatch, go
     _pick(me, t, players[0], players[1], league_id=golf_leagues['handicap'].id)
     _login(client, me)
 
-    body = client.get('/golf/').get_data(as_text=True)
+    body = client.get('/golf/handicap/').get_data(as_text=True)
     assert 'Field Player0' in body and 'backup Field Player1' in body
     assert '>Change<' in body
     assert 'golf-btn' not in body
@@ -515,16 +515,16 @@ def test_sheet_page_offers_a_seat_only_while_the_room_takes_them(app, client, se
     _login(client, visitor)
 
     # coming_soon (the registry's shipped status): no seat on offer.
-    assert 'Take a seat' not in client.get('/golf/').get_data(as_text=True)
+    assert 'Take a seat' not in client.get('/golf/handicap/').get_data(as_text=True)
 
     set_status(monkeypatch, 'golf', 'open')
-    body = client.get('/golf/').get_data(as_text=True)
+    body = client.get('/golf/handicap/').get_data(as_text=True)
     assert 'Take a seat' in body and '/golf/join' in body
     assert 'Your line' not in body
 
 
-def test_sheet_page_empty_state(app, client, season):
-    body = client.get('/golf/').get_data(as_text=True)
+def test_sheet_page_empty_state(app, client, season, golf_leagues):
+    body = client.get('/golf/handicap/').get_data(as_text=True)
     assert 'Nobody has a line yet' in body
     assert '<table' not in body
 
@@ -533,7 +533,7 @@ def test_sheet_with_no_schedule_reads_as_pre(app, client, season, golf_leagues):
     """A season with no events yet is Pre (DESIGN.md §4.3), never "every line
     is banked": the context line says the schedule is not posted."""
     _member(season, 'early', league_id=golf_leagues['handicap'].id)
-    body = client.get('/golf/').get_data(as_text=True)
+    body = client.get('/golf/handicap/').get_data(as_text=True)
     assert 'the schedule is not posted yet' in body
     assert 'every line is banked' not in body
     assert 'golf-champion' not in body
@@ -547,14 +547,14 @@ def test_sheet_of_a_banked_season_leads_with_the_champion(app, client, season, g
     _tournament(season, name='Sony Open in Hawaii', status='complete', finalized=True, week=1)
     _tournament(season, name='Masters Tournament', status='complete', finalized=True, week=13)
 
-    body = client.get('/golf/').get_data(as_text=True)
+    body = client.get('/golf/handicap/').get_data(as_text=True)
 
     assert '2 of 2' not in body and 'every line is banked' in body
     fold = body[body.index('id="golf-champion"'):body.index('</section>', body.index('id="golf-champion"'))]
     assert '>Champion</h2>' in fold
-    assert f'href="/golf/member/{champ.id}">Casey Champion</a>' in fold
+    assert f'href="/golf/handicap/member/{champ.id}">Casey Champion</a>' in fold
     assert 'golf-money--banked">$4,200,000' in fold
-    assert 'The season is banked.' in fold and 'href="/golf/stats"' in fold
+    assert 'The season is banked.' in fold and 'href="/golf/handicap/stats"' in fold
     assert 'second' not in fold
     assert body.index('id="golf-champion"') < body.index('The Sheet</h1>')
 
@@ -565,7 +565,7 @@ def test_sheet_names_tied_champions_and_the_record_once_closed(app, client, seas
     b = _member(season, 'blake', display_name='Blake', total=900, league_id=golf_leagues['handicap'].id)
     _tournament(season, name='Sony Open in Hawaii', status='complete', finalized=True, week=1)
 
-    body = client.get('/golf/').get_data(as_text=True)
+    body = client.get('/golf/handicap/').get_data(as_text=True)
     assert 'Champions, tied' in body
     assert 'Alex' in body and 'Blake' in body
 
@@ -573,7 +573,7 @@ def test_sheet_names_tied_champions_and_the_record_once_closed(app, client, seas
         FinishDraft(a.id, 'Alex', 1, 'champion', '$900'),
         FinishDraft(b.id, 'Blake', 1, 'champion', '$900'),
     ])
-    body = client.get('/golf/').get_data(as_text=True)
+    body = client.get('/golf/handicap/').get_data(as_text=True)
     fold = body[body.index('id="golf-champion"'):body.index('</section>', body.index('id="golf-champion"'))]
     assert 'On the club’s record.' in fold
     assert f'href="/records#board-golf-{season}"' in fold
@@ -581,7 +581,7 @@ def test_sheet_names_tied_champions_and_the_record_once_closed(app, client, seas
 
 
 # ============================================================================
-# /golf/tournament/<id> — The Board
+# /golf/handicap/tournament/<id> — The Board
 # ============================================================================
 
 def test_board_page_live(app, client, season, sunday, golf_leagues):
@@ -591,7 +591,7 @@ def test_board_page_live(app, client, season, sunday, golf_leagues):
                 lock=datetime(2026, 4, 2, 7, 30))
     _login(client, me)
 
-    body = client.get(f'/golf/tournament/{t.id}').get_data(as_text=True)
+    body = client.get(f'/golf/handicap/tournament/{t.id}').get_data(as_text=True)
 
     assert '<h1 class="golf-title golf-title--page">The Board: Masters Tournament</h1>' in body
     assert 'Major ×1.5' in body
@@ -620,7 +620,7 @@ def test_board_page_banked(app, client, season, sunday, golf_leagues):
           admin_override_note='Phoned it in', league_id=golf_leagues['handicap'].id)
     _login(client, me)
 
-    body = client.get(f'/golf/tournament/{t.id}').get_data(as_text=True)
+    body = client.get(f'/golf/handicap/tournament/{t.id}').get_data(as_text=True)
 
     assert 'golf-hero-figure--banked">$640,000' in body
     assert '<strong>Test Bankedgolfer</strong> · T3 · backup Sparegolfer unused' in body
@@ -635,7 +635,7 @@ def test_board_page_banked(app, client, season, sunday, golf_leagues):
 
 def test_board_page_without_a_pick_leads_with_the_purse(app, client, season, sunday, golf_leagues):
     _me, _rival, _idle, t = _live_week(season, league_id=golf_leagues['handicap'].id)
-    body = client.get(f'/golf/tournament/{t.id}').get_data(as_text=True)
+    body = client.get(f'/golf/handicap/tournament/{t.id}').get_data(as_text=True)
 
     assert 'Your pick' not in body
     assert '>Purse<' in body and 'golf-hero-figure">$10,000,000' in body
@@ -652,7 +652,7 @@ def test_board_page_hides_every_other_pick_until_the_lock(app, client, season, m
     _pick(rival, t, theirs, their_spare, league_id=golf_leagues['handicap'].id)
     _login(client, me)
 
-    body = client.get(f'/golf/tournament/{t.id}').get_data(as_text=True)
+    body = client.get(f'/golf/handicap/tournament/{t.id}').get_data(as_text=True)
 
     assert 'Minegolfer' in body and 'Mysparegolfer' in body
     assert 'Secretgolfer' not in body and 'Hiddenspare' not in body
@@ -688,7 +688,7 @@ def _synced_active_before_the_lock(app, client, season, monkeypatch, *, league_i
 def test_board_page_opens_at_the_lock_not_at_a_synced_status(app, client, season, monkeypatch, golf_leagues):
     t = _synced_active_before_the_lock(app, client, season, monkeypatch, league_id=golf_leagues['handicap'].id)
 
-    body = client.get(f'/golf/tournament/{t.id}').get_data(as_text=True)
+    body = client.get(f'/golf/handicap/tournament/{t.id}').get_data(as_text=True)
 
     assert 'Minegolfer' in body
     assert 'Secretgolfer' not in body and 'Hiddenspare' not in body
@@ -699,7 +699,7 @@ def test_board_page_opens_at_the_lock_not_at_a_synced_status(app, client, season
 def test_sheet_page_pencils_a_week_only_past_its_lock(app, client, season, monkeypatch, golf_leagues):
     _synced_active_before_the_lock(app, client, season, monkeypatch, league_id=golf_leagues['handicap'].id)
 
-    body = client.get('/golf/').get_data(as_text=True)
+    body = client.get('/golf/handicap/').get_data(as_text=True)
 
     assert 'Secretgolfer' not in body and 'Hiddenspare' not in body
     assert 'golf-pick-line' not in body and "Didn't pick (" not in body
@@ -720,10 +720,10 @@ def test_sheet_page_turns_over_at_the_lock_before_the_status_does(app, client, s
     db.session.add_all(GolfTournamentField(tournament_id=t.id, player_id=p.id) for p in players)
     db.session.commit()
 
-    body = client.get('/golf/').get_data(as_text=True)
+    body = client.get('/golf/handicap/').get_data(as_text=True)
 
     # No pick action on a locked week, and no lock stated in the past tense.
-    assert f'/golf/pick/{t.id}' not in body
+    assert f'/golf/handicap/pick/{t.id}' not in body
     assert 'Thu Apr 9 · 7:40 AM CT' not in body
     # The week is the sheet's: every pick open, in its first round.
     assert 'Secretgolfer' in body and 'Minegolfer' in body
@@ -735,8 +735,8 @@ def test_board_page_open_field_offers_the_action(app, client, season, monkeypatc
     me = _member(season, 'viewer', league_id=golf_leagues['handicap'].id)
     _login(client, me)
 
-    body = client.get(f'/golf/tournament/{t.id}').get_data(as_text=True)
-    assert 'Spend a golfer' in body and f'/golf/pick/{t.id}' in body
+    body = client.get(f'/golf/handicap/tournament/{t.id}').get_data(as_text=True)
+    assert 'Spend a golfer' in body and f'/golf/handicap/pick/{t.id}' in body
     assert 'No picks are in yet' in body
 
 

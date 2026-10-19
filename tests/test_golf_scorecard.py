@@ -1,4 +1,4 @@
-"""The scorecard (/golf/member/<id>): Golf Phase U4.
+"""The scorecard (/golf/handicap/member/<id>): Golf Phase U4.
 
 Locks ``games/golf/services/scorecard.py`` and the page built from it
 (games/golf/DESIGN.md §8, §9):
@@ -9,7 +9,7 @@ Locks ``games/golf/services/scorecard.py`` and the page built from it
 - rank and total are the sheet's own row, pencil included;
 - every read is season-scoped, and the query count does not grow with the
   weeks or the room;
-- /golf/my-picks is the old address and redirects to the member's own card.
+- /golf/handicap/my-picks is the old address and redirects to the member's own card.
 
 The routing, secrecy, tile and ledger cases are ported from the legacy app's
 ``tests/test_member_scorecard.py``. Every clock-dependent test pins
@@ -145,7 +145,7 @@ def _login(client, user):
 
 
 def _get(client, user, **query):
-    return client.get(f'/golf/member/{user.id}', query_string=query)
+    return client.get(f'/golf/handicap/member/{user.id}', query_string=query)
 
 
 def _body(client, user, **query):
@@ -239,7 +239,7 @@ def test_scorecard_404s_without_a_line(app, client, season, tuesday, golf_league
     db.session.add(outsider)
     db.session.commit()
 
-    assert client.get('/golf/member/999999').status_code == 404
+    assert client.get('/golf/handicap/member/999999').status_code == 404
     assert _get(client, outsider).status_code == 404          # a platform user with no line
     assert _get(client, viewer, season=season - 1).status_code == 404
     assert _get(client, viewer, season='soon').status_code == 404
@@ -248,26 +248,26 @@ def test_scorecard_404s_without_a_line(app, client, season, tuesday, golf_league
 def test_switcher_lands_on_the_scorecards_own_url(app, client, season, tuesday, golf_leagues):
     viewer, rival, *_ = _two_weeks_and_the_masters(season, league_id=golf_leagues['handicap'].id)
 
-    resp = client.get('/golf/member', query_string={'user_id': rival.id})
+    resp = client.get('/golf/handicap/member', query_string={'user_id': rival.id})
     assert resp.status_code == 302
-    assert resp.headers['Location'].endswith(f'/golf/member/{rival.id}')
+    assert resp.headers['Location'].endswith(f'/golf/handicap/member/{rival.id}')
 
-    resp = client.get('/golf/member', query_string={'user_id': rival.id, 'season': season - 1})
-    assert resp.headers['Location'].endswith(f'/golf/member/{rival.id}?season={season - 1}')
+    resp = client.get('/golf/handicap/member', query_string={'user_id': rival.id, 'season': season - 1})
+    assert resp.headers['Location'].endswith(f'/golf/handicap/member/{rival.id}?season={season - 1}')
 
     # isdigit() would pass a superscript two on to int(), which refuses it.
-    resp = client.get('/golf/member', query_string={'user_id': '²'})
+    resp = client.get('/golf/handicap/member', query_string={'user_id': '²'})
     assert resp.status_code == 302
-    assert resp.headers['Location'].endswith('/golf/')
+    assert resp.headers['Location'].endswith('/golf/handicap/')
 
 
 def test_bare_member_address_is_your_own_scorecard(app, client, season, tuesday, golf_leagues):
     viewer, *_ = _two_weeks_and_the_masters(season, league_id=golf_leagues['handicap'].id)
     _login(client, viewer)
 
-    resp = client.get('/golf/member')
+    resp = client.get('/golf/handicap/member')
     assert resp.status_code == 302
-    assert resp.headers['Location'].endswith(f'/golf/member/{viewer.id}')
+    assert resp.headers['Location'].endswith(f'/golf/handicap/member/{viewer.id}')
 
 
 def test_switcher_lists_the_seasons_members_and_posts_without_script(app, client, season, tuesday, golf_leagues):
@@ -275,7 +275,7 @@ def test_switcher_lists_the_seasons_members_and_posts_without_script(app, client
     body = _body(client, rival)
 
     form = body[body.index('<form class="golf-switch"'):body.index('</form>')]
-    assert 'method="get"' in form and 'action="/golf/member"' in form
+    assert 'method="get"' in form and 'action="/golf/handicap/member"' in form
     assert f'<option value="{rival.id}" selected>RivalLine</option>' in form
     assert f'<option value="{viewer.id}">ViewerLine</option>' in form
     assert form.index('RivalLine') < form.index('ViewerLine')      # by name
@@ -287,7 +287,7 @@ def test_my_picks_asks_a_guest_to_sign_in(app, client, season, tuesday, monkeypa
     set_status(monkeypatch, 'golf', 'open')
     _two_weeks_and_the_masters(season, league_id=golf_leagues['handicap'].id)
 
-    resp = client.get('/golf/my-picks')
+    resp = client.get('/golf/handicap/my-picks')
     assert resp.status_code == 302 and '/login' in resp.headers['Location']
 
 
@@ -296,10 +296,10 @@ def test_my_picks_is_the_old_address(app, client, season, tuesday, monkeypatch, 
     viewer, *_ = _two_weeks_and_the_masters(season, league_id=golf_leagues['handicap'].id)
     _login(client, viewer)
 
-    resp = client.get('/golf/my-picks')
+    resp = client.get('/golf/handicap/my-picks')
     assert resp.status_code == 302
-    assert resp.headers['Location'].endswith(f'/golf/member/{viewer.id}')
-    assert client.get('/golf/my-picks', follow_redirects=True).status_code == 200
+    assert resp.headers['Location'].endswith(f'/golf/handicap/member/{viewer.id}')
+    assert client.get('/golf/handicap/my-picks', follow_redirects=True).status_code == 200
 
 
 # ============================================================================
@@ -365,7 +365,7 @@ def test_live_week_is_in_pencil_with_the_sheets_own_figures(app, client, season,
     db.session.commit()
     _login(client, viewer)
 
-    sheet = client.get('/golf/').get_data(as_text=True)
+    sheet = client.get('/golf/handicap/').get_data(as_text=True)
     figure = re.search(r'golf-hero-figure--projected">(~\$[\d,]+)<', sheet).group(1)
     body = _body(client, viewer)
     assert f'golf-hero-figure--projected">{figure}<' in body
@@ -407,12 +407,12 @@ def test_open_week_pick_is_hidden_from_everyone_but_the_member(app, client, seas
         _login(client, viewer)
 
     body = _body(client, rival)
-    assert ('Your Scorecard' in client.get(f'/golf/member/{viewer.id}').get_data(as_text=True)) is signed_in
+    assert ('Your Scorecard' in client.get(f'/golf/handicap/member/{viewer.id}').get_data(as_text=True)) is signed_in
     assert 'Hotgolfer' not in body and 'Coldgolfer' not in body
     assert 'golf-weeks-row--open' not in body                   # the wash is the member's own
     assert ('Hidden until the lock, <span class="golf-nowrap">Thu Apr 9 · 7:00 AM CT</span>'
             in _row(body, 'Masters Tournament'))
-    assert '/golf/pick/' not in body
+    assert '/golf/handicap/pick/' not in body
     assert _tile(body, 'Commish overrides') == '0'              # an open week's override stays shut
 
 
@@ -423,7 +423,7 @@ def test_the_member_sees_their_own_open_pick_and_can_change_it(app, client, seas
 
     row = _row(_body(client, viewer), 'Masters Tournament')
     assert 'Your pick: <strong>Hotgolfer</strong>, backup Coldgolfer.' in row
-    assert f'href="/golf/pick/{weeks["masters"].id}">Change</a>' in row
+    assert f'href="/golf/handicap/pick/{weeks["masters"].id}">Change</a>' in row
     assert 'Picks lock <strong class="golf-nowrap">Thu Apr 9 · 7:00 AM CT</strong>' in row
     assert 'golf-weeks-row--open' in row              # the active week takes the pen wash
     assert 'golf-btn' not in row                      # a pick is in: no pick action
@@ -448,18 +448,18 @@ def test_open_week_without_a_pick_offers_the_pick_only_to_the_member(app, client
 
     row = _row(_body(client, viewer), 'Masters Tournament')
     assert 'The field publishes Tuesday. Picks open then.' in row
-    assert '/golf/pick/' not in row
+    assert '/golf/handicap/pick/' not in row
 
     _field(weeks['masters'])
     body = _body(client, viewer)
     row = _row(body, 'Masters Tournament')
     assert 'No pick in yet.' in row
     # The pick action is the room's filled button (§7.24), once on the page.
-    assert (f'<a class="btn btn-game golf-btn golf-weeks-act" href="/golf/pick/{weeks["masters"].id}">'
+    assert (f'<a class="btn btn-game golf-btn golf-weeks-act" href="/golf/handicap/pick/{weeks["masters"].id}">'
             'Spend a golfer</a>') in row
     assert body.count('golf-btn') == 1
 
-    assert '/golf/pick/' not in _body(client, rival)            # never on another member's card
+    assert '/golf/handicap/pick/' not in _body(client, rival)            # never on another member's card
 
 
 # ============================================================================
@@ -541,7 +541,7 @@ def test_commissioners_ledger_counts_revealed_weeks_and_marks_this_card(app, cli
     assert len(rows) == 2
     assert 'ViewerLine' in rows[0] and '>2<' in rows[0]
     assert all('golf-sheet-avatar' in row for row in rows)      # the member's mark stays
-    assert f'href="/golf/member/{viewer.id}"' in rows[0]
+    assert f'href="/golf/handicap/member/{viewer.id}"' in rows[0]
     assert 'RivalLine' in rows[1] and 'this scorecard' in rows[1] and '>1<' in rows[1]
 
 
@@ -571,15 +571,15 @@ def test_scorecard_reads_one_season(app, client, season, tuesday, golf_leagues):
     now = _body(client, viewer)
     assert 'Last Year Open' not in now and 'Oldgolfer' not in now
     assert _tile(now, 'Golfers used') == '2'
-    assert f'href="/golf/member/{viewer.id}?season={season - 1}">{season - 1} scorecard</a>' in now
+    assert f'href="/golf/handicap/member/{viewer.id}?season={season - 1}">{season - 1} scorecard</a>' in now
 
     then = _body(client, viewer, season=season - 1)
     assert 'Valspar Championship' not in then and 'Alpha' not in then
     assert 'golf-hero-figure--banked">$77,000' in then
     assert '<strong>1st</strong> of 1' in then
     assert _tile(then, 'Golfers used') == '1'
-    assert f'href="/golf/member/{viewer.id}">{season} scorecard</a>' in then
-    assert '/golf/pick/' not in then                            # a past season takes no pick
+    assert f'href="/golf/handicap/member/{viewer.id}">{season} scorecard</a>' in then
+    assert '/golf/handicap/pick/' not in then                            # a past season takes no pick
     assert f'name="season" value="{season - 1}"' in then        # the switcher stays in it
 
     assert 'scorecard</a>' not in _body(client, rival)          # one season: no selector
@@ -599,7 +599,7 @@ def test_scorecard_query_count_does_not_grow_with_weeks_or_members(app, client, 
     assert _get(client, viewer).status_code == 200
     db.session.remove()
     with _count_sql() as small:
-        assert client.get(f'/golf/member/{viewer_id}').status_code == 200
+        assert client.get(f'/golf/handicap/member/{viewer_id}').status_code == 200
 
     spare = db.session.get(GolfPlayer, spare_id)
     members = [db.session.get(User, viewer_id)] + [_member(season, f'extra{i}', league_id=league_id) for i in range(4)]
@@ -615,7 +615,7 @@ def test_scorecard_query_count_does_not_grow_with_weeks_or_members(app, client, 
     db.session.commit()
     db.session.remove()
     with _count_sql() as large:
-        assert client.get(f'/golf/member/{viewer_id}').status_code == 200
+        assert client.get(f'/golf/handicap/member/{viewer_id}').status_code == 200
 
     assert large['n'] == small['n'], (
         f"the scorecard issues a query per week or member: {small['n']} -> {large['n']} "
@@ -634,8 +634,8 @@ def _nav(client, path):
 
 def test_sub_nav_carries_stats_for_everyone(app, client, season, tuesday, golf_leagues):
     _two_weeks_and_the_masters(season, league_id=golf_leagues['handicap'].id)
-    nav = _nav(client, '/golf/')
-    assert 'href="/golf/stats">Stats</a>' in nav
+    nav = _nav(client, '/golf/handicap/')
+    assert 'href="/golf/handicap/stats">Stats</a>' in nav
     assert 'My Scorecard' not in nav
 
 
@@ -647,25 +647,25 @@ def test_sub_nav_offers_no_scorecard_to_a_viewer_with_no_line(app, client, seaso
     db.session.commit()
     _login(client, outsider)
 
-    assert 'My Scorecard' not in _nav(client, '/golf/')
+    assert 'My Scorecard' not in _nav(client, '/golf/handicap/')
 
 
 def test_sub_nav_scorecard_pill_is_the_members_own(app, client, season, tuesday, golf_leagues):
     viewer, rival, *_ = _two_weeks_and_the_masters(season, league_id=golf_leagues['handicap'].id)
     _login(client, viewer)
 
-    pill = r'class="subnav-pill %s"\s+href="/golf/member/%d">My Scorecard'
-    assert re.search(pill % ('active', viewer.id), _nav(client, f'/golf/member/{viewer.id}'))
-    assert re.search(pill % ('', viewer.id), _nav(client, f'/golf/member/{rival.id}'))
+    pill = r'class="subnav-pill %s"\s+href="/golf/handicap/member/%d">My Scorecard'
+    assert re.search(pill % ('active', viewer.id), _nav(client, f'/golf/handicap/member/{viewer.id}'))
+    assert re.search(pill % ('', viewer.id), _nav(client, f'/golf/handicap/member/{rival.id}'))
 
 
 def test_sheet_and_board_names_link_to_scorecards(app, client, season, tuesday, golf_leagues):
     viewer, rival, g, weeks = _two_weeks_and_the_masters(season, league_id=golf_leagues['handicap'].id)
 
-    sheet = client.get('/golf/').get_data(as_text=True)
-    assert f'<a class="golf-quiet" href="/golf/member/{viewer.id}">ViewerLine</a>' in sheet
-    board = client.get(f'/golf/tournament/{weeks["valspar"].id}').get_data(as_text=True)
-    assert f'<a class="golf-quiet" href="/golf/member/{rival.id}">RivalLine</a>' in board
+    sheet = client.get('/golf/handicap/').get_data(as_text=True)
+    assert f'<a class="golf-quiet" href="/golf/handicap/member/{viewer.id}">ViewerLine</a>' in sheet
+    board = client.get(f'/golf/handicap/tournament/{weeks["valspar"].id}').get_data(as_text=True)
+    assert f'<a class="golf-quiet" href="/golf/handicap/member/{rival.id}">RivalLine</a>' in board
 
 
 # ============================================================================

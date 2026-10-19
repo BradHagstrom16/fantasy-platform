@@ -302,20 +302,20 @@ def test_index_standings_avoids_per_user_query(app, client, golf_leagues):
     league_id = golf_leagues['handicap'].id  # read before db.session.remove() detaches the league
     # Warm the before_request status-refresh throttle so both measured requests
     # skip it identically.
-    assert client.get('/golf/').status_code == 200
+    assert client.get('/golf/handicap/').status_code == 200
 
     for i in range(2):
         _make_enrollment(_make_user(f'g{i}', display_name=f'Golfer{i}'), league_id=league_id)
     db.session.remove()
     with _count_sql() as c2:
-        assert client.get('/golf/').status_code == 200
+        assert client.get('/golf/handicap/').status_code == 200
     n2 = c2['n']
 
     for i in range(2, 5):
         _make_enrollment(_make_user(f'g{i}', display_name=f'Golfer{i}'), league_id=league_id)
     db.session.remove()
     with _count_sql() as c5:
-        assert client.get('/golf/').status_code == 200
+        assert client.get('/golf/handicap/').status_code == 200
     n5 = c5['n']
 
     assert n5 == n2, (
@@ -345,20 +345,20 @@ def test_tournament_detail_avoids_per_pick_query(app, client, golf_leagues):
                    points_earned=100_000, primary_used=True, league_id=league_id)
 
     # Warm the status-refresh throttle.
-    assert client.get(f'/golf/tournament/{tid}').status_code == 200
+    assert client.get(f'/golf/handicap/tournament/{tid}').status_code == 200
 
     _add_pick(0, league_id=league_id)
     _add_pick(1, league_id=league_id)
     db.session.remove()
     with _count_sql() as c2:
-        assert client.get(f'/golf/tournament/{tid}').status_code == 200
+        assert client.get(f'/golf/handicap/tournament/{tid}').status_code == 200
     n2 = c2['n']
 
     _add_pick(2, league_id=league_id)
     _add_pick(3, league_id=league_id)
     db.session.remove()
     with _count_sql() as c4:
-        assert client.get(f'/golf/tournament/{tid}').status_code == 200
+        assert client.get(f'/golf/handicap/tournament/{tid}').status_code == 200
     n4 = c4['n']
 
     assert n4 == n2, (

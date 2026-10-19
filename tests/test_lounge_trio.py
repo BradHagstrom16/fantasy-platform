@@ -46,7 +46,7 @@ def _enroll(user, season, total=0, *, league_id):
     db.session.commit()
 
 
-def test_logged_out_bill_takes_the_trio_grid(app, client, monkeypatch):
+def test_logged_out_bill_takes_the_trio_grid(app, client, monkeypatch, golf_leagues):
     _seat_golf(monkeypatch)
     with patch.dict(os.environ, TRIO_PRE):
         text = client.get('/').get_data(as_text=True)
@@ -73,7 +73,7 @@ def test_two_headliners_still_pair_when_golf_is_unseated(app, client):
     assert 'hl-duo--trio' not in text
 
 
-def test_authed_joined_nothing_sees_three_panels_and_the_fourth_decree(app, client, monkeypatch):
+def test_authed_joined_nothing_sees_three_panels_and_the_fourth_decree(app, client, monkeypatch, golf_leagues):
     _seat_golf(monkeypatch)
     _login(client, _user('neither'))
     with patch.dict(os.environ, TRIO_PRE):
@@ -125,7 +125,7 @@ def test_golf_member_in_season_is_asked_to_spend_a_golfer(app, client, monkeypat
     assert '◇ Week 13 &middot; Masters Tournament' in golf_panel
     assert '$250,000 banked' in golf_panel and '1st of 1' in golf_panel
     assert 'RBC Heritage locks' in golf_panel
-    assert f'class="hl-cta" href="/golf/pick/{rbc.id}">Spend a Golfer</a>' in golf_panel
+    assert f'class="hl-cta" href="/golf/handicap/pick/{rbc.id}">Spend a Golfer</a>' in golf_panel
     assert 'The sheet, so far' in golf_panel and 'roll-you-chip">You</span>' in golf_panel
     assert '<span class="hl-nowrap">&middot; 1st of 1</span>' in golf_panel
 
@@ -163,7 +163,7 @@ def test_golf_post_season_names_the_champion_on_the_bill(app, client, monkeypatc
     assert 'Champion &middot; Casey Champion' in golf_panel
     assert '$4,200,000 across 1 event.' in golf_panel
     assert 'roll-you-chip">You</span>' in golf_panel
-    assert f'href="/golf/member/{casey.id}">Casey Champion</a>' in golf_panel
-    assert 'href="/golf/stats">The Record Room' in golf_panel
+    assert f'href="/golf/handicap/member/{casey.id}">Casey Champion</a>' in golf_panel
+    assert 'href="/golf/handicap/stats">The Record Room' in golf_panel
     # The Commish's note takes the champion's name through the shim.
     assert 'Casey Champion' in text[text.index('commish'):] if 'commish' in text else True
