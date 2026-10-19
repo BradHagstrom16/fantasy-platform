@@ -5,7 +5,6 @@ from core.admin import admin_bp
 from core.admin.routes import admin_required
 from extensions import db
 from games import registry
-from games.registry import get_entry
 from models.user import User
 
 
@@ -25,7 +24,7 @@ def enrollments():
             return redirect(url_for('admin.enrollments'))
 
         try:
-            entry = get_entry(slug)
+            entry = registry.get_entry(slug)
         except KeyError:
             flash('Unknown game.', 'error')
             return redirect(url_for('admin.enrollments'))

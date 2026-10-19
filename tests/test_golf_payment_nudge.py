@@ -56,6 +56,10 @@ def test_nudge_shows_for_an_unpaid_line_in_that_league_only(app, golf_leagues):
         assert app.config['PAYMENT_ZELLE_PHONE'] in card
         # The rails read as one sentence at every width: no dot the phone hides.
         assert 'on Venmo</a>, or Zelle' in card and 'golf-pick-dot' not in card
+        # Zelle carries no prefilled memo: the member names the sheet, so a
+        # member of both never pays one believing it covered the other.
+        assert 'with your name and the sheet in the memo' in card
+        assert 'marks your seat paid' in card and 'The Tab' not in card
         # After your line, before the sheet itself (the room's order).
         assert (pollyanna_sheet.index('Your line') < pollyanna_sheet.index('id="golf-settle-tab"')
                 < pollyanna_sheet.index('>The Sheet</h1>'))
@@ -120,6 +124,7 @@ def test_picks_open_letter_carries_the_leagues_fee_strip(app, golf_leagues):
     brad_pollyanna = next(v for v in pollyanna_letters if v[0] == 'brad_letters@example.com')
     commish_pollyanna = next(v for v in pollyanna_letters if v[0] != 'brad_letters@example.com')
     assert 'Settle the tab. Pollyanna Pay Sheet: the $30 entry is due' in brad_pollyanna[1]
+    assert 'put your name and the Pollyanna Pay Sheet in the memo' in brad_pollyanna[1]
     assert 'Pay on Venmo' in brad_pollyanna[2] and 'amount=30' in brad_pollyanna[2]
     assert 'Settle the tab' not in handicap_letters[0][1]
     assert 'Settle the tab' not in commish_pollyanna[1]

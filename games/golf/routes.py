@@ -1044,7 +1044,9 @@ def admin_move_line(user_id):
     elif get_enrollment(user_id, other) is not None:
         flash(f'{name} is already on the {other.name}; there is nothing to move.', 'error')
     else:
+        # The pen is a sheet's appointment and does not travel with the line.
         line.league_id = other.id
+        line.is_admin = False
         db.session.commit()
         flash(f'Moved {name} to the {other.name}.', 'success')
     return redirect(url_for('golf.admin_users'))

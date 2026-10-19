@@ -72,9 +72,9 @@
                 <h2 class="golf-label" id="golf-settle-tab-label">Settle the tab</h2>
                 <span class="golf-chip golf-chip--deduction">Unpaid</span>
             </div>
-            <p class="golf-leaf-lead">Your seat on the {{ payment_nudge.league_name }} is <strong>${{ payment_nudge.entry_fee }}</strong>. The Commish collects it and checks you off on The Tab.</p>
+            <p class="golf-leaf-lead">Your seat on the {{ payment_nudge.league_name }} is <strong>${{ payment_nudge.entry_fee }}</strong>. The Commish collects it and marks your seat paid.</p>
             <p class="golf-settle-rails">
-                <a class="golf-tap" href="{{ payment_nudge.venmo_url }}">Pay ${{ payment_nudge.entry_fee }} on Venmo</a>, or Zelle <span class="golf-settle-zelle">{{ payment_nudge.zelle_phone }}</span> with your name in the memo.
+                <a class="golf-tap" href="{{ payment_nudge.venmo_url }}">Pay ${{ payment_nudge.entry_fee }} on Venmo</a>, or Zelle <span class="golf-settle-zelle">{{ payment_nudge.zelle_phone }}</span> with your name and the sheet in the memo.
             </p>
         </section>
         {% endif %}

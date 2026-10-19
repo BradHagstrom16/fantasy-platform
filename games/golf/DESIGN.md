@@ -291,7 +291,7 @@ No side-stripes, the pen bracket excepted (§6.10); `.row-current-user` override
 Gradient text is retired. `--text-muted` is for dark substrates only (this room uses
 `--text-secondary` = pencil). Every `/static/*` URL carries `?v={{ asset_version }}`. Country flags
 are self-hosted SVG. Touch targets ≥ 44px, body ≥ 16px, `prefers-reduced-motion` honored, no
-color-only state. Settle the Tab is the platform partial.
+color-only state. Settle the Tab is the platform partial (superseded by ADR-075 PR B: the room draws its own `.golf-leaf`, §7.14; the reconciliation is PR C's C4).
 
 ### 6.12 Named rules
 - **Pencil-and-Ink Rule:** a projected figure is never drawn in ink; a banked figure is never drawn
@@ -479,6 +479,9 @@ open then."
 
 ### 7.14 Settle the Tab — `.settle-tab`
 The platform partial, room surfaces only; the pot's unpaid penalties ride the same card.
+(Superseded by ADR-075 PR B, 2026-10-19: The Sheet carries a `.golf-leaf.golf-settle` of the
+room's own under your line, this league's fee only, the Unpaid chip the one red word, the rails as
+a sentence; the platform partial does not enter the room. PR C's C4 rewrites this section.)
 
 ### 7.15 JS hooks (preserve)
 `#primary_player_id`, `#backup_player_id`, form names `primary_player_id` / `backup_player_id`;

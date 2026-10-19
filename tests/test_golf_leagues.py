@@ -1262,6 +1262,34 @@ def test_pick_page_tells_a_member_of_both_what_the_other_sheet_holds(app, golf_l
         assert 'golf-other-sheet' not in page
         assert 'Nothing filed' not in page and 'On the ' not in _context_line(page)
 
+    # The other sheet costs one query per other line, golfers included (the
+    # plan's bound): Brad's Pollyanna page runs one more than a one-league
+    # member's, with a Handicap pick to name.
+    cy = _member('cy_one_sheet_count', pollyanna, app=app)
+    with _viewer(app, cy) as client:
+        baseline = _queries(client, f'/golf/pollyanna/pick/{event_id}')
+    with _viewer(app, brad) as client:
+        with_other = _queries(client, f'/golf/pollyanna/pick/{event_id}')
+    assert with_other == baseline + 1
+
+
+def _queries(client, path):
+    """The SQL statements one GET runs (the status-refresh throttle warmed first)."""
+    from sqlalchemy import event
+    client.get(path)
+    db.session.remove()
+    count = 0
+
+    def _tick(*_args):
+        nonlocal count
+        count += 1
+    event.listen(db.engine, 'before_cursor_execute', _tick)
+    try:
+        assert client.get(path).status_code == 200
+    finally:
+        event.remove(db.engine, 'before_cursor_execute', _tick)
+    return count
+
 
 # --- Task B4: the Roster's controls and the Back Office scope -----------------
 
@@ -1317,7 +1345,9 @@ def test_move_switches_the_line(app, golf_leagues):
     other league; the flash names the destination."""
     handicap, pollyanna = golf_leagues['handicap'], golf_leagues['pollyanna']
     brad = _platform_admin('brad_moves')
-    cy = _member('cy_misjoined', pollyanna, app=app, display_name='Cy Misjoined')
+    # Appointed on the wrong sheet too: the pen does not travel with the line.
+    cy = _member('cy_misjoined', pollyanna, app=app, display_name='Cy Misjoined',
+                 admin_in=pollyanna)
 
     with _viewer(app, brad) as client:
         moved = client.post(f'/golf/pollyanna/admin/move/{cy}', follow_redirects=True)
@@ -1326,6 +1356,7 @@ def test_move_switches_the_line(app, golf_leagues):
         assert 'Handicap Pay Sheet' in moved.get_data(as_text=True)
     assert _line_of(cy, pollyanna) is None
     assert _line_of(cy, handicap) is not None
+    assert _line_of(cy, handicap).is_admin is False
     assert GolfEnrollment.query.filter_by(user_id=cy).count() == 1
 
 
