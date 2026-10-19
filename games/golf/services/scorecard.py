@@ -72,8 +72,9 @@ def build_scorecard(member, viewer_id, sheet, tournaments, picks, results, usage
     order; ``picks`` every pick the member has on them, golfers and
     tournament loaded; ``results`` the results of those picks' golfers;
     ``usage`` the member's spent golfers by id; ``ledger``
-    ``stats.override_tally`` over the revealed weeks; ``penalty_paid`` and
-    ``penalty_per_incident`` the member's line and its league's rate. ``live`` and
+    ``stats.override_tally`` over the revealed weeks; ``penalty_paid`` what
+    the member's line has paid toward the pot, ``penalty_per_incident`` its
+    league's rate. ``live`` and
     ``live_lines`` are the sheet's event and its ``week_lines``;
     ``next_tournament`` is the week still open for a pick.
     """

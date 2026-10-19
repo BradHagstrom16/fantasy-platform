@@ -8,8 +8,8 @@ The Pay Sheet becomes two leagues inside one game. ``golf_league`` holds one
 row per league, seeded here with the two leagues of
 ``games/golf/constants.py::LEAGUE_SEED`` (written out as literals, so this
 file never changes when the constant does): Handicap is the house league
-(ordinal 1), Pollyanna the second. Fee 25 and penalty 15 are the
-``ENTRY_FEE`` default and ``PENALTY_PER_INCIDENT`` on the day this shipped.
+(ordinal 1), Pollyanna the second. Fee 25 and penalty 15 are
+``LEAGUE_SEED``'s fee and ``PENALTY_PER_INCIDENT`` on the day this shipped.
 
 Every enrollment, pick and golfer usage row belongs to one league. The
 column is added nullable, every existing row is backfilled to Handicap (all

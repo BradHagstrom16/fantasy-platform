@@ -147,6 +147,7 @@ class Diff:
 
 @dataclass
 class ParityReport:
+    league: str                       # "<name> (<slug>)", the league re-scored
     diffs: list
     picks_checked: int = 0
     enrollments_checked: int = 0
@@ -161,7 +162,7 @@ class ParityReport:
 
     def render(self):
         lines = [
-            'Parity oracle (resolve_pick re-run inside a rolled-back SAVEPOINT):',
+            f'Parity oracle for {self.league} (resolve_pick re-run inside a rolled-back SAVEPOINT):',
             f'  picks re-scored: {self.picks_checked} (admin overrides: {self.overrides_checked})',
             f'  picks unresolved in the source too: {self.unresolved_expected}'
             ' (a primary with no result row — resolve_pick logs an ERROR for each and returns'
@@ -181,6 +182,7 @@ class ImportReport:
     sha256: str
     alembic_head: str | None
     season: int
+    league: str                       # "<name> (<slug>)", where the rows land
     before: dict
     plan: MatchPlan
     counts: dict = field(default_factory=dict)
@@ -190,7 +192,7 @@ class ImportReport:
 
     def render(self):
         lines = [
-            f'Legacy Golf Pick \'Em import — season {self.season}',
+            f'Legacy Golf Pick \'Em import — season {self.season} into the {self.league}',
             f'  source: {self.path}',
             f'  sha256: {self.sha256}',
             f'  legacy alembic head: {self.alembic_head or "(none)"}',
@@ -444,6 +446,10 @@ def league_for(slug):
     if league is None:
         raise ValueError(f"no golf league {slug!r} (see flask golf league list)")
     return league
+
+
+def _league_label(league):
+    return f'{league.name} ({league.slug})'
 
 
 def import_season(snapshot, users, season, *, league, check_only=False):
@@ -714,7 +720,7 @@ def verify_scoring(season, league='handicap', legacy_path=None):
         nested.rollback()
         db.session.expire_all()
 
-    return ParityReport(diffs=diffs, picks_checked=len(picks), enrollments_checked=len(enrollments),
+    return ParityReport(league=_league_label(league_row), diffs=diffs, picks_checked=len(picks), enrollments_checked=len(enrollments),
                         overrides_checked=overrides,
                         unresolved_expected=sum(1 for v in expected_picks.values() if v[0] is None),
                         usage_ok=usage_ok, fidelity_checked=fidelity)
@@ -739,7 +745,7 @@ def run_import(path, season=2026, *, league='handicap', dry_run=False, links=Non
     with closing(open_legacy(path)) as conn:
         snapshot = load_snapshot(conn, season, path)
     report = ImportReport(path=str(path), sha256=snapshot.sha256, alembic_head=snapshot.alembic_head,
-                          season=season, before=_platform_counts(), plan=MatchPlan(), dry_run=dry_run)
+                          season=season, league=_league_label(league_row), before=_platform_counts(), plan=MatchPlan(), dry_run=dry_run)
     report.plan = match_users(snapshot.users, links=links, renames=renames)
     report.plan.blocking = snapshot.problems() + report.plan.blocking
     if report.plan.blocking:

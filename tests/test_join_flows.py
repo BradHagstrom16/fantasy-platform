@@ -171,13 +171,13 @@ def test_cfb_pick_route_redirects_non_enrolled_to_join(app, client, monkeypatch,
 
 # ── Golf /join ───────────────────────────────────────────────────────────
 
-def test_golf_join_anonymous_redirects_to_login(client):
+def test_golf_join_anonymous_redirects_to_login(client, golf_leagues):
     resp = client.get('/golf/join', follow_redirects=False)
     assert resp.status_code == 302
     assert '/login' in resp.location
 
 
-def test_golf_join_coming_soon_rejects(app, client):
+def test_golf_join_coming_soon_rejects(app, client, golf_leagues):
     uid = _make_user(app, 'g1')
     _login(client, uid)
     resp = client.get('/golf/join', follow_redirects=False)

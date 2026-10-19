@@ -9,7 +9,7 @@ the shared platform database.
 Core Concepts:
 - Users pick one golfer (primary + backup) per tournament
 - Points = actual prize money earned by their active pick
-- Each golfer can only be used once per season
+- Each golfer can only be used once per season in each league
 - Backup activates only if primary WDs before completing Round 2
 - Majors earn 1.5x points; team events (Zurich) pay the FULL team payout (ADR-033)
 """
@@ -22,8 +22,9 @@ from games.golf.utils import GOLF_LEAGUE_TZ, format_score_to_par, get_current_ti
 
 logger = logging.getLogger(__name__)
 
-# Flat side-pot penalty assessed when a user's active pick at a MAJOR finishes
-# cut or DQ ($15/incident, ADR-034). Ported as-is from the standalone.
+# The side-pot penalty for an active pick at a MAJOR that finishes cut or DQ
+# (ADR-034): the seed default for GolfLeague.penalty_per_incident (ADR-075).
+# Every charge reads the league's own rate.
 PENALTY_PER_INCIDENT = 15
 
 
@@ -34,10 +35,11 @@ PENALTY_PER_INCIDENT = 15
 class GolfLeague(db.Model):
     """A league of The Pay Sheet: its own roster, picks, pot and champion.
 
-    Both leagues play one rule set; what differs lives here. The rows are
-    seeded from ``constants.LEAGUE_SEED`` (``services/leagues.py``); the fee
-    and penalty are copied from config and ``PENALTY_PER_INCIDENT`` at seed
-    time only, after which the row is the source of truth.
+    Both leagues play one rule set; what differs lives here. Production's
+    rows were written by migration 32cd68a3e8ea; ``services/leagues.py::
+    seed_leagues`` builds the same rows from ``constants.LEAGUE_SEED`` for a
+    ``create_all`` database (the tests). After that the row is the source of
+    truth, changed by ``flask golf league set``.
     """
     __tablename__ = 'golf_league'
 
@@ -60,7 +62,7 @@ class GolfLeague(db.Model):
 
 class GolfEnrollment(db.Model):
     """
-    Tracks which users are enrolled in The Pay Sheet for a given season.
+    One member's line in one league of The Pay Sheet for a given season.
     Stores golf-specific user data (total_points, has_paid) that does NOT
     belong on the shared User model.
     """
@@ -148,7 +150,7 @@ class GolfEnrollment(db.Model):
         return max(0, self.penalty_owed(season_year) - (self.penalty_paid or 0))
 
     def __repr__(self):
-        return f'<GolfEnrollment User:{self.user_id} Year:{self.season_year}>'
+        return f'<GolfEnrollment User:{self.user_id} League:{self.league_id} Year:{self.season_year}>'
 
 
 # ============================================================================
@@ -362,10 +364,11 @@ class GolfSeasonPlayerUsage(db.Model):
     player = db.relationship('GolfPlayer')
 
     def __repr__(self):
-        return f'<GolfSeasonPlayerUsage User:{self.user_id} Player:{self.player_id} Year:{self.season_year}>'
+        return (f'<GolfSeasonPlayerUsage User:{self.user_id} League:{self.league_id} '
+                f'Player:{self.player_id} Year:{self.season_year}>')
 
 
-def _record_season_usage(user_id, league_id, player_id, season_year) -> None:
+def _record_season_usage(*, user_id, league_id, player_id, season_year) -> None:
     """Idempotent, race-safe season-usage insert across SQLite and Postgres.
 
     Uses the active dialect's ``INSERT ... ON CONFLICT DO NOTHING`` so that
@@ -477,7 +480,7 @@ class GolfPick(db.Model):
     primary_used = db.Column(db.Boolean, default=False)
     backup_used = db.Column(db.Boolean, default=False)
 
-    # $15 side-pot penalty owed when the active pick at a MAJOR finishes cut/dq
+    # The league's side-pot penalty owed when the active pick at a MAJOR finishes cut/dq
     # (ADR-034). Re-derived True/False on every resolution — no separate clear.
     penalty_triggered = db.Column(db.Boolean, default=False, nullable=False)
 
@@ -677,7 +680,7 @@ class GolfPick(db.Model):
             self.primary_used = True
             self.backup_used = False
 
-        # $15 penalty when the active pick at a MAJOR finishes cut/dq (ADR-034).
+        # The league's penalty when the active pick at a MAJOR finishes cut/dq (ADR-034).
         # Re-derived True/False every resolution — no separate clear path needed.
         active_result = (
             primary_result if self.active_player_id == self.primary_player_id else backup_result
@@ -691,8 +694,8 @@ class GolfPick(db.Model):
         # Record season usage for the active player — idempotent AND race-safe via
         # a dialect-aware INSERT ... ON CONFLICT DO NOTHING (see _record_season_usage).
         _record_season_usage(
-            self.user_id, self.league_id, self.active_player_id,
-            self.tournament.season_year,
+            user_id=self.user_id, league_id=self.league_id,
+            player_id=self.active_player_id, season_year=self.tournament.season_year,
         )
 
         return True
@@ -813,7 +816,7 @@ class GolfPick(db.Model):
 
     @property
     def show_penalty_badge(self):
-        """True when this pick's $15 major penalty should render in player UI.
+        """True when this pick's major penalty should render in player UI.
 
         Shows on LIVE majors (``refresh_live_penalty`` keeps it current) and on
         FINALIZED majors (``resolve_pick`` sets it definitively), but not in the

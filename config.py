@@ -51,7 +51,6 @@ class Config:
 
     # The Pay Sheet Settings
     SEASON_YEAR = int(os.environ.get('SEASON_YEAR', '2026'))
-    ENTRY_FEE = int(os.environ.get('ENTRY_FEE', '25'))
     SYNC_MODE = os.environ.get('SYNC_MODE', 'standard').lower()
     FIXED_DEADLINE_HOUR_CT = int(os.environ.get('FIXED_DEADLINE_HOUR_CT', '7'))
     # SlashGolf (RapidAPI) key for the The Pay Sheet sync. Plumbed through

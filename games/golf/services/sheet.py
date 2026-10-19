@@ -209,7 +209,7 @@ class Board:
     rows: list
     mine: BoardRow | None
     didnt_pick: list               # the season's members with no pick here
-    penalties: int                 # $15 incidents showing on this board
+    penalties: int                 # penalty incidents showing on this board
 
 
 def build_board(lines, enrollments, viewer_id=None):

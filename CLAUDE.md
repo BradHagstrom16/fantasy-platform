@@ -368,7 +368,7 @@ CFB_SEASON_YEAR=...      # Default 2026 (config.py); CFB_ENTRY_FEE default 25
 DOCKET_ENTRY_FEE=...     # Default 60
 DOCKET_WEEKLY_PRIZE=...  # Default 20 — the purse (ADR-059): $ to each week's top sheet across TOTAL_WEEKS
 DOCKET_PODIUM_SPLIT=...  # Default 65,25,10 — percent split of what's left into 1st/2nd/3rd; must sum to 100
-SEASON_YEAR=...          # GOLF's season (bare name — golf owns the unprefixed keys; also scopes /admin/announce's golf list). Default 2026; ENTRY_FEE default 25
+SEASON_YEAR=...          # GOLF's season (bare name — golf owns the unprefixed keys; also scopes /admin/announce's golf list). Default 2026. Golf's fees and penalty live on each `golf_league` row (`flask golf league set`), not in env
 PAYMENT_VENMO_HANDLE=... # Member payment rails (utils/payment.py); defaults = the live values, blank to hide every "Settle the Tab" nudge
 PAYMENT_ZELLE_PHONE=...  # Same; the copyable Zelle number on the card + in the picks-open emails
 VAPID_PUBLIC_KEY=...     # Web push (The Wire). `vapid --applicationServerKey` output, 87 chars. Blank private key or subject = push is a no-op

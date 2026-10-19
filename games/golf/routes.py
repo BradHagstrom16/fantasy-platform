@@ -299,7 +299,8 @@ def _champions(season_year, fallback):
     From the club's record when the Commish has closed the season (the
     linked place-1 rows, one query), else ``fallback``: the page's own
     leaders, with ``on_record`` False so the fold says the record is still
-    open. Each champion is {user, name, figure}.
+    open. Each champion is {user, name, figure}. Not yet league-scoped: the
+    record learns the league in PR C (C1), before any golf season closes.
     """
     on_record = [row for row in finishes_for('golf', season_year) if row.place == 1]
     if on_record:
@@ -1000,7 +1001,7 @@ def admin_update_payment(user_id):
     if not enrollment:
         return jsonify({
             'success': False,
-            'error': 'User is not enrolled in Golf Pick \'Em.',
+            'error': f'That member has no line on the {g.golf_league.name}.',
         }), 400
 
     data = request.get_json() or {}
@@ -1051,7 +1052,7 @@ def admin_override_pick():
         .all()
     )
 
-    # The member select is this season's enrollees: an override can only be
+    # The member select is this league's season enrollees: an override can only be
     # written for a member with a line (validated again on POST).
     users = sorted((e.user for e in season_enrollments(season_year, league.id)),
                    key=lambda u: u.get_display_name().casefold())
@@ -1120,8 +1121,8 @@ def admin_override_pick():
                 # Never create enrollment rows from admin paths — admins add
                 # users via Platform Admin → Enrollments first.
                 errors.append(
-                    "User must be enrolled in The Pay Sheet before an admin "
-                    'override can be applied. Add them via Admin → Enrollments first.'
+                    f'That member has no line on the {g.golf_league.name}, so there is '
+                    'nothing to override. They join it at /golf/join.'
                 )
 
             if errors:

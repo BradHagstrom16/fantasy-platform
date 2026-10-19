@@ -99,6 +99,17 @@ def _admin_alert_recipient() -> str:
     return config.get('ADMIN_EMAIL', '') or config.get('EMAIL_ADDRESS', '')
 
 
+def _report_league(letter, league, sent, roster):
+    """Print one league's count; warn when a league with a roster got nothing.
+
+    The tournament's latch is shared by every league (D2), so a league whose
+    every send failed is not retried: the warning is how it gets noticed.
+    """
+    print(f"  {league.name}: {sent}/{roster} sent")
+    if roster and not sent:
+        logger.warning("%s: no letter reached the %s (%s on the roster)", letter, league.name, roster)
+
+
 def _deadline_short(deadline) -> str:
     """'Thursday, Jun 4 · 7:00 AM CT' for a golf pick deadline.
 
@@ -212,6 +223,7 @@ def send_picks_open_email(tournament_id_or_obj) -> int:
         # must not get golf mail).
         enrollments = season_enrollments(season_year, league.id)
         roster_count += len(enrollments)
+        league_sent = 0
 
         for enrollment in enrollments:
             user = enrollment.user
@@ -230,7 +242,10 @@ def send_picks_open_email(tournament_id_or_obj) -> int:
             )
             plain, html = render_letter(letter)
             if send_platform_email(user.email, letter.subject, plain, html):
-                success_count += 1
+                league_sent += 1
+
+        _report_league(f'Picks open, {tournament_name}', league, league_sent, len(enrollments))
+        success_count += league_sent
 
     print(f"\nPicks Open Summary: {success_count}/{roster_count} emails sent")
     return success_count
@@ -417,7 +432,7 @@ def _recap_letter(*, league, display_name, tournament_name, golfer_name, positio
         lede=['Here is how your week went.'],
         facts=facts,
         extras=extras,
-        cta=('Open the sheet', results_url),
+        cta=('Open the board', results_url),
     )
 
 
@@ -448,6 +463,7 @@ def send_results_recap_email(tournament_id: int) -> int:
     roster_count = 0
     for league in leagues():
         sent, roster = _send_league_recap(tournament, league, site_url)
+        _report_league(f'Results recap, {tournament.name}', league, sent, roster)
         success_count += sent
         roster_count += roster
 
@@ -802,6 +818,7 @@ def run_reminder_check():
     for league, users_without_picks in waiting:
         # A plain string, never url_for: a timer has no request context.
         pick_url = f"{site_url}/golf/{league.slug}/pick/{tournament_id}"
+        league_sent = 0
         for user in users_without_picks:
             # Golf-specific stats from this league's line
             enrollment = db.session.scalars(select(GolfEnrollment).filter_by(
@@ -823,7 +840,11 @@ def run_reminder_check():
             )
             plain, html = render_letter(letter)
             if send_platform_email(user.email, letter.subject, plain, html):
-                success_count += 1
+                league_sent += 1
+
+        _report_league(f'{current_tier} reminder, {tournament_name}', league,
+                       league_sent, len(users_without_picks))
+        success_count += league_sent
 
     # Record the tier once ANY send succeeds (standalone parity), so a total
     # failure leaves the tournament un-marked and the next run retries this tier.
@@ -834,7 +855,8 @@ def run_reminder_check():
     # the next tier (24h→12h→1h); true per-recipient delivery tracking (the fully
     # correct fix) is a deferred enhancement, matching the recap-email trade-off.
     # gstack-shortcut(dec-6e3392bc): per-tournament latch, upgrade when a duplicate letter lands
-    # One tier flag for the tournament, set once after every league was sent.
+    # One tier flag for the tournament, written after the loop over every
+    # league once any send succeeded; a league that got none is warned above.
     if success_count > 0:
         tournament.last_reminder_type = current_tier
         db.session.commit()
