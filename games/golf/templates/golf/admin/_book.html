@@ -10,7 +10,10 @@
             ('golf.admin_payments', 'The Tab'),
             ('golf.admin_override_pick', "The Commish's Pen"),
         ] %}
+        {# Settle the Book is platform admin's alone (ruling 10): a league commissioner's book has four leaves. #}
+        {% if current_user.is_admin or endpoint != 'golf.admin_tournaments' %}
         <li>{% if request.endpoint == endpoint %}<span class="golf-book-here" aria-current="page">{{ name }}</span>{% else %}<a href="{{ url_for(endpoint) }}">{{ name }}</a>{% endif %}</li>
+        {% endif %}
         {% endfor %}
     </ol>
 </nav>

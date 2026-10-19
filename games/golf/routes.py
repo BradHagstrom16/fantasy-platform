@@ -925,6 +925,8 @@ def admin_dashboard():
     banked_count = sum(1 for t in tournaments if t.results_finalized)
     penalties = _penalty_summary(enrollments, season_year, league)
 
+    # Settling the book and the month's reads are platform admin's (Brad's
+    # ruling 10): a league commissioner's dashboard is the tab alone.
     now = get_current_time()
     return render_template('golf/admin/dashboard.html',
         tournaments=sorted(tournaments, key=lambda t: t.start_date),
@@ -938,7 +940,7 @@ def admin_dashboard():
         penalty_pot=sum(p['owed'] for p in penalties.values()),
         penalty_outstanding=sum(p['outstanding'] for p in penalties.values()),
         # The API-usage meter: the month so far against the free tier.
-        api_usage=read_api_usage(now),
+        api_usage=read_api_usage(now) if current_user.is_admin else None,
         reads_month=now.strftime('%B %Y'),
     )
 
@@ -982,7 +984,67 @@ def admin_users():
     return render_template('golf/admin/users.html',
         enrollments=enrollments,
         total_paid=sum(1 for e in enrollments if e.has_paid),
+        other_league=_other_league(g.golf_league),
     )
+
+
+def _other_league(league):
+    """The other sheet (two leagues exist, ADR-075): ``leagues()`` minus this one."""
+    return next(other for other in leagues() if other.id != league.id)
+
+
+@golf_bp.route('/<league>/admin/commissioner/<int:user_id>', methods=['POST'])
+@golf_admin_required
+@golf_platform_admin_required
+def admin_commissioner(user_id):
+    """The Roster's commissioner toggle (Brad's ruling 11): platform admin
+    makes or removes a league commissioner on that league's line."""
+    action = request.form.get('action')
+    if action not in ('make', 'remove'):
+        abort(400)
+    line = get_enrollment(user_id, g.golf_league)
+    if line is None:
+        abort(404)
+    line.is_admin = action == 'make'
+    db.session.commit()
+    name = line.user.get_display_name()
+    if line.is_admin:
+        flash(f'{name} holds the {g.golf_league.name} pen now.', 'success')
+    else:
+        flash(f'{name} no longer holds the {g.golf_league.name} pen.', 'success')
+    return redirect(url_for('golf.admin_users'))
+
+
+@golf_bp.route('/<league>/admin/move/<int:user_id>', methods=['POST'])
+@golf_admin_required
+@golf_platform_admin_required
+def admin_move_line(user_id):
+    """Fix a mis-join (platform admin only): move the member's line to the
+    other league, while no pick is on it and the other sheet has no line of
+    theirs. Past that, Brad hand-fixes in the shell."""
+    league = g.golf_league
+    line = get_enrollment(user_id, league)
+    if line is None:
+        abort(404)
+    other = _other_league(league)
+    name = line.user.get_display_name()
+    season_year = current_app.config['SEASON_YEAR']
+    has_pick = db.session.scalar(
+        select(GolfPick.id)
+        .join(GolfTournament, GolfPick.tournament_id == GolfTournament.id)
+        .where(GolfPick.user_id == user_id, GolfPick.league_id == league.id,
+               GolfTournament.season_year == season_year)
+        .limit(1))
+    if has_pick is not None:
+        flash(f'{name} already has a pick on the {league.name} this season, so the line '
+              f'stays. A move past the first pick is a shell job.', 'error')
+    elif get_enrollment(user_id, other) is not None:
+        flash(f'{name} is already on the {other.name}; there is nothing to move.', 'error')
+    else:
+        line.league_id = other.id
+        db.session.commit()
+        flash(f'Moved {name} to the {other.name}.', 'success')
+    return redirect(url_for('golf.admin_users'))
 
 
 @golf_bp.route('/<league>/admin/payments')

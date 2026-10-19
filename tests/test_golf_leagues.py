@@ -9,6 +9,7 @@ from contextlib import contextmanager
 from datetime import UTC, datetime, timedelta
 
 import pytest
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
 from extensions import db
@@ -1260,3 +1261,174 @@ def test_pick_page_tells_a_member_of_both_what_the_other_sheet_holds(app, golf_l
         page = client.get(f'/golf/handicap/pick/{event_id}').get_data(as_text=True)
         assert 'golf-other-sheet' not in page
         assert 'Nothing filed' not in page and 'On the ' not in _context_line(page)
+
+
+# --- Task B4: the Roster's controls and the Back Office scope -----------------
+
+def _platform_admin(username):
+    user = _user(username)
+    user.is_admin = True
+    db.session.commit()
+    return user.id
+
+
+def _line_of(user_id, league):
+    return db.session.scalar(select(GolfEnrollment).where(
+        GolfEnrollment.user_id == user_id, GolfEnrollment.league_id == league.id))
+
+
+def test_platform_admin_appoints_and_removes_a_commissioner(app, golf_leagues):
+    """The Roster's commissioner toggle (platform admin only): make and remove
+    flip is_admin on that league's line; a member with no line there is a 404;
+    a bad action is a 400."""
+    handicap, pollyanna = golf_leagues['handicap'], golf_leagues['pollyanna']
+    brad = _platform_admin('brad_appoints')
+    cy = _member('cy_appointed', pollyanna, app=app, display_name='Cy Appointed')
+    han = _member('han_elsewhere', handicap, app=app)
+
+    with _viewer(app, brad) as client:
+        roster = client.get('/golf/pollyanna/admin/users').get_data(as_text=True)
+        assert f'action="/golf/pollyanna/admin/commissioner/{cy}"' in roster
+        assert 'Make commish' in roster and 'Remove commish' not in roster
+        assert f'action="/golf/pollyanna/admin/move/{cy}"' in roster
+        assert 'Move to the Handicap Pay Sheet' in roster
+
+        made = client.post(f'/golf/pollyanna/admin/commissioner/{cy}', data={'action': 'make'})
+        assert _lands(made, '/golf/pollyanna/admin/users')
+        assert _line_of(cy, pollyanna).is_admin is True
+        roster = client.get('/golf/pollyanna/admin/users').get_data(as_text=True)
+        assert 'Remove commish' in roster and 'Commish</span>' in roster
+
+        removed = client.post(f'/golf/pollyanna/admin/commissioner/{cy}', data={'action': 'remove'})
+        assert _lands(removed, '/golf/pollyanna/admin/users')
+        assert _line_of(cy, pollyanna).is_admin is False
+
+        assert client.post(f'/golf/pollyanna/admin/commissioner/{cy}',
+                           data={'action': 'crown'}).status_code == 400
+        assert client.post(f'/golf/pollyanna/admin/commissioner/{han}',
+                           data={'action': 'make'}).status_code == 404
+        assert _line_of(han, handicap).is_admin is False
+
+
+def test_move_switches_the_line(app, golf_leagues):
+    """A mis-join is fixed by the move: the line's league_id becomes the
+    other league; the flash names the destination."""
+    handicap, pollyanna = golf_leagues['handicap'], golf_leagues['pollyanna']
+    brad = _platform_admin('brad_moves')
+    cy = _member('cy_misjoined', pollyanna, app=app, display_name='Cy Misjoined')
+
+    with _viewer(app, brad) as client:
+        moved = client.post(f'/golf/pollyanna/admin/move/{cy}', follow_redirects=True)
+        assert moved.status_code == 200
+        assert 'Cy Misjoined' in moved.get_data(as_text=True)
+        assert 'Handicap Pay Sheet' in moved.get_data(as_text=True)
+    assert _line_of(cy, pollyanna) is None
+    assert _line_of(cy, handicap) is not None
+    assert GolfEnrollment.query.filter_by(user_id=cy).count() == 1
+
+
+def test_move_refuses_once_a_pick_exists_or_the_other_line_is_held(app, golf_leagues):
+    """The move writes nothing when the line already holds a pick this season,
+    or when the member already has a line on the other sheet."""
+    handicap, pollyanna = golf_leagues['handicap'], golf_leagues['pollyanna']
+    brad = _platform_admin('brad_refused')
+    cy = _member('cy_has_picked', pollyanna, app=app)
+    both = _member('brad_on_both', handicap, pollyanna, app=app)
+    event = _season_event(app, 'Move Refused Open', status='upcoming', deadline_in=timedelta(days=2))
+    a, b = _golfer('MR01', 'Movegolfer01'), _golfer('MR02', 'Movegolfer02')
+    db.session.add(GolfPick(user_id=cy, league_id=pollyanna.id, tournament_id=event.id,
+                            primary_player_id=a.id, backup_player_id=b.id))
+    db.session.commit()
+
+    with _viewer(app, brad) as client:
+        refused = client.post(f'/golf/pollyanna/admin/move/{cy}', follow_redirects=True)
+        assert 'already has a pick' in refused.get_data(as_text=True)
+        assert _line_of(cy, pollyanna) is not None and _line_of(cy, handicap) is None
+
+        refused = client.post(f'/golf/pollyanna/admin/move/{both}', follow_redirects=True)
+        assert 'already on the Handicap Pay Sheet' in refused.get_data(as_text=True)
+        assert _line_of(both, pollyanna) is not None and _line_of(both, handicap) is not None
+
+        assert client.post('/golf/pollyanna/admin/move/999999').status_code == 404
+
+
+def test_league_commissioner_cannot_post_to_the_other_league_or_settle_the_book(app, golf_leagues):
+    """Review Focus 4: the Pollyanna commissioner's POSTs to a Handicap admin
+    route, to Settle the Book, and to the platform-only roster controls are
+    bounced with a flash and write nothing; their Back Office shows no
+    Settle the Book, no To settle ledger, no meter and no roster controls."""
+    handicap, pollyanna = golf_leagues['handicap'], golf_leagues['pollyanna']
+    commish = _member('polly_commish_rf4', pollyanna, app=app, admin_in=pollyanna)
+    cy = _member('cy_rf4', pollyanna, app=app, display_name='Cy Rf4')
+    han = _member('han_rf4', handicap, app=app)
+    event_id = _season_event(app, 'RF4 Played').id
+
+    with _viewer(app, commish) as client:
+        paid = client.post(f'/golf/handicap/admin/update-payment/{han}', json={'has_paid': True})
+        assert _lands(paid, '/golf/handicap/')
+        assert _line_of(han, handicap).has_paid is False
+
+        settled = client.post(f'/golf/pollyanna/admin/process-results/{event_id}', follow_redirects=True)
+        assert 'Platform admin only.' in settled.get_data(as_text=True)
+
+        for path in (f'/golf/pollyanna/admin/commissioner/{cy}', f'/golf/pollyanna/admin/move/{cy}'):
+            bounced = client.post(path, data={'action': 'make'}, follow_redirects=True)
+            assert 'Platform admin only.' in bounced.get_data(as_text=True), path
+        assert _line_of(cy, pollyanna).is_admin is False and _line_of(cy, handicap) is None
+
+        office = client.get('/golf/pollyanna/admin/').get_data(as_text=True)
+        assert office.count('golf-leaf') and 'id="golf-tab"' in office
+        assert 'id="golf-reads"' not in office and 'reads this month' not in office
+        assert 'id="golf-settle"' not in office and 'To settle' not in office
+        assert 'Settle the Book' not in office and '/admin/tournaments' not in office
+        roster = client.get('/golf/pollyanna/admin/users').get_data(as_text=True)
+        assert 'Make commish' not in roster and 'Move to the' not in roster
+        assert 'Settle the Book' not in roster
+
+    brad = _platform_admin('brad_rf4')
+    with _viewer(app, brad) as client:
+        office = client.get('/golf/pollyanna/admin/').get_data(as_text=True)
+        assert 'id="golf-reads"' in office and 'id="golf-settle"' in office
+        assert 'Settle the Book' in office
+
+
+def test_admin_enrollments_seats_the_house_league_and_says_so(app, golf_leagues, monkeypatch):
+    """/admin/enrollments seats golf into the house league and says so beside
+    it; its already-enrolled check is the house line, so a Pollyanna-only
+    member can be seated in Handicap there."""
+    from tests._registry_helpers import set_status
+
+    set_status(monkeypatch, 'golf', 'open')
+    handicap, pollyanna = golf_leagues['handicap'], golf_leagues['pollyanna']
+    brad = _platform_admin('brad_seats')
+    cy = _member('cy_seated', pollyanna, app=app, display_name='Cy Seated')
+
+    with _viewer(app, brad) as client:
+        page = client.get('/admin/enrollments').get_data(as_text=True)
+        assert 'value="golf"' in page and 'Seats the Handicap Pay Sheet' in page
+        seated = client.post('/admin/enrollments', data={'user_id': cy, 'game_slug': 'golf'},
+                             follow_redirects=True)
+        assert 'Enrolled Cy Seated' in seated.get_data(as_text=True)
+        assert _line_of(cy, handicap) is not None and _line_of(cy, pollyanna) is not None
+        again = client.post('/admin/enrollments', data={'user_id': cy, 'game_slug': 'golf'},
+                            follow_redirects=True)
+        assert 'already enrolled' in again.get_data(as_text=True)
+        assert GolfEnrollment.query.filter_by(user_id=cy).count() == 2
+
+
+def test_platform_dashboard_counts_each_league_once(app, golf_leagues):
+    """The platform dashboard lists one row per golf league, each counting its
+    own seats, so a member of both is never counted twice in a row."""
+    handicap, pollyanna = golf_leagues['handicap'], golf_leagues['pollyanna']
+    brad = _platform_admin('brad_counts')
+    both = _member('both_counted', handicap, pollyanna, app=app)
+    _line_of(both, handicap).has_paid = True
+    db.session.commit()
+
+    with _viewer(app, brad) as client:
+        page = client.get('/admin/').get_data(as_text=True)
+        handicap_row = page.split('Handicap Pay Sheet', 1)[1].split('</div>', 1)[0]
+        pollyanna_row = page.split('Pollyanna Pay Sheet', 1)[1].split('</div>', 1)[0]
+        assert '1 enrolled · 1 paid' in handicap_row and '/golf/handicap/admin/' in handicap_row
+        assert '1 enrolled · 0 paid' in pollyanna_row and '/golf/pollyanna/admin/payments' in pollyanna_row
+        assert '2 enrolled' not in page

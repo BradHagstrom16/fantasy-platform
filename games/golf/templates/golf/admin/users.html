@@ -25,7 +25,7 @@
                 <h2 class="golf-label" id="golf-roster-label">Every seat</h2>
             </div>
             {% if enrollments %}
-            <p class="golf-leaf-lead">This season's enrollees, with the money on their line. A seat is granted through the platform's enrollments; the check marks the entry fee paid.</p>
+            <p class="golf-leaf-lead">This season's enrollees, with the money on their line. A seat is granted at the join page or through the platform's enrollments; the check marks the entry fee paid.{% if current_user.is_admin %} The pen names a commissioner for this sheet; the move fixes a mis-join while the line has no pick.{% endif %}</p>
             <table class="golf-sheet golf-sheet--plain" aria-labelledby="golf-roster-label">
                 <thead class="visually-hidden">
                     <tr>
@@ -42,6 +42,20 @@
                             <span class="golf-sheet-avatar">{{ user.get_avatar() }}</span><a class="golf-quiet" href="{{ url_for('golf.member_scorecard', user_id=user.id) }}">{{ user.get_display_name() }}</a>
                             {%- if user.is_admin or e.is_admin %} <span class="golf-chip">Commish</span>{% endif %}
                             <span class="golf-pick-line golf-email">{{ user.email.rsplit('@', 1)[0] }}<wbr>@{{ user.email.rsplit('@', 1)[1] }}</span>
+                            {# The Roster's controls, platform admin only (rulings 11 and the mis-join fix, ADR-075): text actions on the line. #}
+                            {% if current_user.is_admin %}
+                            <span class="golf-pick-line golf-roster-acts">
+                                <form method="POST" action="{{ url_for('golf.admin_commissioner', user_id=e.user_id) }}">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" name="action" value="{{ 'remove' if e.is_admin else 'make' }}" class="golf-linkbtn">{{ 'Remove commish' if e.is_admin else 'Make commish' }}</button>
+                                </form>
+                                <span class="golf-pick-dot"> · </span>
+                                <form method="POST" action="{{ url_for('golf.admin_move_line', user_id=e.user_id) }}">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="golf-linkbtn">Move to the {{ other_league.name }}</button>
+                                </form>
+                            </span>
+                            {% endif %}
                         </th>
                         <td class="golf-sheet-money"><span class="golf-money golf-money--banked">{{ dollars(e.total_points or 0) }}</span></td>
                         <td class="golf-sheet-fee">

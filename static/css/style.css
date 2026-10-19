@@ -7529,6 +7529,11 @@ textarea.golf-input { width: 100%; resize: vertical; }
 .golf-other-sheet { margin: 0; font-size: 1rem; }
 .golf-other-sheet strong { color: var(--text-primary); font-weight: 500; }
 
+/* The Roster's controls (ADR-075): two text actions on the member's line,
+   platform admin only; the forms sit inline so the line reads as a sentence. */
+.golf-roster-acts form { display: inline; }
+.golf-roster-acts .golf-linkbtn { font-size: .95rem; }
+
 /* === CFB SURVIVOR POOL === */
 
 /* -- Dark-substrate foundation: dark forms of the platform primitives CFB

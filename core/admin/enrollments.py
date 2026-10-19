@@ -4,7 +4,8 @@ from flask import flash, redirect, render_template, request, url_for
 from core.admin import admin_bp
 from core.admin.routes import admin_required
 from extensions import db
-from games.registry import GAMES, get_entry
+from games import registry
+from games.registry import get_entry
 from models.user import User
 
 
@@ -12,7 +13,7 @@ from models.user import User
 @admin_required
 def enrollments():
     """List users + open games; on POST, call the selected game's admin_enroll."""
-    open_entries = [e for e in GAMES if e.status == 'open']
+    open_entries = [e for e in registry.GAMES if e.status == 'open']
     users = User.query.order_by(User.username).all()
 
     if request.method == 'POST':
@@ -38,7 +39,8 @@ def enrollments():
             flash('User not found.', 'error')
             return redirect(url_for('admin.enrollments'))
 
-        existing = entry.get_enrollment(user_id)
+        # The seat admin_enroll would create, when the game says which (ADR-075).
+        existing = (entry.admin_enrolled or entry.get_enrollment)(user_id)
         if existing is not None:
             flash(
                 f'{user.get_display_name()} is already enrolled in '
