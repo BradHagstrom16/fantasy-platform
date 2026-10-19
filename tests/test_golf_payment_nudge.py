@@ -57,8 +57,9 @@ def test_nudge_shows_for_an_unpaid_line_in_that_league_only(app, golf_leagues):
         # The rails read as one sentence at every width: no dot the phone hides.
         assert 'on Venmo</a>, or Zelle' in card and 'golf-pick-dot' not in card
         # Zelle carries no prefilled memo: the member names the sheet, so a
-        # member of both never pays one believing it covered the other.
-        assert 'with your name and the sheet in the memo' in card
+        # member of both never pays one believing it covered the other. Same
+        # words as the letter strip.
+        assert 'with your name and the Pollyanna Pay Sheet in the memo' in card
         assert 'marks your seat paid' in card and 'The Tab' not in card
         # After your line, before the sheet itself (the room's order).
         assert (pollyanna_sheet.index('Your line') < pollyanna_sheet.index('id="golf-settle-tab"')
