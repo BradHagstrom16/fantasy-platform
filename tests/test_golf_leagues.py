@@ -215,3 +215,68 @@ def test_admin_enroll_seats_the_house_league(app, golf_leagues):
     assert other.league_id == golf_leagues['pollyanna'].id
     assert admin_enroll(brad.id, golf_leagues['pollyanna']) == other
     assert GolfEnrollment.query.filter_by(user_id=brad.id).count() == 2
+
+
+def test_the_other_leagues_picks_never_reach_a_leagues_aggregates(app, golf_leagues):
+    from games.golf.services import stats
+
+    season = app.config['SEASON_YEAR']
+    handicap, pollyanna = golf_leagues['handicap'].id, golf_leagues['pollyanna'].id
+    brad, cy = _user('brad_both'), _user('cy_pollyanna')
+    scott = GolfPlayer(api_player_id='scott', first_name='Scottie', last_name='Scheffler')
+    rory = GolfPlayer(api_player_id='rory', first_name='Rory', last_name='McIlroy')
+    spare = GolfPlayer(api_player_id='spare', first_name='Spare', last_name='Guy')
+    start = datetime(2026, 3, 5)
+    event = GolfTournament(
+        api_tourn_id='T-two', name='Players Championship', season_year=season,
+        start_date=start, end_date=start + timedelta(days=3), pick_deadline=start,
+        purse=10_000_000, status='complete', results_finalized=True, week_number=9,
+    )
+    db.session.add_all([scott, rory, spare, event])
+    db.session.flush()
+    db.session.add_all([
+        GolfEnrollment(user_id=brad.id, league_id=handicap, season_year=season),
+        GolfEnrollment(user_id=brad.id, league_id=pollyanna, season_year=season),
+        GolfEnrollment(user_id=cy.id, league_id=pollyanna, season_year=season),
+        GolfTournamentResult(tournament_id=event.id, player_id=scott.id, status='complete',
+                             final_position='1', rounds_completed=4, earnings=100),
+        GolfTournamentResult(tournament_id=event.id, player_id=rory.id, status='complete',
+                             final_position='2', rounds_completed=4, earnings=500),
+        GolfSeasonPlayerUsage(user_id=brad.id, league_id=handicap, player_id=scott.id,
+                              season_year=season),
+        GolfSeasonPlayerUsage(user_id=brad.id, league_id=pollyanna, player_id=rory.id,
+                              season_year=season),
+        GolfPick(user_id=brad.id, league_id=handicap, tournament_id=event.id,
+                 primary_player_id=scott.id, backup_player_id=spare.id,
+                 active_player_id=scott.id, points_earned=100, admin_override=True),
+        GolfPick(user_id=brad.id, league_id=pollyanna, tournament_id=event.id,
+                 primary_player_id=rory.id, backup_player_id=spare.id,
+                 active_player_id=rory.id, points_earned=500, admin_override=True),
+    ])
+    db.session.commit()
+    names = {brad.id: 'brad_both'}
+
+    members, counts = stats._usage_counts(season, handicap)
+    assert (members, counts) == (1, {scott.id: 1})
+    assert stats.remaining_pct_map(season, handicap, [scott.id, rory.id]) == {
+        scott.id: 0, rory.id: 100,
+    }
+
+    assert set(stats.spent_weeks(brad.id, handicap, season)) == {scott.id}
+
+    race = stats.season_race(season, handicap, names)
+    assert [(s['user_id'], s['final']) for s in race['series']] == [(brad.id, 100)]
+
+    sup = stats.superlatives(season, handicap, names)
+    assert (sup.pick_of_season.golfer.id, sup.pick_of_season.amount) == (scott.id, 100)
+
+    form = stats.field_form(season, handicap)
+    assert [row.player.id for row in form.still_on_board] == [rory.id]
+
+    burn = stats.burn_list(season, handicap)
+    assert [(row.player.id, row.times_used, row.total_return) for row in burn] == [
+        (scott.id, 1, 100),
+    ]
+
+    tally = stats.override_tally(season, handicap, [event.id], names)
+    assert [(row.user_id, row.count) for row in tally] == [(brad.id, 1)]

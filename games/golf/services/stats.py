@@ -37,22 +37,26 @@ from games.golf.services.sheet import competition_ranks, ordinal
 from games.golf.utils import the_event
 
 
-def _usage_counts(season_year):
+def _usage_counts(season_year, league_id):
     """(members with a line, {player_id: members who have spent him}).
 
     Read from ``GolfSeasonPlayerUsage``, the table that gates a pick, so the
     counts move only when a result is processed, never on a pick in flight.
     The room is the season's enrollees (the sheet's own roster), and only
-    their usage is counted, so a share never passes 100.
+    their usage is counted, so a share never passes 100. One league's room:
+    its enrollees and its usage rows, never the other league's.
     """
     members = db.session.scalar(
-        select(func.count(GolfEnrollment.id)).filter_by(season_year=season_year)
+        select(func.count(GolfEnrollment.id)).filter_by(
+            season_year=season_year, league_id=league_id)
     ) or 0
     counts = dict(db.session.execute(
         select(GolfSeasonPlayerUsage.player_id, func.count(GolfSeasonPlayerUsage.id))
         .join(GolfEnrollment, (GolfEnrollment.user_id == GolfSeasonPlayerUsage.user_id)
-              & (GolfEnrollment.season_year == GolfSeasonPlayerUsage.season_year))
-        .where(GolfSeasonPlayerUsage.season_year == season_year)
+              & (GolfEnrollment.season_year == GolfSeasonPlayerUsage.season_year)
+              & (GolfEnrollment.league_id == GolfSeasonPlayerUsage.league_id))
+        .where(GolfSeasonPlayerUsage.season_year == season_year,
+               GolfSeasonPlayerUsage.league_id == league_id)
         .group_by(GolfSeasonPlayerUsage.player_id)
     ).all())
     return members, counts
@@ -63,7 +67,7 @@ def _pct(count, total):
     return round(100 * count / total) if total else 0
 
 
-def remaining_pct_map(season_year, player_ids):
+def remaining_pct_map(season_year, league_id, player_ids):
     """{player_id: % of the room that still has him}; None before any burn.
 
     The complement of the rounded burn share (100 - burned), so the pick page
@@ -71,7 +75,7 @@ def remaining_pct_map(season_year, player_ids):
     100s, while the season has no usage: the pick page draws no hatch at all
     when there is no signal.
     """
-    members, counts = _usage_counts(season_year)
+    members, counts = _usage_counts(season_year, league_id)
     if not counts:
         return None
     return {pid: 100 - _pct(counts.get(pid, 0), members) for pid in player_ids}
@@ -100,7 +104,7 @@ class SpentWeek:
     tournament: str
 
 
-def spent_weeks(user_id, season_year):
+def spent_weeks(user_id, league_id, season_year):
     """{player_id: SpentWeek} for the golfers who counted in a member's weeks.
 
     Read from the member's resolved picks (``active_player_id``, the golfer
@@ -112,6 +116,7 @@ def spent_weeks(user_id, season_year):
         select(GolfPick.active_player_id, GolfTournament.week_number, GolfTournament.name)
         .join(GolfTournament, GolfPick.tournament_id == GolfTournament.id)
         .where(GolfPick.user_id == user_id,
+               GolfPick.league_id == league_id,
                GolfTournament.season_year == season_year,
                GolfPick.active_player_id.is_not(None),
                GolfPick.points_earned.is_not(None))
@@ -202,7 +207,7 @@ def season_progress(season_year):
     return SeasonProgress(banked=int(banked), total=total)
 
 
-def season_race(season_year, names):
+def season_race(season_year, league_id, names):
     """Every member's banked total, tournament by tournament.
 
     One series per member of the room, in the sheet's order (total, then
@@ -231,6 +236,7 @@ def season_race(season_year, names):
                func.coalesce(func.sum(GolfPick.points_earned), 0))
         .join(GolfTournament, GolfPick.tournament_id == GolfTournament.id)
         .where(GolfTournament.season_year == season_year,
+               GolfPick.league_id == league_id,
                GolfTournament.results_finalized.is_(True),
                GolfPick.points_earned.is_not(None))
         .group_by(GolfPick.user_id, GolfPick.tournament_id)
@@ -434,7 +440,7 @@ def counted_golfer(pick):
     return pick.primary_player
 
 
-def _banked_picks(season_year, names):
+def _banked_picks(season_year, league_id, names):
     """The room's resolved picks on banked tournaments, golfers and event loaded."""
     picks = db.session.scalars(
         select(GolfPick)
@@ -445,6 +451,7 @@ def _banked_picks(season_year, names):
             joinedload(GolfPick.backup_player),
         )
         .where(GolfTournament.season_year == season_year,
+               GolfPick.league_id == league_id,
                GolfTournament.results_finalized.is_(True),
                GolfPick.points_earned.is_not(None))
         .order_by(GolfPick.id)
@@ -471,13 +478,13 @@ def _most(tally, played, names):
     return CountLine(names[user_id], tally[user_id], played[user_id])
 
 
-def superlatives(season_year, names):
+def superlatives(season_year, league_id, names):
     """The season's five lines, each None until the season has one.
 
     Two queries, whatever the room: its banked picks and the season's missed
     cuts. A week counts as played once its pick is resolved.
     """
-    picks = _banked_picks(season_year, names)
+    picks = _banked_picks(season_year, league_id, names)
     if not picks:
         return Superlatives(None, None, None, None, None)
     cut = _missed_cuts(season_year)
@@ -577,7 +584,7 @@ def _best_finishes(season_year, player_ids):
     return {player_id: position for player_id, (_key, position) in best.items()}
 
 
-def field_form(season_year):
+def field_form(season_year, league_id):
     """The Form Guide and Still on the Board, from the tour's own prize money.
 
     Still on the Board is the complement of the Burn List: the top earners
@@ -607,7 +614,7 @@ def field_form(season_year):
                func.lower(GolfTournamentResult.status).in_(MISSED_CUT))
         .group_by(GolfTournamentResult.player_id)
     ).all())
-    _members, spent = _usage_counts(season_year)
+    _members, spent = _usage_counts(season_year, league_id)
 
     top = earners[:FORM_GUIDE_LIMIT]
     unspent = [(player_id, prize) for player_id, prize, _events in earners
@@ -634,7 +641,7 @@ class BurnRow:
     total_return: int              # member points, the major multiplier in them
 
 
-def burn_list(season_year):
+def burn_list(season_year, league_id):
     """Every golfer the room has spent, the most burned first.
 
     The share is of the season's enrollees (the sheet's roster) and comes
@@ -642,15 +649,17 @@ def burn_list(season_year):
     to 100. The return is what the room banked on him, 0 for a usage row no
     resolved pick accounts for. Order: share, return, last name, full name.
     """
-    members, counts = _usage_counts(season_year)
+    members, counts = _usage_counts(season_year, league_id)
     if not counts:
         return []
     returns = dict(db.session.execute(
         select(GolfPick.active_player_id, func.coalesce(func.sum(GolfPick.points_earned), 0))
         .join(GolfTournament, GolfPick.tournament_id == GolfTournament.id)
         .join(GolfEnrollment, (GolfEnrollment.user_id == GolfPick.user_id)
-              & (GolfEnrollment.season_year == GolfTournament.season_year))
+              & (GolfEnrollment.season_year == GolfTournament.season_year)
+              & (GolfEnrollment.league_id == GolfPick.league_id))
         .where(GolfTournament.season_year == season_year,
+               GolfPick.league_id == league_id,
                GolfTournament.results_finalized.is_(True),
                GolfPick.active_player_id.is_not(None))
         .group_by(GolfPick.active_player_id)
@@ -675,7 +684,7 @@ class OverrideCount:
     count: int
 
 
-def override_tally(season_year, tournament_ids, names):
+def override_tally(season_year, league_id, tournament_ids, names):
     """Commish overrides per member, on the given tournaments only.
 
     The caller passes the weeks already revealed (the lock is a clock read,
@@ -689,6 +698,7 @@ def override_tally(season_year, tournament_ids, names):
         select(GolfPick.user_id, func.count(GolfPick.id))
         .join(GolfTournament, GolfPick.tournament_id == GolfTournament.id)
         .where(GolfPick.admin_override.is_(True),
+               GolfPick.league_id == league_id,
                GolfTournament.season_year == season_year,
                GolfPick.tournament_id.in_(tournament_ids))
         .group_by(GolfPick.user_id)

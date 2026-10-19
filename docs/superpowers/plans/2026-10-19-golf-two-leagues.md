@@ -158,10 +158,10 @@ Tasks A2 to A4 change service signatures the routes still call the old way, so r
 
 **Interfaces:** every listed `stats.py` function gains a `league_id` positional parameter right after `season_year` (`spent_weeks(user_id, league_id, season_year)`); the shared ones (`ytd_earnings`, `season_progress`, `_missed_cuts`, `race_chart_geometry`, `counted_golfer`) are unchanged.
 
-- [ ] **Step 1:** Failing test `test_the_other_leagues_picks_never_reach_a_leagues_aggregates`: Brad with a banked pick in each league the same week; for Handicap, `_usage_counts`, `spent_weeks`, `season_race`, `superlatives`, `field_form`, `burn_list`, `override_tally` show only the Handicap pick (assert on counts and golfer ids).
-- [ ] **Step 2:** Run; expect TypeError on the old signatures.
-- [ ] **Step 3:** Implement: each function adds `GolfPick.league_id == league_id` (or the usage/enrollment equivalent) beside its season filter.
-- [ ] **Step 4:** Run the three test files; PASS. Commit: `feat(golf): season aggregates scoped by league`
+- [x] **Step 1:** Failing test `test_the_other_leagues_picks_never_reach_a_leagues_aggregates`: Brad with a banked pick in each league the same week; for Handicap, `_usage_counts`, `spent_weeks`, `season_race`, `superlatives`, `field_form`, `burn_list`, `override_tally` show only the Handicap pick (assert on counts and golfer ids).
+- [x] **Step 2:** Run; expect TypeError on the old signatures.
+- [x] **Step 3:** Implement: each function adds `GolfPick.league_id == league_id` (or the usage/enrollment equivalent) beside its season filter.
+- [x] **Step 4:** Run the three test files; PASS. Commit: `feat(golf): season aggregates scoped by league`
 
 ### Task A4: Sync, reminders and the legacy import per league
 
