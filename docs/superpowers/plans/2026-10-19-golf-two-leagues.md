@@ -139,15 +139,15 @@ Tasks A2 to A4 change service signatures the routes still call the old way, so r
 - `services/enrollment.py`: `get_enrollment(user_id, league=None) -> GolfEnrollment | None` (`league` a `GolfLeague`; `None` = the member's lowest-ordinal enrollment this season, the registry's contract), `enrollments_for(user_id) -> list[GolfEnrollment]` (this season, by ordinal), `admin_enroll(user_id, league=None) -> GolfEnrollment` (`None` = `house_league()`).
 - `services/reads.py`: `season_enrollments(season_year, league_id)`, `tournament_picks(tournament_id, league_id)`; the rest unchanged.
 
-- [ ] **Step 1:** Failing tests in `tests/test_golf_leagues.py`:
+- [x] **Step 1:** Failing tests in `tests/test_golf_leagues.py`:
   - `test_spending_a_golfer_in_one_league_leaves_him_unspent_in_the_other`: Brad in both; a resolved pick on Scheffler in Handicap; `validate_availability` for a Pollyanna pick on Scheffler returns `[]`; after resolving that too, `GolfSeasonPlayerUsage` has two rows for (Brad, Scheffler), one per league (Review Focus 1).
   - `test_clear_resolution_deletes_only_this_leagues_usage`.
   - `test_total_points_and_penalty_are_per_line`: Handicap total ignores Pollyanna picks; Pollyanna's `penalty_per_incident=20` makes `penalty_owed()` 20 per flagged pick there and 15 in Handicap.
   - `test_get_enrollment_without_a_league_is_the_house_line_first`; `test_admin_enroll_seats_the_house_league`.
-- [ ] **Step 2:** Run; expect failures on the old signatures.
-- [ ] **Step 3:** Implement. Update the existing callers of `season_enrollments` / `tournament_picks` to pass a league id only in the service modules this task touches; the routes and the lounge come in A5 and C2 (they fail to import nothing, they fail at call time, which A5's tests cover).
-- [ ] **Step 4:** Run `tests/test_golf_leagues.py tests/test_golf_scoring.py tests/test_golf_penalty.py tests/test_golf_model_relationships.py -q`; expect PASS.
-- [ ] **Step 5:** Commit: `feat(golf): league-scoped usage, totals, penalty and the enrollment seam`
+- [x] **Step 2:** Run; expect failures on the old signatures.
+- [x] **Step 3:** Implement. Update the existing callers of `season_enrollments` / `tournament_picks` to pass a league id only in the service modules this task touches; the routes and the lounge come in A5 and C2 (they fail to import nothing, they fail at call time, which A5's tests cover).
+- [x] **Step 4:** Run `tests/test_golf_leagues.py tests/test_golf_scoring.py tests/test_golf_penalty.py tests/test_golf_model_relationships.py -q`; expect PASS.
+- [x] **Step 5:** Commit: `feat(golf): league-scoped usage, totals, penalty and the enrollment seam`
 
 ### Task A3: League-scoped season aggregates and builders
 

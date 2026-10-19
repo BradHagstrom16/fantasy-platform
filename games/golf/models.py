@@ -103,6 +103,7 @@ class GolfEnrollment(db.Model):
             sqla_func.coalesce(sqla_func.sum(GolfPick.points_earned), 0)
         ).filter(
             GolfPick.user_id == self.user_id,
+            GolfPick.league_id == self.league_id,
             GolfPick.points_earned.isnot(None)
         ).join(GolfTournament).filter(
             GolfTournament.status == 'complete',
@@ -116,6 +117,7 @@ class GolfEnrollment(db.Model):
         """Get list of player IDs this user has 'used' (locked) for the season."""
         usages = GolfSeasonPlayerUsage.query.filter_by(
             user_id=self.user_id,
+            league_id=self.league_id,
             season_year=self.season_year
         ).all()
         return [usage.player_id for usage in usages]
@@ -123,6 +125,7 @@ class GolfEnrollment(db.Model):
     def penalty_owed(self, season_year=None):
         """Total $ owed from major cut/DQ penalty-triggered picks (ADR-034).
 
+        Counts this enrollment's own league only, at that league's rate.
         Defaults to this enrollment's own season. Counts flagged picks joined
         through GolfTournament so the count stays season-scoped (GolfPick has no
         season column of its own).
@@ -134,10 +137,11 @@ class GolfEnrollment(db.Model):
             GolfTournament, GolfPick.tournament_id == GolfTournament.id
         ).filter(
             GolfPick.user_id == self.user_id,
+            GolfPick.league_id == self.league_id,
             GolfPick.penalty_triggered.is_(True),
             GolfTournament.season_year == season,
         ).scalar() or 0
-        return count * PENALTY_PER_INCIDENT
+        return count * self.league.penalty_per_incident
 
     def penalty_outstanding(self, season_year=None):
         """Penalty owed minus already-paid, clamped at zero."""
@@ -361,7 +365,7 @@ class GolfSeasonPlayerUsage(db.Model):
         return f'<GolfSeasonPlayerUsage User:{self.user_id} Player:{self.player_id} Year:{self.season_year}>'
 
 
-def _record_season_usage(user_id, player_id, season_year) -> None:
+def _record_season_usage(user_id, league_id, player_id, season_year) -> None:
     """Idempotent, race-safe season-usage insert across SQLite and Postgres.
 
     Uses the active dialect's ``INSERT ... ON CONFLICT DO NOTHING`` so that
@@ -376,7 +380,8 @@ def _record_season_usage(user_id, player_id, season_year) -> None:
         from sqlalchemy.dialects.sqlite import insert as _dialect_insert
     db.session.execute(
         _dialect_insert(GolfSeasonPlayerUsage)
-        .values(user_id=user_id, player_id=player_id, season_year=season_year)
+        .values(user_id=user_id, league_id=league_id, player_id=player_id,
+                season_year=season_year)
         .on_conflict_do_nothing()
     )
 
@@ -512,6 +517,7 @@ class GolfPick(db.Model):
 
         existing_usage = GolfSeasonPlayerUsage.query.filter(
             GolfSeasonPlayerUsage.user_id == self.user_id,
+            GolfSeasonPlayerUsage.league_id == self.league_id,
             GolfSeasonPlayerUsage.season_year == season_year,
             GolfSeasonPlayerUsage.player_id.in_([self.primary_player_id, self.backup_player_id])
         ).all()
@@ -529,7 +535,8 @@ class GolfPick(db.Model):
         Call before re-resolving a pick (e.g., after admin override or
         re-processing). Only deletes the old active player's usage if that
         player isn't active in any other resolved pick of this user's in the
-        same season (a golfer spent last season is a different ledger).
+        same season and league (a golfer spent last season, or in the other
+        league, is a different ledger).
         """
         if self.active_player_id:
             other_active = (
@@ -537,6 +544,7 @@ class GolfPick(db.Model):
                 .join(GolfTournament, GolfPick.tournament_id == GolfTournament.id)
                 .filter(
                     GolfPick.user_id == self.user_id,
+                    GolfPick.league_id == self.league_id,
                     GolfPick.active_player_id == self.active_player_id,
                     GolfPick.id != self.id,
                     GolfPick.points_earned.isnot(None),
@@ -547,6 +555,7 @@ class GolfPick(db.Model):
             if not other_active:
                 GolfSeasonPlayerUsage.query.filter_by(
                     user_id=self.user_id,
+                    league_id=self.league_id,
                     player_id=self.active_player_id,
                     season_year=season_year,
                 ).delete()
@@ -682,7 +691,8 @@ class GolfPick(db.Model):
         # Record season usage for the active player — idempotent AND race-safe via
         # a dialect-aware INSERT ... ON CONFLICT DO NOTHING (see _record_season_usage).
         _record_season_usage(
-            self.user_id, self.active_player_id, self.tournament.season_year,
+            self.user_id, self.league_id, self.active_player_id,
+            self.tournament.season_year,
         )
 
         return True
