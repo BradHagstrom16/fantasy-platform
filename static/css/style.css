@@ -7523,6 +7523,12 @@ textarea.golf-input { width: 100%; resize: vertical; }
 .golf-join-held a:hover { color: var(--game-primary-dark); }
 .golf-join-sheet .btn-game { margin: 0; }
 
+/* The other sheet on the pick page (ADR-075): one pencil line per other
+   league the member plays, under the facts, the golfers in ink. */
+.golf-other-sheets { margin: -1rem 0 1.75rem; }
+.golf-other-sheet { margin: 0; font-size: 1rem; }
+.golf-other-sheet strong { color: var(--text-primary); font-weight: 500; }
+
 /* === CFB SURVIVOR POOL === */
 
 /* -- Dark-substrate foundation: dark forms of the platform primitives CFB

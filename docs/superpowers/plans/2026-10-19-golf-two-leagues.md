@@ -255,7 +255,7 @@ Copy: one block per league in ordinal order with its name, its fee from the row,
 
 **Interfaces:** `other_sheets: list[dict]` with `league` (the row), `pick` (`GolfPick | None` for this tournament in that league), `url` (`url_for('golf.make_pick', league=..., tournament_id=...)`); empty for a member of one league. Rendered after the facts list as one `golf-pick-line` per entry: "On the {name}: {Primary}, backup {Backup} · change" or "Nothing filed on the {name} yet · pick there".
 
-- [ ] **Step 1:** Failing test `test_pick_page_tells_a_member_of_both_what_the_other_sheet_holds` (both strings; a one-league member sees neither). **Step 2:** FAIL. **Step 3:** Implement. **Step 4:** PASS (and `tests/test_golf_cleanup.py`'s query counts: one extra query per other league at most). **Step 5:** Commit: `golf: the pick page names the other sheet`
+- [x] **Step 1:** Failing test `test_pick_page_tells_a_member_of_both_what_the_other_sheet_holds` (both strings; a one-league member sees neither). **Step 2:** FAIL. **Step 3:** Implement. **Step 4:** PASS (and `tests/test_golf_cleanup.py`'s query counts: one extra query per other league at most). **Step 5:** Commit: `golf: the pick page names the other sheet` (also the A2 minors: `get_used_player_ids` docstring, `GolfPick.__repr__`)
 
 ### Task B4: The Roster's controls and the Back Office scope
 

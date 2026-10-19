@@ -116,7 +116,8 @@ class GolfEnrollment(db.Model):
         return total
 
     def get_used_player_ids(self):
-        """Get list of player IDs this user has 'used' (locked) for the season."""
+        """The player ids this line has spent this season, in this league only:
+        a golfer spent on the other sheet is still open here (ADR-075)."""
         usages = GolfSeasonPlayerUsage.query.filter_by(
             user_id=self.user_id,
             league_id=self.league_id,
@@ -832,4 +833,4 @@ class GolfPick(db.Model):
         )
 
     def __repr__(self):
-        return f'<GolfPick User:{self.user_id} Tournament:{self.tournament_id}>'
+        return f'<GolfPick User:{self.user_id} League:{self.league_id} Tournament:{self.tournament_id}>'

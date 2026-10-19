@@ -839,12 +839,29 @@ def make_pick(tournament_id):
             [top[player_id] for player_id in top_ids],
         )
 
+    # The other sheet (ADR-075): a member of more than one league is told, on
+    # each league's pick page, what this week holds on each other one. One
+    # query per other line, never per golfer.
+    other_sheets = [
+        {
+            'league': line.league,
+            'pick': db.session.scalar(select(GolfPick).where(
+                GolfPick.user_id == current_user.id,
+                GolfPick.league_id == line.league_id,
+                GolfPick.tournament_id == tournament.id,
+            )),
+            'url': url_for('golf.make_pick', league=line.league.slug, tournament_id=tournament.id),
+        }
+        for line in _viewer_lines() if line.league_id != league.id
+    ]
+
     return render_template('golf/make_pick.html',
         tournament=tournament,
         lock=lock,
         field=field,
         used_count=len(used),
         existing_pick=existing_pick,
+        other_sheets=other_sheets,
     )
 
 

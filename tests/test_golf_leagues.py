@@ -1218,3 +1218,45 @@ def test_join_page_offers_both_sheets_and_marks_the_joined_one(app, golf_leagues
         assert 'Take a seat on the Handicap Pay Sheet' not in page
         assert 'Take a seat on the Pollyanna Pay Sheet' in page
         assert page.count('name="league"') == 1
+
+
+# --- Task B3: the other sheet on the pick page --------------------------------
+
+def test_pick_page_tells_a_member_of_both_what_the_other_sheet_holds(app, golf_leagues, monkeypatch):
+    """A member of both leagues sees one line per other sheet under the facts:
+    what is filed there this week with a change link, or that nothing is,
+    with a link to pick there. A one-league member sees neither."""
+    from tests._registry_helpers import set_status
+
+    set_status(monkeypatch, 'golf', 'open')
+    handicap, pollyanna = golf_leagues['handicap'], golf_leagues['pollyanna']
+    han = _member('han_one_sheet', handicap, app=app)
+    brad = _member('brad_two_sheets', handicap, pollyanna, app=app)
+    event = _season_event(app, 'Other Sheet Open', status='upcoming', deadline_in=timedelta(days=2))
+    field = [_golfer(f'O{i:02d}', f'Othergolfer{i:02d}') for i in range(50)]
+    db.session.add_all(GolfTournamentField(tournament_id=event.id, player_id=p.id) for p in field)
+    db.session.commit()
+    event_id, primary, backup = event.id, field[0].id, field[1].id
+
+    with _viewer(app, brad) as client:
+        page = client.get(f'/golf/pollyanna/pick/{event_id}').get_data(as_text=True)
+        assert 'Nothing filed on the Handicap Pay Sheet yet' in page
+        assert f'href="/golf/handicap/pick/{event_id}">pick there</a>' in page
+        assert 'Pollyanna Pay Sheet yet' not in page
+        client.post(f'/golf/handicap/pick/{event_id}',
+                    data={'primary_player_id': primary, 'backup_player_id': backup})
+        page = client.get(f'/golf/pollyanna/pick/{event_id}').get_data(as_text=True)
+        line = page.split('class="golf-pick-line golf-other-sheet">', 1)[1].split('</p>', 1)[0]
+        assert line.startswith('On the Handicap Pay Sheet: <strong>Othergolfer00</strong>, '
+                               'backup <strong>Othergolfer01</strong>')
+        assert f'href="/golf/handicap/pick/{event_id}">change</a>' in line
+        assert 'Nothing filed' not in page
+        # The other way round, the Handicap page says Pollyanna holds nothing yet.
+        page = client.get(f'/golf/handicap/pick/{event_id}').get_data(as_text=True)
+        assert 'Nothing filed on the Pollyanna Pay Sheet yet' in page
+        assert 'On the Handicap Pay Sheet' not in page
+
+    with _viewer(app, han) as client:
+        page = client.get(f'/golf/handicap/pick/{event_id}').get_data(as_text=True)
+        assert 'golf-other-sheet' not in page
+        assert 'Nothing filed' not in page and 'On the ' not in _context_line(page)

@@ -47,6 +47,21 @@
         {% endif %}
     </dl>
 
+    {# The other sheet (ADR-075): what this week holds on each other league the member plays, so the two pages are never mixed up. #}
+    {% if other_sheets %}
+    <div class="golf-other-sheets">
+        {% for other in other_sheets %}
+        <p class="golf-pick-line golf-other-sheet">
+            {%- if other.pick -%}
+            On the {{ other.league.name }}: <strong>{{ other.pick.primary_player.last_name }}</strong>, backup <strong>{{ other.pick.backup_player.last_name }}</strong> · <a class="golf-tap" href="{{ other.url }}">change</a>
+            {%- else -%}
+            Nothing filed on the {{ other.league.name }} yet · <a class="golf-tap" href="{{ other.url }}">pick there</a>
+            {%- endif -%}
+        </p>
+        {% endfor %}
+    </div>
+    {% endif %}
+
     {% if not field %}
     <p class="golf-empty">The field publishes Tuesday. Picks open then.</p>
 
