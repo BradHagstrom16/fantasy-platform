@@ -49,7 +49,7 @@
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <button type="submit" name="action" value="{{ 'remove' if e.is_admin else 'make' }}" class="golf-linkbtn">{{ 'Remove commish' if e.is_admin else 'Make commish' }}</button>
                                 </form>
-                                <span class="golf-pick-dot"> · </span>
+                                <span class="golf-roster-acts-dot" aria-hidden="true"> · </span>
                                 <form method="POST" action="{{ url_for('golf.admin_move_line', user_id=e.user_id) }}">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <button type="submit" class="golf-linkbtn">Move to the {{ other_league.name }}</button>

@@ -1292,6 +1292,8 @@ def test_platform_admin_appoints_and_removes_a_commissioner(app, golf_leagues):
         assert 'Make commish' in roster and 'Remove commish' not in roster
         assert f'action="/golf/pollyanna/admin/move/{cy}"' in roster
         assert 'Move to the Handicap Pay Sheet' in roster
+        acts = roster.split('golf-roster-acts', 1)[1].split('</span>', 1)[0]
+        assert 'golf-pick-dot' not in acts   # the separator must survive a phone
 
         made = client.post(f'/golf/pollyanna/admin/commissioner/{cy}', data={'action': 'make'})
         assert _lands(made, '/golf/pollyanna/admin/users')

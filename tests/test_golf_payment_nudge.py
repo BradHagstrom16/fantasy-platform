@@ -54,6 +54,8 @@ def test_nudge_shows_for_an_unpaid_line_in_that_league_only(app, golf_leagues):
         assert 'Settle the tab' in card and '$30' in card and 'Pollyanna Pay Sheet' in card
         assert 'Unpaid' in card and nudge['venmo_url'].replace('&', '&amp;') in card
         assert app.config['PAYMENT_ZELLE_PHONE'] in card
+        # The rails read as one sentence at every width: no dot the phone hides.
+        assert 'on Venmo</a>, or Zelle' in card and 'golf-pick-dot' not in card
         # After your line, before the sheet itself (the room's order).
         assert (pollyanna_sheet.index('Your line') < pollyanna_sheet.index('id="golf-settle-tab"')
                 < pollyanna_sheet.index('>The Sheet</h1>'))
