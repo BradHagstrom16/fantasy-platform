@@ -1181,3 +1181,40 @@ def test_record_room_lists_only_this_leagues_seasons(app, golf_leagues):
         assert f'{season - 1} season' not in pollyanna_room
         assert anonymous.get(f'/golf/pollyanna/stats?season={season - 1}').status_code == 404
         assert anonymous.get(f'/golf/handicap/stats?season={season - 1}').status_code == 200
+
+
+# --- Task B2: the join page with two sheets ----------------------------------
+
+def test_join_page_offers_both_sheets_and_marks_the_joined_one(app, golf_leagues, monkeypatch):
+    """One rules card, then a block per sheet in ordinal order: its name, its
+    own fee, who it is for, and one seat button; a sheet the member already
+    holds says so and links its standings instead."""
+    from tests._registry_helpers import set_status
+
+    set_status(monkeypatch, 'golf', 'open')
+    handicap, pollyanna = golf_leagues['handicap'], golf_leagues['pollyanna']
+    pollyanna.entry_fee = 40
+    db.session.commit()
+    newcomer = _member('join_newcomer', app=app)
+    han = _member('join_han', handicap, app=app)
+
+    with _viewer(app, newcomer) as client:
+        page = client.get('/golf/join').get_data(as_text=True)
+        assert page.index('Handicap Pay Sheet') < page.index('Pollyanna Pay Sheet')
+        assert 'The Thursday crowd that came over from the old site.' in page
+        assert 'The group that moved over from Splash.' in page
+        assert 'Take a seat on the Handicap Pay Sheet' in page
+        assert 'Take a seat on the Pollyanna Pay Sheet' in page
+        assert '$25' in page and '$40' in page
+        assert page.count('name="league"') == 2
+        assert "You're on this sheet" not in page and '&#39;re on this sheet' not in page
+        copy = page.split('page-hero', 1)[1].split('<footer', 1)[0]
+        assert '—' not in copy and '&mdash;' not in copy
+
+    with _viewer(app, han) as client:
+        page = client.get('/golf/join').get_data(as_text=True)
+        held = page.split('Handicap Pay Sheet', 1)[1].split('Pollyanna Pay Sheet', 1)[0]
+        assert 're on this sheet' in held and 'href="/golf/handicap/"' in held
+        assert 'Take a seat on the Handicap Pay Sheet' not in page
+        assert 'Take a seat on the Pollyanna Pay Sheet' in page
+        assert page.count('name="league"') == 1

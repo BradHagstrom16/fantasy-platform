@@ -36,6 +36,7 @@ from sqlalchemy.orm import contains_eager, joinedload
 from extensions import db
 from games.common import enrollment_required, game_must_be_open
 from games.golf import golf_bp
+from games.golf.constants import LEAGUE_BLURBS
 from games.golf.models import (
     GolfEnrollment,
     GolfLeague,
@@ -477,7 +478,8 @@ def join():
                 flash(f'Welcome to the {league.name}!', 'success')
         return redirect(url_for('golf.index', league=league.slug))
 
-    return render_template('golf/join.html', leagues=all_leagues, joined=joined)
+    return render_template('golf/join.html', leagues=all_leagues, joined=joined,
+                           blurbs=LEAGUE_BLURBS)
 
 
 @golf_bp.route('/leaderboard')

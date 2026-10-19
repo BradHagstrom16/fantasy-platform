@@ -245,7 +245,7 @@ Branch `golf-two-leagues-b` from `main` after PR A. Every task here runs `impecc
 
 Copy: one block per league in ordinal order with its name, its fee from the row, a one-line "who this sheet is for" placeholder Brad replaces (`Handicap`: "The Thursday crowd that came over from the old site."; `Pollyanna`: "The group that moved over from Splash."), and one `.btn-game` per league reading "Take a seat on the {name}"; a league the viewer is already on shows "You're on this sheet" and a link to its standings instead of the button. The rules card stays once, above both.
 
-- [ ] **Step 1:** Failing test `test_join_page_offers_both_sheets_and_marks_the_joined_one`. **Step 2:** FAIL. **Step 3:** Implement under impeccable. **Step 4:** PASS. **Step 5:** Commit: `golf: the join page offers both sheets`
+- [x] **Step 1:** Failing test `test_join_page_offers_both_sheets_and_marks_the_joined_one`. **Step 2:** FAIL. **Step 3:** Implement under impeccable. **Step 4:** PASS. **Step 5:** Commit: `golf: the join page offers both sheets`
 
 ### Task B3: The other sheet on the pick page
 

@@ -7441,6 +7441,88 @@ textarea.golf-input { width: 100%; resize: vertical; }
 }
 .golf-confirm-act .golf-btn { margin: 0; }
 
+/* The join page (DESIGN.md §7.12, ADR-075): the platform join shape (hero,
+   card, .btn-game) with the room's materials inside the card. House rules as
+   a term over its line on hairlines, once; then the sheets, each a section on
+   a 2px ink rule naming who it is for, its own fee and one seat button. */
+.golf-join-rules { margin: 0; }
+.golf-join-rule { padding: .95rem 0; border-top: 1px solid var(--golf-rule); }
+.golf-join-rule:first-child { border-top: 0; padding-top: 0; }
+.golf-join-rule:last-child { padding-bottom: 0; }
+.golf-join-rule dt {
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  font-size: 1.05rem;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+  margin-bottom: .15rem;
+}
+.golf-join-rule dd {
+  margin: 0;
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: 1rem;
+  line-height: 1.55;
+  color: var(--text-secondary);
+  max-width: 62ch;
+}
+.golf-join-name {
+  margin: 1.5rem 0 0;
+  padding-top: 1rem;
+  border-top: 1px solid var(--golf-rule);
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: 1rem;
+  color: var(--text-secondary);
+}
+.golf-join-name strong { color: var(--text-primary); font-weight: 500; }
+.golf-join-sheets { margin-top: 1.75rem; }
+.golf-join-sheet { padding: 1rem 0 1.5rem; border-top: 2px solid var(--text-primary); }
+.golf-join-sheet:last-child { padding-bottom: 0; }
+.golf-join-sheet-name {
+  font-family: 'Teko', sans-serif;
+  font-weight: 600;
+  font-size: 1.5rem;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+  margin: 0 0 .25rem;
+}
+.golf-join-sheet-who {
+  margin: 0 0 .5rem;
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: 1.05rem;
+  line-height: 1.5;
+  color: var(--text-primary);
+  max-width: 55ch;
+}
+.golf-join-sheet-fee {
+  margin: 0 0 1rem;
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: 1rem;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums lining-nums;
+}
+.golf-join-sheet-fee strong { color: var(--text-primary); font-weight: 500; }
+.golf-join-held {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 .5rem;
+  margin: 0;
+  min-height: 44px;
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: 1rem;
+  color: var(--text-primary);
+}
+.golf-join-held a {
+  color: var(--game-primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  padding: .8rem 0;
+}
+.golf-join-held a:hover { color: var(--game-primary-dark); }
+.golf-join-sheet .btn-game { margin: 0; }
+
 /* === CFB SURVIVOR POOL === */
 
 /* -- Dark-substrate foundation: dark forms of the platform primitives CFB

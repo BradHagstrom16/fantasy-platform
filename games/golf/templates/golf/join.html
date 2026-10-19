@@ -1,57 +1,70 @@
 {% extends "base.html" %}
-{% block title %}Join — The Pay Sheet{% endblock %}
+{% block title %}Take a Seat · The Pay Sheet{% endblock %}
 
 {% block content %}
 <div class="page-hero">
   <div class="hero-glow"></div>
   <div class="container">
-    <h1>Join The Pay Sheet</h1>
+    <h1>Take a Seat</h1>
     <p class="lead">Golf One &amp; Done. Pick a golfer, bank their earnings, spend them once.</p>
-    <p class="lead mb-0">{{ season_year }} PGA Tour Season &mdash; two leagues, one rule set</p>
+    <p class="lead mb-0">The {{ season_year }} PGA Tour season: two sheets, one rule set.</p>
   </div>
 </div>
 
 <div class="container pb-5">
   <div class="row justify-content-center">
-    <div class="col-lg-6 col-md-8">
+    <div class="col-lg-7 col-md-9">
+      <div class="card border-0 animate-in">
+        <div class="card-body p-4 p-md-5">
 
-      <div class="card border-0 shadow-sm animate-in">
-        <div class="card-body p-4">
-          <h3 class="mb-3" style="font-family:'Teko',sans-serif; text-transform:uppercase; letter-spacing:.04em;">How It Works</h3>
-          <ul class="mb-4">
-            <li>Pick <strong>one primary + one backup golfer</strong> per tournament</li>
-            <li>Points equal actual prize money earned by your active pick</li>
-            <li>Each golfer can be used only <strong>once per season</strong></li>
-            <li>Backup activates if your primary withdraws before Round 2</li>
-            <li>Majors earn 1.5× points; at team events both partners earn the full team payout</li>
-          </ul>
+          {# House rules once, above both sheets: a term over its plain line, on hairlines. #}
+          <dl class="golf-join-rules">
+            <div class="golf-join-rule">
+              <dt>Every week</dt>
+              <dd>Name a primary and a backup from the field. Your golfer's prize money is your score; a major pays &times;1.5, and at a team event both partners earn the full team payout.</dd>
+            </div>
+            <div class="golf-join-rule">
+              <dt>Once only</dt>
+              <dd>Spend a golfer and he is gone for the season. The game is deciding when each one is worth spending.</dd>
+            </div>
+            <div class="golf-join-rule">
+              <dt>The backup</dt>
+              <dd>Plays only if your primary withdraws before finishing round 2.</dd>
+            </div>
+            <div class="golf-join-rule">
+              <dt>The pot</dt>
+              <dd>A missed cut or a DQ at a major puts a penalty in the side pot. Each sheet names its figure below.</dd>
+            </div>
+          </dl>
 
           {# One name per member (ADR-057): the page states it, never collects it. #}
-          <p id="join-current-name">
+          <p class="golf-join-name" id="join-current-name">
             You stand as <strong>{{ current_user.get_display_name() }}</strong>.
             <a href="{{ url_for('auth.profile') }}">Change your name</a> on your profile.
           </p>
 
-          {# One form per league; a league the member already holds is marked, not offered. #}
-          {% for league in leagues %}
-          <div class="mb-3">
-            <h4 class="h5 mb-1">{{ league.name }}</h4>
-            <p class="mb-2">${{ league.entry_fee }} entry</p>
-            {% if league.id in joined %}
-            <p class="mb-0"><strong>Joined.</strong> <a href="{{ url_for('golf.index', league=league.slug) }}">Your sheet</a></p>
-            {% else %}
-            <form method="POST">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-              <button type="submit" name="league" value="{{ league.slug }}" class="btn btn-game btn-lg w-100">
-                <i class="bi bi-flag-fill me-2"></i>Join the {{ league.name }}
-              </button>
-            </form>
-            {% endif %}
+          {# The sheets, in ordinal order: who each is for, its own fee, one seat button.
+             A sheet the member already holds says so and opens its standings instead (ADR-075). #}
+          <div class="golf-join-sheets">
+            {% for league in leagues %}
+            <section class="golf-join-sheet" aria-labelledby="golf-join-{{ league.slug }}">
+              <h2 class="golf-join-sheet-name" id="golf-join-{{ league.slug }}">{{ league.name }}</h2>
+              <p class="golf-join-sheet-who">{{ blurbs[league.slug] }}</p>
+              <p class="golf-join-sheet-fee"><strong>${{ league.entry_fee }}</strong> a seat for the season. ${{ league.penalty_per_incident }} to the pot for a missed cut at a major.</p>
+              {% if league.id in joined %}
+              <p class="golf-join-held"><strong>You're on this sheet.</strong> <a href="{{ url_for('golf.index', league=league.slug) }}">Your sheet</a></p>
+              {% else %}
+              <form method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <button type="submit" name="league" value="{{ league.slug }}" class="btn btn-game btn-lg w-100">Take a seat on the {{ league.name }}</button>
+              </form>
+              {% endif %}
+            </section>
+            {% endfor %}
           </div>
-          {% endfor %}
+
         </div>
       </div>
-
     </div>
   </div>
 </div>
