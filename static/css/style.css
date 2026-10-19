@@ -7534,6 +7534,25 @@ textarea.golf-input { width: 100%; resize: vertical; }
 .golf-roster-acts form { display: inline; }
 .golf-roster-acts .golf-linkbtn { font-size: .95rem; }
 
+/* Settle the Tab on The Sheet (ADR-056; ADR-075 D4): a leaf under your line,
+   never the platform card (no gold, no card in the room). The Unpaid chip is
+   the one red word; the rails are a sentence, the Zelle number selectable. */
+.golf-your-line + .golf-settle { margin-top: 1.75rem; }
+.golf-settle .golf-leaf-lead strong { color: var(--text-primary); font-weight: 500; }
+.golf-settle-rails {
+  margin: .25rem 0 0;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+.golf-settle-zelle {
+  color: var(--text-primary);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums lining-nums;
+  white-space: nowrap;
+  user-select: all;
+}
+
 /* === CFB SURVIVOR POOL === */
 
 /* -- Dark-substrate foundation: dark forms of the platform primitives CFB

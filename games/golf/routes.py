@@ -51,6 +51,7 @@ from games.golf.services.api_usage import read_api_usage
 from games.golf.services.enrollment import enrollments_for, get_enrollment
 from games.golf.services.field import build_field, search_key, top_unspent_ids
 from games.golf.services.leagues import house_league, league_by_slug, leagues
+from games.golf.services.payment import payment_nudge_for
 from games.golf.services.reads import (
     next_tournament as _next_tournament,
 )
@@ -426,6 +427,8 @@ def index():
     return render_template('golf/index.html',
         sheet=sheet,
         clock=clock,
+        # Settle the Tab (ADR-056): this league's line, this league's fee.
+        payment_nudge=payment_nudge_for(_viewer_line(), getattr(current_user, 'is_admin', False)),
         next_tournament=next_tournament,
         next_lock=format_lock(next_tournament.pick_deadline) if next_tournament else None,
         field_open=field_open,

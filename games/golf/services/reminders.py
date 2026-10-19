@@ -42,6 +42,7 @@ from games.golf.models import (
     GolfTournamentResult,
 )
 from games.golf.services.leagues import leagues
+from games.golf.services.payment import payment_nudge_for
 from games.golf.services.reads import season_enrollments, tournament_picks
 from games.golf.utils import GOLF_LEAGUE_TZ, format_score_to_par, the_event
 from utils.email import send_platform_email
@@ -50,6 +51,7 @@ from utils.email_layout import (
     format_deadline_short,
     render_letter,
     result_block,
+    tab_block,
 )
 from utils.reminders import tier_already_sent
 
@@ -79,8 +81,8 @@ MIN_FIELD_SIZE = 50
 ADMIN_ALERT_NAME = "Commish"
 
 # The one rule every golf letter restates (picks-open in full, reminders in
-# brief). Golf has no payment gate (ADR-056 covers CFB + Docket only), so no
-# tab strip rides these letters.
+# brief). The tab strip (ADR-056) rides the picks-open letter alone, naming
+# the league's own fee (services/payment.py).
 PICK_RULE = ('Pick a primary golfer and a backup. Each golfer can be spent '
              'once this season. Points are the actual prize money your '
              'golfer earns.')
@@ -148,7 +150,7 @@ def is_field_ready(tournament_id, minimum=MIN_FIELD_SIZE):
 # =============================================================================
 
 def _picks_open_letter(*, league, tournament_name, deadline_short, purse, pick_url,
-                       season_total, golfers_used, season_year):
+                       season_total, golfers_used, season_year, nudge=None):
     """The field-is-set note as a Club Letter (a broadcast: no greeting).
 
     The season block is the letter's per-recipient depth: the casual reader
@@ -169,6 +171,7 @@ def _picks_open_letter(*, league, tournament_name, deadline_short, purse, pick_u
         ])],
         cta=('Spend a golfer', pick_url),
         supporting=[PICK_RULE],
+        notes=[tab_block(nudge, 'golf', name=league.name)],
     )
 
 
@@ -239,6 +242,7 @@ def send_picks_open_email(tournament_id_or_obj) -> int:
                 season_total=enrollment.total_points or 0,
                 golfers_used=len(enrollment.get_used_player_ids()),
                 season_year=season_year,
+                nudge=payment_nudge_for(enrollment, bool(user.is_admin)),
             )
             plain, html = render_letter(letter)
             if send_platform_email(user.email, letter.subject, plain, html):

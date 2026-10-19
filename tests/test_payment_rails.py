@@ -1,7 +1,7 @@
 """Platform payment rails — ``utils/payment.py::payment_rails``.
 
 The single builder every member-facing "Settle the Tab" nudge (CFB, Docket,
-future Golf) and picks-open email reads. Rails are platform config
+Golf per league) and picks-open email reads. Rails are platform config
 (``PAYMENT_VENMO_HANDLE`` / ``PAYMENT_ZELLE_PHONE``), never per-game
 constants. The frozen World Cup keeps its own constants and is not covered
 here (tests/test_worldcup_payment_nudge.py).

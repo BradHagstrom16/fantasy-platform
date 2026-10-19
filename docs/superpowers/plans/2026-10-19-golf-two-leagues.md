@@ -284,8 +284,9 @@ Copy: one block per league in ordinal order with its name, its fee from the row,
 - `payment_nudge_for(user, league: GolfLeague) -> dict | None`: `None` unless the viewer holds a line in `league` with `has_paid` False and is neither platform admin nor that league's commissioner, or when `PAYMENT_VENMO_HANDLE` and `PAYMENT_ZELLE_PHONE` are both blank; otherwise the dict `utils/payment.py` builds (Venmo link, Zelle number) plus `amount = league.entry_fee` and `league_name = league.name`. Room surfaces only (never the join page or the lounge, ADR-056); `has_paid` stays admin-confirmed.
 - The card is a `.golf-*` leaf on the league's sheet (impeccable, `games/golf/DESIGN.md`; red stays a deduction: "Unpaid" is the one red word); the letter's footnote strip names the league's fee and Brad's rails.
 
-- [ ] **Step 1:** Failing tests: `test_nudge_shows_for_an_unpaid_line_in_that_league_only` (Brad unpaid in Pollyanna, paid in Handicap: the Pollyanna sheet carries the card with Pollyanna's fee, the Handicap sheet does not); `test_nudge_hides_for_admins_commissioners_and_blank_rails`; `test_picks_open_letter_carries_the_leagues_fee_strip`.
-- [ ] **Step 2:** FAIL. **Step 3:** Implement under impeccable. **Step 4:** PASS; full suite + ruff; the D3 assertion audit in the PR body. **Step 5:** Commit: `golf: Settle the Tab per league`. Smoke the sheet, the four Back Office pages and the card on 5099; open PR B; CodeRabbit clean; merge.
+- [x] **Step 1:** Failing tests: `test_nudge_shows_for_an_unpaid_line_in_that_league_only` (Brad unpaid in Pollyanna, paid in Handicap: the Pollyanna sheet carries the card with Pollyanna's fee, the Handicap sheet does not); `test_nudge_hides_for_admins_commissioners_and_blank_rails`; `test_picks_open_letter_carries_the_leagues_fee_strip` (+ `test_no_member_self_mark_control`).
+- [x] **Step 2:** FAIL. **Step 3:** Implement under impeccable (the gate takes the line, `payment_nudge_for(line, is_platform_admin)`, the CFB/Docket shape; the card is a `.golf-leaf` of the room's own, not the platform partial; `tab_block` gained `name=` so the strip names the league). **Step 4:** PASS; full suite + ruff; the D3 assertion audit in the PR body. **Step 5:** Commit: `golf: Settle the Tab per league`.
+- [ ] **Step 6:** Smoke the sheet, the four Back Office pages and the card on 5099; open PR B; CodeRabbit clean; merge.
 
 ---
 
@@ -336,7 +337,7 @@ Branch `golf-two-leagues-c` from `main` after PR B.
 
 **Files:**
 - Modify: `ARCHITECTURE_DECISION_LOG.md` (ADR-075: two leagues in one game; options: two registry slugs, one slug with a league dimension; choice and rationale from Part 1)
-- Modify: `games/golf/DESIGN.md` (§3 the room's URL carries the league; §9 invariants: every league read is league-scoped, the URL is the league, the usage key is per league, the commissioner is the league enrollment, Settle the Book is platform-only, the record is per division)
+- Modify: `games/golf/DESIGN.md` (§3 the room's URL carries the league; §9 invariants: every league read is league-scoped, the URL is the league, the usage key is per league, the commissioner is the league enrollment, Settle the Book is platform-only, the record is per division; the PR B reconciliations: §6.11 and §7.14 (Settle the Tab is the room's own `.golf-leaf` on The Sheet since PR B, not the platform partial; the entry fee only, no penalties), §7.11 (the small line is the league's name beside the season, the switch pill `.subnav-pill--switch` for a member of both, the Schedule pill's `?league=`), §7.12 (the two-sheet join page, `LEAGUE_BLURBS`, "Take a seat on the {name}"), §7.8 (the other-sheet line under the facts), §8.20 (the Roster's controls, the commissioner's four-leaf book and tab-only dashboard), the §9 "The name" bullet)
 - Modify: `CLAUDE.md` (golf bullet: two leagues, `/golf/<league>/`, `flask golf league list|set`, `import-legacy --league`; records bullet: division; the `records close golf` line)
 - Modify: `docs/golf-pickem-launch-prep-roadmap-2026-06-30.md` (the prod import runbook adds `--league handicap`)
 - Test: `tests/test_golf_design_doc.py`, `tests/test_design_*.py`
