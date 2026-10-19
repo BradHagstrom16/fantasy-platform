@@ -1,4 +1,4 @@
-"""The scorecard (/golf/member/<id>): Golf Phase U4.
+"""The scorecard (/golf/handicap/member/<id>): Golf Phase U4.
 
 Locks ``games/golf/services/scorecard.py`` and the page built from it
 (games/golf/DESIGN.md §8, §9):
@@ -9,7 +9,7 @@ Locks ``games/golf/services/scorecard.py`` and the page built from it
 - rank and total are the sheet's own row, pencil included;
 - every read is season-scoped, and the query count does not grow with the
   weeks or the room;
-- /golf/my-picks is the old address and redirects to the member's own card.
+- /golf/handicap/my-picks is the old address and redirects to the member's own card.
 
 The routing, secrecy, tile and ledger cases are ported from the legacy app's
 ``tests/test_member_scorecard.py``. Every clock-dependent test pins
@@ -64,13 +64,13 @@ def sunday(monkeypatch):
 
 # --- seed helpers (run inside the fixture's app context) --------------------
 
-def _member(season, username, display_name=None, total=0, has_paid=True, penalty_paid=0):
+def _member(season, username, display_name=None, total=0, has_paid=True, penalty_paid=0, *, league_id):
     user = User(username=username, email=f'{username}@test.com',
                 display_name=display_name or username)
     user.set_password('pw')
     db.session.add(user)
     db.session.flush()
-    db.session.add(GolfEnrollment(user_id=user.id, season_year=season, total_points=total,
+    db.session.add(GolfEnrollment(user_id=user.id, league_id=league_id, season_year=season, total_points=total,
                                   has_paid=has_paid, penalty_paid=penalty_paid))
     db.session.commit()
     return user
@@ -106,23 +106,23 @@ def _result(tournament, player, position='1', status='complete', rounds=4, earni
     db.session.commit()
 
 
-def _pick(user, tournament, primary, backup, **kwargs):
-    pick = GolfPick(user_id=user.id, tournament_id=tournament.id,
+def _pick(user, tournament, primary, backup, *, league_id, **kwargs):
+    pick = GolfPick(user_id=user.id, league_id=league_id, tournament_id=tournament.id,
                     primary_player_id=primary.id, backup_player_id=backup.id, **kwargs)
     db.session.add(pick)
     db.session.commit()
     return pick
 
 
-def _banked(user, tournament, primary, backup, points, counted=None, **kwargs):
+def _banked(user, tournament, primary, backup, points, counted=None, *, league_id, **kwargs):
     """A resolved pick with the usage row the scoring would have written."""
     counted = counted or primary
     pick = _pick(
         user, tournament, primary, backup, active_player_id=counted.id, points_earned=points,
-        primary_used=counted is primary, backup_used=counted is backup, **kwargs,
+        primary_used=counted is primary, backup_used=counted is backup, league_id=league_id, **kwargs,
     )
     db.session.add(GolfSeasonPlayerUsage(
-        user_id=user.id, player_id=counted.id, season_year=tournament.season_year,
+        user_id=user.id, league_id=league_id, player_id=counted.id, season_year=tournament.season_year,
     ))
     db.session.commit()
     return pick
@@ -145,7 +145,7 @@ def _login(client, user):
 
 
 def _get(client, user, **query):
-    return client.get(f'/golf/member/{user.id}', query_string=query)
+    return client.get(f'/golf/handicap/member/{user.id}', query_string=query)
 
 
 def _body(client, user, **query):
@@ -181,7 +181,7 @@ def _count_sql():
         event.remove(db.engine, 'before_cursor_execute', _before)
 
 
-def _two_weeks_and_the_masters(season):
+def _two_weeks_and_the_masters(season, *, league_id):
     """Viewer and Rival through two banked weeks, the Masters next, the RBC after.
 
     Week 11: the viewer's Alpha finished 2nd ($500,000); Rival's Bravo missed
@@ -189,8 +189,8 @@ def _two_weeks_and_the_masters(season):
     Charlie, counted ($120,000); Rival had no pick. Week 13 is the Masters
     (a major), week 14 the RBC Heritage.
     """
-    viewer = _member(season, 'viewer', display_name='ViewerLine', total=620_000)
-    rival = _member(season, 'rival', display_name='RivalLine', total=0)
+    viewer = _member(season, 'viewer', display_name='ViewerLine', total=620_000, league_id=league_id)
+    rival = _member(season, 'rival', display_name='RivalLine', total=0, league_id=league_id)
     g = {name: _golfer(name) for name in (
         'Alpha', 'Bravo', 'Charlie', 'Withdrew', 'Spare', 'Hotgolfer', 'Coldgolfer')}
     valspar = _week(season, 'Valspar Championship', 11, datetime(2026, 3, 19))
@@ -203,9 +203,9 @@ def _two_weeks_and_the_masters(season):
     _result(valspar, g['Bravo'], position='CUT', status='cut', rounds=2)
     _result(houston, g['Withdrew'], position='WD', status='wd', rounds=1)
     _result(houston, g['Charlie'], position='T12', earnings=120_000, score=-4)
-    _banked(viewer, valspar, g['Alpha'], g['Spare'], 500_000)
-    _banked(rival, valspar, g['Bravo'], g['Spare'], 0)
-    _banked(viewer, houston, g['Withdrew'], g['Charlie'], 120_000, counted=g['Charlie'])
+    _banked(viewer, valspar, g['Alpha'], g['Spare'], 500_000, league_id=league_id)
+    _banked(rival, valspar, g['Bravo'], g['Spare'], 0, league_id=league_id)
+    _banked(viewer, houston, g['Withdrew'], g['Charlie'], 120_000, counted=g['Charlie'], league_id=league_id)
     return viewer, rival, g, {'valspar': valspar, 'houston': houston, 'masters': masters, 'rbc': rbc}
 
 
@@ -213,16 +213,16 @@ def _two_weeks_and_the_masters(season):
 # Routing
 # ============================================================================
 
-def test_scorecard_is_public_and_named_for_its_member(app, client, season, tuesday):
-    viewer, rival, *_ = _two_weeks_and_the_masters(season)
+def test_scorecard_is_public_and_named_for_its_member(app, client, season, tuesday, golf_leagues):
+    viewer, rival, *_ = _two_weeks_and_the_masters(season, league_id=golf_leagues['handicap'].id)
 
     body = _body(client, rival)                     # signed out
     assert 'RivalLine&#39;s Scorecard</h1>' in body
     assert 'golf-your-line--theirs' in body         # no pen bracket on a line that is not yours
 
 
-def test_your_own_scorecard_is_yours(app, client, season, tuesday):
-    viewer, rival, *_ = _two_weeks_and_the_masters(season)
+def test_your_own_scorecard_is_yours(app, client, season, tuesday, golf_leagues):
+    viewer, rival, *_ = _two_weeks_and_the_masters(season, league_id=golf_leagues['handicap'].id)
     _login(client, viewer)
 
     body = _body(client, viewer)
@@ -232,50 +232,50 @@ def test_your_own_scorecard_is_yours(app, client, season, tuesday):
     assert 'RivalLine&#39;s Scorecard</h1>' in theirs and 'golf-your-line--theirs' in theirs
 
 
-def test_scorecard_404s_without_a_line(app, client, season, tuesday):
-    viewer, *_ = _two_weeks_and_the_masters(season)
+def test_scorecard_404s_without_a_line(app, client, season, tuesday, golf_leagues):
+    viewer, *_ = _two_weeks_and_the_masters(season, league_id=golf_leagues['handicap'].id)
     outsider = User(username='no_line', email='no_line@test.com')
     outsider.set_password('pw')
     db.session.add(outsider)
     db.session.commit()
 
-    assert client.get('/golf/member/999999').status_code == 404
+    assert client.get('/golf/handicap/member/999999').status_code == 404
     assert _get(client, outsider).status_code == 404          # a platform user with no line
     assert _get(client, viewer, season=season - 1).status_code == 404
     assert _get(client, viewer, season='soon').status_code == 404
 
 
-def test_switcher_lands_on_the_scorecards_own_url(app, client, season, tuesday):
-    viewer, rival, *_ = _two_weeks_and_the_masters(season)
+def test_switcher_lands_on_the_scorecards_own_url(app, client, season, tuesday, golf_leagues):
+    viewer, rival, *_ = _two_weeks_and_the_masters(season, league_id=golf_leagues['handicap'].id)
 
-    resp = client.get('/golf/member', query_string={'user_id': rival.id})
+    resp = client.get('/golf/handicap/member', query_string={'user_id': rival.id})
     assert resp.status_code == 302
-    assert resp.headers['Location'].endswith(f'/golf/member/{rival.id}')
+    assert resp.headers['Location'].endswith(f'/golf/handicap/member/{rival.id}')
 
-    resp = client.get('/golf/member', query_string={'user_id': rival.id, 'season': season - 1})
-    assert resp.headers['Location'].endswith(f'/golf/member/{rival.id}?season={season - 1}')
+    resp = client.get('/golf/handicap/member', query_string={'user_id': rival.id, 'season': season - 1})
+    assert resp.headers['Location'].endswith(f'/golf/handicap/member/{rival.id}?season={season - 1}')
 
     # isdigit() would pass a superscript two on to int(), which refuses it.
-    resp = client.get('/golf/member', query_string={'user_id': '²'})
+    resp = client.get('/golf/handicap/member', query_string={'user_id': '²'})
     assert resp.status_code == 302
-    assert resp.headers['Location'].endswith('/golf/')
+    assert resp.headers['Location'].endswith('/golf/handicap/')
 
 
-def test_bare_member_address_is_your_own_scorecard(app, client, season, tuesday):
-    viewer, *_ = _two_weeks_and_the_masters(season)
+def test_bare_member_address_is_your_own_scorecard(app, client, season, tuesday, golf_leagues):
+    viewer, *_ = _two_weeks_and_the_masters(season, league_id=golf_leagues['handicap'].id)
     _login(client, viewer)
 
-    resp = client.get('/golf/member')
+    resp = client.get('/golf/handicap/member')
     assert resp.status_code == 302
-    assert resp.headers['Location'].endswith(f'/golf/member/{viewer.id}')
+    assert resp.headers['Location'].endswith(f'/golf/handicap/member/{viewer.id}')
 
 
-def test_switcher_lists_the_seasons_members_and_posts_without_script(app, client, season, tuesday):
-    viewer, rival, *_ = _two_weeks_and_the_masters(season)
+def test_switcher_lists_the_seasons_members_and_posts_without_script(app, client, season, tuesday, golf_leagues):
+    viewer, rival, *_ = _two_weeks_and_the_masters(season, league_id=golf_leagues['handicap'].id)
     body = _body(client, rival)
 
     form = body[body.index('<form class="golf-switch"'):body.index('</form>')]
-    assert 'method="get"' in form and 'action="/golf/member"' in form
+    assert 'method="get"' in form and 'action="/golf/handicap/member"' in form
     assert f'<option value="{rival.id}" selected>RivalLine</option>' in form
     assert f'<option value="{viewer.id}">ViewerLine</option>' in form
     assert form.index('RivalLine') < form.index('ViewerLine')      # by name
@@ -283,31 +283,31 @@ def test_switcher_lists_the_seasons_members_and_posts_without_script(app, client
     assert '<script' not in (TEMPLATES / 'member_scorecard.html').read_text()
 
 
-def test_my_picks_asks_a_guest_to_sign_in(app, client, season, tuesday, monkeypatch):
+def test_my_picks_asks_a_guest_to_sign_in(app, client, season, tuesday, monkeypatch, golf_leagues):
     set_status(monkeypatch, 'golf', 'open')
-    _two_weeks_and_the_masters(season)
+    _two_weeks_and_the_masters(season, league_id=golf_leagues['handicap'].id)
 
-    resp = client.get('/golf/my-picks')
+    resp = client.get('/golf/handicap/my-picks')
     assert resp.status_code == 302 and '/login' in resp.headers['Location']
 
 
-def test_my_picks_is_the_old_address(app, client, season, tuesday, monkeypatch):
+def test_my_picks_is_the_old_address(app, client, season, tuesday, monkeypatch, golf_leagues):
     set_status(monkeypatch, 'golf', 'open')
-    viewer, *_ = _two_weeks_and_the_masters(season)
+    viewer, *_ = _two_weeks_and_the_masters(season, league_id=golf_leagues['handicap'].id)
     _login(client, viewer)
 
-    resp = client.get('/golf/my-picks')
+    resp = client.get('/golf/handicap/my-picks')
     assert resp.status_code == 302
-    assert resp.headers['Location'].endswith(f'/golf/member/{viewer.id}')
-    assert client.get('/golf/my-picks', follow_redirects=True).status_code == 200
+    assert resp.headers['Location'].endswith(f'/golf/handicap/member/{viewer.id}')
+    assert client.get('/golf/handicap/my-picks', follow_redirects=True).status_code == 200
 
 
 # ============================================================================
 # The weeks
 # ============================================================================
 
-def test_weeks_run_newest_first_from_the_next_pick(app, client, season, tuesday):
-    viewer, *_ = _two_weeks_and_the_masters(season)
+def test_weeks_run_newest_first_from_the_next_pick(app, client, season, tuesday, golf_leagues):
+    viewer, *_ = _two_weeks_and_the_masters(season, league_id=golf_leagues['handicap'].id)
     body = _body(client, viewer)
 
     table = body[body.index('<table class="golf-sheet golf-weeks"'):body.index('</table>')]
@@ -334,8 +334,8 @@ def test_weeks_run_newest_first_from_the_next_pick(app, client, season, tuesday)
     assert 'golf-money' not in masters              # nothing banked, nothing projected
 
 
-def test_week_marks_cut_penalty_commish_and_no_pick(app, client, season, tuesday):
-    viewer, rival, g, weeks = _two_weeks_and_the_masters(season)
+def test_week_marks_cut_penalty_commish_and_no_pick(app, client, season, tuesday, golf_leagues):
+    viewer, rival, g, weeks = _two_weeks_and_the_masters(season, league_id=golf_leagues['handicap'].id)
     pick = GolfPick.query.filter_by(user_id=rival.id, tournament_id=weeks['valspar'].id).one()
     pick.admin_override = True
     pick.admin_override_note = 'Phoned it in'
@@ -353,19 +353,19 @@ def test_week_marks_cut_penalty_commish_and_no_pick(app, client, season, tuesday
     assert _tile(body, 'Commish overrides') == '1'
 
 
-def test_live_week_is_in_pencil_with_the_sheets_own_figures(app, client, season, sunday):
+def test_live_week_is_in_pencil_with_the_sheets_own_figures(app, client, season, sunday, golf_leagues):
     """On Masters Sunday the scorecard's total, rank and week are the sheet's."""
-    viewer, rival, g, weeks = _two_weeks_and_the_masters(season)
+    viewer, rival, g, weeks = _two_weeks_and_the_masters(season, league_id=golf_leagues['handicap'].id)
     masters = weeks['masters']
     _result(masters, g['Hotgolfer'], position='1', status='active', rounds=3)
     _result(masters, g['Coldgolfer'], position='CUT', status='cut', rounds=2)
-    _pick(viewer, masters, g['Hotgolfer'], g['Spare'])
-    _pick(rival, masters, g['Coldgolfer'], g['Spare'], penalty_triggered=True)
+    _pick(viewer, masters, g['Hotgolfer'], g['Spare'], league_id=golf_leagues['handicap'].id)
+    _pick(rival, masters, g['Coldgolfer'], g['Spare'], penalty_triggered=True, league_id=golf_leagues['handicap'].id)
     masters.status = 'active'
     db.session.commit()
     _login(client, viewer)
 
-    sheet = client.get('/golf/').get_data(as_text=True)
+    sheet = client.get('/golf/handicap/').get_data(as_text=True)
     figure = re.search(r'golf-hero-figure--projected">(~\$[\d,]+)<', sheet).group(1)
     body = _body(client, viewer)
     assert f'golf-hero-figure--projected">{figure}<' in body
@@ -382,13 +382,13 @@ def test_live_week_is_in_pencil_with_the_sheets_own_figures(app, client, season,
     assert 'golf-money--projected">$0' in theirs                # a certain zero takes no tilde
 
 
-def test_a_banked_week_with_no_deadline_still_shows(app, client, season, tuesday):
+def test_a_banked_week_with_no_deadline_still_shows(app, client, season, tuesday, golf_leagues):
     """The lock reads a missing deadline as open; a banked week is revealed anyway."""
-    viewer = _member(season, 'viewer', display_name='ViewerLine')
+    viewer = _member(season, 'viewer', display_name='ViewerLine', league_id=golf_leagues['handicap'].id)
     alpha, spare = _golfer('Alpha'), _golfer('Spare')
     imported = _week(season, 'Imported Open', 3, datetime(2026, 1, 22), lock=False)
     _result(imported, alpha, position='5', earnings=90_000)
-    _banked(viewer, imported, alpha, spare, 90_000)
+    _banked(viewer, imported, alpha, spare, 90_000, league_id=golf_leagues['handicap'].id)
 
     row = _row(_body(client, viewer), 'Imported Open')          # signed out
     assert 'Alpha' in row and 'golf-money--banked">$90,000' in row
@@ -400,40 +400,40 @@ def test_a_banked_week_with_no_deadline_still_shows(app, client, season, tuesday
 
 @pytest.mark.parametrize('signed_in', [False, True])
 def test_open_week_pick_is_hidden_from_everyone_but_the_member(app, client, season, tuesday,
-                                                               signed_in):
-    viewer, rival, g, weeks = _two_weeks_and_the_masters(season)
-    _pick(rival, weeks['masters'], g['Hotgolfer'], g['Coldgolfer'], admin_override=True)
+                                                               signed_in, golf_leagues):
+    viewer, rival, g, weeks = _two_weeks_and_the_masters(season, league_id=golf_leagues['handicap'].id)
+    _pick(rival, weeks['masters'], g['Hotgolfer'], g['Coldgolfer'], admin_override=True, league_id=golf_leagues['handicap'].id)
     if signed_in:
         _login(client, viewer)
 
     body = _body(client, rival)
-    assert ('Your Scorecard' in client.get(f'/golf/member/{viewer.id}').get_data(as_text=True)) is signed_in
+    assert ('Your Scorecard' in client.get(f'/golf/handicap/member/{viewer.id}').get_data(as_text=True)) is signed_in
     assert 'Hotgolfer' not in body and 'Coldgolfer' not in body
     assert 'golf-weeks-row--open' not in body                   # the wash is the member's own
     assert ('Hidden until the lock, <span class="golf-nowrap">Thu Apr 9 · 7:00 AM CT</span>'
             in _row(body, 'Masters Tournament'))
-    assert '/golf/pick/' not in body
+    assert '/golf/handicap/pick/' not in body
     assert _tile(body, 'Commish overrides') == '0'              # an open week's override stays shut
 
 
-def test_the_member_sees_their_own_open_pick_and_can_change_it(app, client, season, tuesday):
-    viewer, rival, g, weeks = _two_weeks_and_the_masters(season)
-    _pick(viewer, weeks['masters'], g['Hotgolfer'], g['Coldgolfer'])
+def test_the_member_sees_their_own_open_pick_and_can_change_it(app, client, season, tuesday, golf_leagues):
+    viewer, rival, g, weeks = _two_weeks_and_the_masters(season, league_id=golf_leagues['handicap'].id)
+    _pick(viewer, weeks['masters'], g['Hotgolfer'], g['Coldgolfer'], league_id=golf_leagues['handicap'].id)
     _login(client, viewer)
 
     row = _row(_body(client, viewer), 'Masters Tournament')
     assert 'Your pick: <strong>Hotgolfer</strong>, backup Coldgolfer.' in row
-    assert f'href="/golf/pick/{weeks["masters"].id}">Change</a>' in row
+    assert f'href="/golf/handicap/pick/{weeks["masters"].id}">Change</a>' in row
     assert 'Picks lock <strong class="golf-nowrap">Thu Apr 9 · 7:00 AM CT</strong>' in row
     assert 'golf-weeks-row--open' in row              # the active week takes the pen wash
     assert 'golf-btn' not in row                      # a pick is in: no pick action
     assert 'Hidden' not in row
 
 
-def test_the_lock_opens_the_week_to_everyone(app, client, season, monkeypatch):
+def test_the_lock_opens_the_week_to_everyone(app, client, season, monkeypatch, golf_leagues):
     """Locked, not yet banked and not yet read: the pick shows, the figure does not."""
-    viewer, rival, g, weeks = _two_weeks_and_the_masters(season)
-    _pick(rival, weeks['masters'], g['Hotgolfer'], g['Coldgolfer'])
+    viewer, rival, g, weeks = _two_weeks_and_the_masters(season, league_id=golf_leagues['handicap'].id)
+    _pick(rival, weeks['masters'], g['Hotgolfer'], g['Coldgolfer'], league_id=golf_leagues['handicap'].id)
     monkeypatch.setenv('GOLF_FAKE_NOW', THURSDAY_AFTER_LOCK)
 
     row = _row(_body(client, rival), 'Masters Tournament')
@@ -442,32 +442,32 @@ def test_the_lock_opens_the_week_to_everyone(app, client, season, monkeypatch):
     assert 'Hidden' not in row
 
 
-def test_open_week_without_a_pick_offers_the_pick_only_to_the_member(app, client, season, tuesday):
-    viewer, rival, g, weeks = _two_weeks_and_the_masters(season)
+def test_open_week_without_a_pick_offers_the_pick_only_to_the_member(app, client, season, tuesday, golf_leagues):
+    viewer, rival, g, weeks = _two_weeks_and_the_masters(season, league_id=golf_leagues['handicap'].id)
     _login(client, viewer)
 
     row = _row(_body(client, viewer), 'Masters Tournament')
     assert 'The field publishes Tuesday. Picks open then.' in row
-    assert '/golf/pick/' not in row
+    assert '/golf/handicap/pick/' not in row
 
     _field(weeks['masters'])
     body = _body(client, viewer)
     row = _row(body, 'Masters Tournament')
     assert 'No pick in yet.' in row
     # The pick action is the room's filled button (§7.24), once on the page.
-    assert (f'<a class="btn btn-game golf-btn golf-weeks-act" href="/golf/pick/{weeks["masters"].id}">'
+    assert (f'<a class="btn btn-game golf-btn golf-weeks-act" href="/golf/handicap/pick/{weeks["masters"].id}">'
             'Spend a golfer</a>') in row
     assert body.count('golf-btn') == 1
 
-    assert '/golf/pick/' not in _body(client, rival)            # never on another member's card
+    assert '/golf/handicap/pick/' not in _body(client, rival)            # never on another member's card
 
 
 # ============================================================================
 # The tiles, the fold and the ledger
 # ============================================================================
 
-def test_tiles_count_the_members_banked_season(app, client, season, tuesday):
-    viewer, rival, *_ = _two_weeks_and_the_masters(season)
+def test_tiles_count_the_members_banked_season(app, client, season, tuesday, golf_leagues):
+    viewer, rival, *_ = _two_weeks_and_the_masters(season, league_id=golf_leagues['handicap'].id)
 
     body = _body(client, viewer)
     assert 'golf-hero-figure--banked">$620,000' in body
@@ -486,25 +486,25 @@ def test_tiles_count_the_members_banked_season(app, client, season, tuesday):
 @pytest.mark.parametrize('paid,note', [(0, '$30 still owed to the pot'),
                                        (15, '$15 still owed to the pot'),
                                        (30, 'Settled, $30 paid')])
-def test_majors_tile_says_what_the_pot_is_owed(app, client, season, tuesday, paid, note):
+def test_majors_tile_says_what_the_pot_is_owed(app, client, season, tuesday, paid, note, golf_leagues):
     """The tile counts the flag the scoring wrote, so it equals penalty_owed()."""
-    viewer = _member(season, 'viewer', penalty_paid=paid)
+    viewer = _member(season, 'viewer', penalty_paid=paid, league_id=golf_leagues['handicap'].id)
     cut, spare = _golfer('Cutgolfer'), _golfer('Spare')
     for week, name in ((5, 'The Players'), (9, 'PGA Championship')):
         major = _week(season, name, week, datetime(2026, 2, week), is_major=True)
         # The archive's casing drifts; the tile must not re-read the status.
         _result(major, cut, position='CUT', status='CUT', rounds=2)
         _pick(viewer, major, cut, spare, active_player_id=cut.id, points_earned=0,
-              primary_used=True, penalty_triggered=True)
+              primary_used=True, penalty_triggered=True, league_id=golf_leagues['handicap'].id)
 
     enrollment = GolfEnrollment.query.filter_by(user_id=viewer.id).one()
     assert enrollment.penalty_owed() == 30
     assert _tile(_body(client, viewer), 'Missed cuts at majors') == f'2 {note}'
 
 
-def test_a_card_with_nothing_banked_says_so(app, client, season, tuesday):
+def test_a_card_with_nothing_banked_says_so(app, client, season, tuesday, golf_leagues):
     """No "0 of 0": an empty season is said in words."""
-    viewer = _member(season, 'viewer')
+    viewer = _member(season, 'viewer', league_id=golf_leagues['handicap'].id)
     body = _body(client, viewer)
 
     assert 'no weeks on the schedule yet' in body
@@ -514,8 +514,8 @@ def test_a_card_with_nothing_banked_says_so(app, client, season, tuesday):
     assert '0 of 0' not in body
 
 
-def test_used_golfers_show_on_any_members_card(app, client, season, tuesday):
-    viewer, *_ = _two_weeks_and_the_masters(season)
+def test_used_golfers_show_on_any_members_card(app, client, season, tuesday, golf_leagues):
+    viewer, *_ = _two_weeks_and_the_masters(season, league_id=golf_leagues['handicap'].id)
     body = _body(client, viewer)                                # signed out
 
     fold = body[body.index('<summary>Used golfers (2)</summary>'):]
@@ -525,15 +525,15 @@ def test_used_golfers_show_on_any_members_card(app, client, season, tuesday):
     assert 'Withdrew' not in fold                               # he went back to the pool
 
 
-def test_commissioners_ledger_counts_revealed_weeks_and_marks_this_card(app, client, season, tuesday):
-    viewer, rival, g, weeks = _two_weeks_and_the_masters(season)
+def test_commissioners_ledger_counts_revealed_weeks_and_marks_this_card(app, client, season, tuesday, golf_leagues):
+    viewer, rival, g, weeks = _two_weeks_and_the_masters(season, league_id=golf_leagues['handicap'].id)
     assert 'The Commish has not set a pick by hand this season.' in _body(client, viewer)
 
     for pick in GolfPick.query.filter_by(user_id=viewer.id):
         pick.admin_override = True
     GolfPick.query.filter_by(user_id=rival.id).one().admin_override = True
     db.session.commit()
-    _pick(rival, weeks['masters'], g['Hotgolfer'], g['Coldgolfer'], admin_override=True)
+    _pick(rival, weeks['masters'], g['Hotgolfer'], g['Coldgolfer'], admin_override=True, league_id=golf_leagues['handicap'].id)
 
     body = _body(client, rival)
     ledger = body[body.index('id="golf-ledger-label"'):body.index('class="golf-foot"')]
@@ -541,7 +541,7 @@ def test_commissioners_ledger_counts_revealed_weeks_and_marks_this_card(app, cli
     assert len(rows) == 2
     assert 'ViewerLine' in rows[0] and '>2<' in rows[0]
     assert all('golf-sheet-avatar' in row for row in rows)      # the member's mark stays
-    assert f'href="/golf/member/{viewer.id}"' in rows[0]
+    assert f'href="/golf/handicap/member/{viewer.id}"' in rows[0]
     assert 'RivalLine' in rows[1] and 'this scorecard' in rows[1] and '>1<' in rows[1]
 
 
@@ -549,11 +549,11 @@ def test_commissioners_ledger_counts_revealed_weeks_and_marks_this_card(app, cli
 # Seasons
 # ============================================================================
 
-def test_scorecard_reads_one_season(app, client, season, tuesday):
+def test_scorecard_reads_one_season(app, client, season, tuesday, golf_leagues):
     """A member with a line in two seasons: each card shows its own weeks, its
     own golfers and its own total, and offers the other."""
-    viewer, rival, g, weeks = _two_weeks_and_the_masters(season)
-    db.session.add(GolfEnrollment(user_id=viewer.id, season_year=season - 1, total_points=77_000))
+    viewer, rival, g, weeks = _two_weeks_and_the_masters(season, league_id=golf_leagues['handicap'].id)
+    db.session.add(GolfEnrollment(user_id=viewer.id, league_id=golf_leagues['handicap'].id, season_year=season - 1, total_points=77_000))
     db.session.commit()
     old = _golfer('Oldgolfer')
     last_year = GolfTournament(
@@ -565,21 +565,21 @@ def test_scorecard_reads_one_season(app, client, season, tuesday):
     db.session.add(last_year)
     db.session.commit()
     _result(last_year, old, position='3', earnings=77_000)
-    _banked(viewer, last_year, old, g['Spare'], 77_000)
+    _banked(viewer, last_year, old, g['Spare'], 77_000, league_id=golf_leagues['handicap'].id)
     _login(client, viewer)
 
     now = _body(client, viewer)
     assert 'Last Year Open' not in now and 'Oldgolfer' not in now
     assert _tile(now, 'Golfers used') == '2'
-    assert f'href="/golf/member/{viewer.id}?season={season - 1}">{season - 1} scorecard</a>' in now
+    assert f'href="/golf/handicap/member/{viewer.id}?season={season - 1}">{season - 1} scorecard</a>' in now
 
     then = _body(client, viewer, season=season - 1)
     assert 'Valspar Championship' not in then and 'Alpha' not in then
     assert 'golf-hero-figure--banked">$77,000' in then
     assert '<strong>1st</strong> of 1' in then
     assert _tile(then, 'Golfers used') == '1'
-    assert f'href="/golf/member/{viewer.id}">{season} scorecard</a>' in then
-    assert '/golf/pick/' not in then                            # a past season takes no pick
+    assert f'href="/golf/handicap/member/{viewer.id}">{season} scorecard</a>' in then
+    assert '/golf/handicap/pick/' not in then                            # a past season takes no pick
     assert f'name="season" value="{season - 1}"' in then        # the switcher stays in it
 
     assert 'scorecard</a>' not in _body(client, rival)          # one season: no selector
@@ -589,8 +589,9 @@ def test_scorecard_reads_one_season(app, client, season, tuesday):
 # No query per week, no query per member
 # ============================================================================
 
-def test_scorecard_query_count_does_not_grow_with_weeks_or_members(app, client, season, tuesday):
-    viewer, rival, g, weeks = _two_weeks_and_the_masters(season)
+def test_scorecard_query_count_does_not_grow_with_weeks_or_members(app, client, season, tuesday, golf_leagues):
+    league_id = golf_leagues['handicap'].id  # read before db.session.remove() detaches the league
+    viewer, rival, g, weeks = _two_weeks_and_the_masters(season, league_id=league_id)
     _login(client, viewer)
     viewer_id, spare_id = viewer.id, g['Spare'].id
 
@@ -598,23 +599,23 @@ def test_scorecard_query_count_does_not_grow_with_weeks_or_members(app, client, 
     assert _get(client, viewer).status_code == 200
     db.session.remove()
     with _count_sql() as small:
-        assert client.get(f'/golf/member/{viewer_id}').status_code == 200
+        assert client.get(f'/golf/handicap/member/{viewer_id}').status_code == 200
 
     spare = db.session.get(GolfPlayer, spare_id)
-    members = [db.session.get(User, viewer_id)] + [_member(season, f'extra{i}') for i in range(4)]
+    members = [db.session.get(User, viewer_id)] + [_member(season, f'extra{i}', league_id=league_id) for i in range(4)]
     for week in range(1, 9):
         banked = _week(season, f'Early Week {week}', week, datetime(2026, 1, 1 + week))
         golfer = _golfer(f'Early{week}')
         _result(banked, golfer, position=str(week), earnings=10_000 * week)
         for member in members:
             _pick(member, banked, golfer, spare, active_player_id=golfer.id,
-                  points_earned=10_000 * week, primary_used=True, admin_override=week % 2 == 0)
+                  points_earned=10_000 * week, primary_used=True, admin_override=week % 2 == 0, league_id=league_id)
         db.session.add(GolfSeasonPlayerUsage(
-            user_id=viewer_id, player_id=golfer.id, season_year=season))
+            user_id=viewer_id, league_id=league_id, player_id=golfer.id, season_year=season))
     db.session.commit()
     db.session.remove()
     with _count_sql() as large:
-        assert client.get(f'/golf/member/{viewer_id}').status_code == 200
+        assert client.get(f'/golf/handicap/member/{viewer_id}').status_code == 200
 
     assert large['n'] == small['n'], (
         f"the scorecard issues a query per week or member: {small['n']} -> {large['n']} "
@@ -631,40 +632,40 @@ def _nav(client, path):
     return body[body.index('subnav-golf'):body.index('</nav>', body.index('subnav-golf'))]
 
 
-def test_sub_nav_carries_stats_for_everyone(app, client, season, tuesday):
-    _two_weeks_and_the_masters(season)
-    nav = _nav(client, '/golf/')
-    assert 'href="/golf/stats">Stats</a>' in nav
+def test_sub_nav_carries_stats_for_everyone(app, client, season, tuesday, golf_leagues):
+    _two_weeks_and_the_masters(season, league_id=golf_leagues['handicap'].id)
+    nav = _nav(client, '/golf/handicap/')
+    assert 'href="/golf/handicap/stats">Stats</a>' in nav
     assert 'My Scorecard' not in nav
 
 
-def test_sub_nav_offers_no_scorecard_to_a_viewer_with_no_line(app, client, season, tuesday):
-    _two_weeks_and_the_masters(season)
+def test_sub_nav_offers_no_scorecard_to_a_viewer_with_no_line(app, client, season, tuesday, golf_leagues):
+    _two_weeks_and_the_masters(season, league_id=golf_leagues['handicap'].id)
     outsider = User(username='no_line', email='no_line@test.com')
     outsider.set_password('pw')
     db.session.add(outsider)
     db.session.commit()
     _login(client, outsider)
 
-    assert 'My Scorecard' not in _nav(client, '/golf/')
+    assert 'My Scorecard' not in _nav(client, '/golf/handicap/')
 
 
-def test_sub_nav_scorecard_pill_is_the_members_own(app, client, season, tuesday):
-    viewer, rival, *_ = _two_weeks_and_the_masters(season)
+def test_sub_nav_scorecard_pill_is_the_members_own(app, client, season, tuesday, golf_leagues):
+    viewer, rival, *_ = _two_weeks_and_the_masters(season, league_id=golf_leagues['handicap'].id)
     _login(client, viewer)
 
-    pill = r'class="subnav-pill %s"\s+href="/golf/member/%d">My Scorecard'
-    assert re.search(pill % ('active', viewer.id), _nav(client, f'/golf/member/{viewer.id}'))
-    assert re.search(pill % ('', viewer.id), _nav(client, f'/golf/member/{rival.id}'))
+    pill = r'class="subnav-pill %s"\s+href="/golf/handicap/member/%d">My Scorecard'
+    assert re.search(pill % ('active', viewer.id), _nav(client, f'/golf/handicap/member/{viewer.id}'))
+    assert re.search(pill % ('', viewer.id), _nav(client, f'/golf/handicap/member/{rival.id}'))
 
 
-def test_sheet_and_board_names_link_to_scorecards(app, client, season, tuesday):
-    viewer, rival, g, weeks = _two_weeks_and_the_masters(season)
+def test_sheet_and_board_names_link_to_scorecards(app, client, season, tuesday, golf_leagues):
+    viewer, rival, g, weeks = _two_weeks_and_the_masters(season, league_id=golf_leagues['handicap'].id)
 
-    sheet = client.get('/golf/').get_data(as_text=True)
-    assert f'<a class="golf-quiet" href="/golf/member/{viewer.id}">ViewerLine</a>' in sheet
-    board = client.get(f'/golf/tournament/{weeks["valspar"].id}').get_data(as_text=True)
-    assert f'<a class="golf-quiet" href="/golf/member/{rival.id}">RivalLine</a>' in board
+    sheet = client.get('/golf/handicap/').get_data(as_text=True)
+    assert f'<a class="golf-quiet" href="/golf/handicap/member/{viewer.id}">ViewerLine</a>' in sheet
+    board = client.get(f'/golf/handicap/tournament/{weeks["valspar"].id}').get_data(as_text=True)
+    assert f'<a class="golf-quiet" href="/golf/handicap/member/{rival.id}">RivalLine</a>' in board
 
 
 # ============================================================================

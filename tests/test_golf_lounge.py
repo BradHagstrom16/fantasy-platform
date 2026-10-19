@@ -42,13 +42,13 @@ TUESDAY_BEFORE = '2026-04-07T15:00:00'
 SUNDAY_AFTERNOON = '2026-04-12T21:30:00'
 
 
-def _member(season, username, display_name=None, total=0):
+def _member(season, username, display_name=None, total=0, *, league_id):
     user = User(username=username, email=f'{username}@test.com',
                 display_name=display_name or username)
     user.set_password('pw')
     db.session.add(user)
     db.session.flush()
-    db.session.add(GolfEnrollment(user_id=user.id, season_year=season, total_points=total))
+    db.session.add(GolfEnrollment(user_id=user.id, league_id=league_id, season_year=season, total_points=total))
     db.session.commit()
     return user
 
@@ -117,7 +117,7 @@ def test_state_ignores_another_season(app, monkeypatch):
 # The context
 # ============================================================================
 
-def test_logged_out_context_carries_the_floor_and_the_first_lock(app):
+def test_logged_out_context_carries_the_floor_and_the_first_lock(app, golf_leagues):
     season = app.config['SEASON_YEAR']
     ctx = build_lounge_context(None, None)
     assert ctx['roster_count'] == 0 and ctx['total_enrolled'] == 0
@@ -125,7 +125,7 @@ def test_logged_out_context_carries_the_floor_and_the_first_lock(app):
     assert ctx['season_year'] == season
 
     for i in range(ROSTER_COUNT_FLOOR):
-        _member(season, f'm{i}')
+        _member(season, f'm{i}', league_id=golf_leagues['handicap'].id)
     _tournament(season, name='Sony Open in Hawaii', week=1, status='upcoming',
                 start=datetime(2026, 1, 15), lock=datetime(2026, 1, 15, 7, 30))
     ctx = build_lounge_context(None, None)
@@ -134,9 +134,9 @@ def test_logged_out_context_carries_the_floor_and_the_first_lock(app):
     assert ctx['first_lock'].startswith('Thu Jan 15')
 
 
-def test_pre_context_names_the_opening_event(app, monkeypatch):
+def test_pre_context_names_the_opening_event(app, monkeypatch, golf_leagues):
     season = app.config['SEASON_YEAR']
-    me = _member(season, 'me')
+    me = _member(season, 'me', league_id=golf_leagues['handicap'].id)
     monkeypatch.setenv('GOLF_FAKE_NOW', TUESDAY_BEFORE)
     ctx = build_lounge_context(me, 'pre')
     assert ctx['is_enrolled'] is True and ctx['viewer_mode'] == 'member'
@@ -150,12 +150,12 @@ def test_pre_context_names_the_opening_event(app, monkeypatch):
     assert ctx['first_event'] == 'Sony Open in Hawaii'
 
 
-def test_live_context_reads_the_sheet_for_a_member(app, monkeypatch):
+def test_live_context_reads_the_sheet_for_a_member(app, monkeypatch, golf_leagues):
     """Sunday of the Masters: the viewer's projected line, the leader, the
     next lock, and the ask only when a pick is still to make."""
     season = app.config['SEASON_YEAR']
-    me = _member(season, 'me', display_name='Me', total=1_000_000)
-    rival = _member(season, 'rival', display_name='Rival', total=3_000_000)
+    me = _member(season, 'me', display_name='Me', total=1_000_000, league_id=golf_leagues['handicap'].id)
+    rival = _member(season, 'rival', display_name='Rival', total=3_000_000, league_id=golf_leagues['handicap'].id)
     masters = _tournament(season, field=0)
     rbc = _tournament(season, name='RBC Heritage', week=14, status='upcoming',
                       start=datetime(2026, 4, 16), lock=datetime(2026, 4, 16, 6, 5), field=60)
@@ -163,7 +163,7 @@ def test_live_context_reads_the_sheet_for_a_member(app, monkeypatch):
     db.session.add(GolfTournamentResult(
         tournament_id=masters.id, player_id=scheffler.id, status='active',
         final_position='1', rounds_completed=3, earnings=0, score_to_par='-12'))
-    db.session.add(GolfPick(user_id=me.id, tournament_id=masters.id,
+    db.session.add(GolfPick(user_id=me.id, league_id=golf_leagues['handicap'].id, tournament_id=masters.id,
                             primary_player_id=scheffler.id, backup_player_id=spare.id))
     db.session.commit()
     monkeypatch.setenv('GOLF_FAKE_NOW', SUNDAY_AFTERNOON)
@@ -185,7 +185,7 @@ def test_live_context_reads_the_sheet_for_a_member(app, monkeypatch):
     assert [(r['rank'], r['word']) for r in ctx['top']][:1] in ([(1, 'projected')], [(1, 'banked')])
     assert any(r['is_you'] for r in ctx['top'])
 
-    db.session.add(GolfPick(user_id=me.id, tournament_id=rbc.id,
+    db.session.add(GolfPick(user_id=me.id, league_id=golf_leagues['handicap'].id, tournament_id=rbc.id,
                             primary_player_id=scheffler.id, backup_player_id=spare.id))
     db.session.commit()
     ctx = build_lounge_context(me, 'live')
@@ -202,12 +202,12 @@ def test_live_context_reads_the_sheet_for_a_member(app, monkeypatch):
     assert rival.id  # the rival's line is on the sheet the leader came from
 
 
-def test_post_context_names_the_champion_and_the_top_of_the_sheet(app, monkeypatch):
+def test_post_context_names_the_champion_and_the_top_of_the_sheet(app, monkeypatch, golf_leagues):
     season = app.config['SEASON_YEAR']
-    me = _member(season, 'me', display_name='Me', total=750_000)
-    _member(season, 'casey', display_name='Casey', total=4_200_000)
-    _member(season, 'dana', display_name='Dana', total=750_000)
-    _member(season, 'last', display_name='Last', total=0)
+    me = _member(season, 'me', display_name='Me', total=750_000, league_id=golf_leagues['handicap'].id)
+    _member(season, 'casey', display_name='Casey', total=4_200_000, league_id=golf_leagues['handicap'].id)
+    _member(season, 'dana', display_name='Dana', total=750_000, league_id=golf_leagues['handicap'].id)
+    _member(season, 'last', display_name='Last', total=0, league_id=golf_leagues['handicap'].id)
     _tournament(season, name='Sony Open', week=1, status='complete', finalized=True,
                 start=datetime(2026, 1, 15), lock=datetime(2026, 1, 15, 7))
     monkeypatch.setenv('GOLF_FAKE_NOW', SUNDAY_AFTERNOON)
@@ -224,7 +224,7 @@ def test_post_context_names_the_champion_and_the_top_of_the_sheet(app, monkeypat
     assert ctx['top'][2]['money'] == '$750,000'
 
 
-def test_post_context_with_no_lines_has_no_champion(app, monkeypatch):
+def test_post_context_with_no_lines_has_no_champion(app, monkeypatch, golf_leagues):
     season = app.config['SEASON_YEAR']
     visitor = User(username='visitor', email='v@test.com')
     visitor.set_password('pw')
@@ -241,9 +241,9 @@ def test_post_context_with_no_lines_has_no_champion(app, monkeypatch):
 # Contracts
 # ============================================================================
 
-def test_live_context_query_count_does_not_grow_with_the_room(app, monkeypatch):
+def test_live_context_query_count_does_not_grow_with_the_room(app, monkeypatch, golf_leagues):
     season = app.config['SEASON_YEAR']
-    me = _member(season, 'me', total=1)
+    me = _member(season, 'me', total=1, league_id=golf_leagues['handicap'].id)
     _tournament(season)
     monkeypatch.setenv('GOLF_FAKE_NOW', SUNDAY_AFTERNOON)
     counter = {'n': 0}
@@ -259,8 +259,11 @@ def test_live_context_query_count_does_not_grow_with_the_room(app, monkeypatch):
         build_lounge_context(me, 'live')
         small = counter['n']
         for i in range(5):
-            _member(season, f'more{i}', total=i)
+            _member(season, f'more{i}', total=i, league_id=golf_leagues['handicap'].id)
         db.session.expire_all()
+        # The viewer's own row reloads before the count, as in the warm call:
+        # the lounge reads the viewer's lines (by id) before any room row now.
+        db.session.refresh(me)
         counter['n'] = 0
         build_lounge_context(me, 'live')
         big = counter['n']

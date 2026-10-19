@@ -15,6 +15,7 @@ from extensions import db
 from games.cfb.models import CfbEnrollment
 from games.docket.models import DocketEnrollment
 from games.golf.models import GolfEnrollment
+from games.golf.services.leagues import house_league
 from games.worldcup.models import WorldCupEnrollment
 from models.user import User
 from utils.display_name import normalize_display_name
@@ -38,6 +39,10 @@ def admin_required(f):
 @admin_required
 def dashboard():
     total_users = User.query.count()
+
+    # The Pay Sheet's admin pages are league pages; the platform page opens
+    # the house league's (ADR-075).
+    golf_house = house_league().slug
 
     # Live games first; the archived World Cup last.
     games = [
@@ -66,8 +71,8 @@ def dashboard():
             'name': "The Pay Sheet",
             'emoji': '⛳',
             'slug': 'golf',
-            'admin_url': url_for('golf.admin_dashboard'),
-            'payments_url': url_for('golf.admin_payments'),
+            'admin_url': url_for('golf.admin_dashboard', league=golf_house),
+            'payments_url': url_for('golf.admin_payments', league=golf_house),
             'enrolled': GolfEnrollment.query.count(),
             'paid': GolfEnrollment.query.filter_by(has_paid=True).count(),
         },

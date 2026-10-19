@@ -41,12 +41,12 @@ def _login(client, user):
         sess['_fresh'] = True
 
 
-def _enroll(user, season, total=0):
-    db.session.add(GolfEnrollment(user_id=user.id, season_year=season, total_points=total))
+def _enroll(user, season, total=0, *, league_id):
+    db.session.add(GolfEnrollment(user_id=user.id, league_id=league_id, season_year=season, total_points=total))
     db.session.commit()
 
 
-def test_logged_out_bill_takes_the_trio_grid(app, client, monkeypatch):
+def test_logged_out_bill_takes_the_trio_grid(app, client, monkeypatch, golf_leagues):
     _seat_golf(monkeypatch)
     with patch.dict(os.environ, TRIO_PRE):
         text = client.get('/').get_data(as_text=True)
@@ -73,7 +73,7 @@ def test_two_headliners_still_pair_when_golf_is_unseated(app, client):
     assert 'hl-duo--trio' not in text
 
 
-def test_authed_joined_nothing_sees_three_panels_and_the_fourth_decree(app, client, monkeypatch):
+def test_authed_joined_nothing_sees_three_panels_and_the_fourth_decree(app, client, monkeypatch, golf_leagues):
     _seat_golf(monkeypatch)
     _login(client, _user('neither'))
     with patch.dict(os.environ, TRIO_PRE):
@@ -92,11 +92,11 @@ def test_authed_joined_nothing_sees_three_panels_and_the_fourth_decree(app, clie
     assert 'One golfer a week' in golf_panel
 
 
-def test_golf_member_in_season_is_asked_to_spend_a_golfer(app, client, monkeypatch):
+def test_golf_member_in_season_is_asked_to_spend_a_golfer(app, client, monkeypatch, golf_leagues):
     season = app.config['SEASON_YEAR']
     _seat_golf(monkeypatch)
     me = _user('member')
-    _enroll(me, season, total=250_000)
+    _enroll(me, season, total=250_000, league_id=golf_leagues['handicap'].id)
     masters = GolfTournament(
         api_tourn_id='T-masters', name='Masters Tournament', season_year=season, week_number=13,
         start_date=datetime(2026, 4, 9), end_date=datetime(2026, 4, 12),
@@ -125,11 +125,11 @@ def test_golf_member_in_season_is_asked_to_spend_a_golfer(app, client, monkeypat
     assert '◇ Week 13 &middot; Masters Tournament' in golf_panel
     assert '$250,000 banked' in golf_panel and '1st of 1' in golf_panel
     assert 'RBC Heritage locks' in golf_panel
-    assert f'class="hl-cta" href="/golf/pick/{rbc.id}">Spend a Golfer</a>' in golf_panel
+    assert f'class="hl-cta" href="/golf/handicap/pick/{rbc.id}">Spend a Golfer</a>' in golf_panel
     assert 'The sheet, so far' in golf_panel and 'roll-you-chip">You</span>' in golf_panel
     assert '<span class="hl-nowrap">&middot; 1st of 1</span>' in golf_panel
 
-    db.session.add(GolfPick(user_id=me.id, tournament_id=rbc.id,
+    db.session.add(GolfPick(user_id=me.id, league_id=golf_leagues['handicap'].id, tournament_id=rbc.id,
                             primary_player_id=1, backup_player_id=2))
     db.session.commit()
     with patch.dict(os.environ, {**TRIO_PRE, 'GOLF_FAKE_NOW': '2026-04-12T21:30:00'}):
@@ -139,14 +139,14 @@ def test_golf_member_in_season_is_asked_to_spend_a_golfer(app, client, monkeypat
     assert 'class="hl-cta" href="/golf/">Enter the Room</a>' in golf_panel
 
 
-def test_golf_post_season_names_the_champion_on_the_bill(app, client, monkeypatch):
+def test_golf_post_season_names_the_champion_on_the_bill(app, client, monkeypatch, golf_leagues):
     season = app.config['SEASON_YEAR']
     _seat_golf(monkeypatch)
     me = _user('member')
-    _enroll(me, season, total=750_000)
+    _enroll(me, season, total=750_000, league_id=golf_leagues['handicap'].id)
     casey = _user('casey')
     casey.display_name = 'Casey Champion'
-    _enroll(casey, season, total=4_200_000)
+    _enroll(casey, season, total=4_200_000, league_id=golf_leagues['handicap'].id)
     db.session.add(GolfTournament(
         api_tourn_id='T-sony', name='Sony Open in Hawaii', season_year=season, week_number=1,
         start_date=datetime(2026, 1, 15), end_date=datetime(2026, 1, 18),
@@ -163,7 +163,7 @@ def test_golf_post_season_names_the_champion_on_the_bill(app, client, monkeypatc
     assert 'Champion &middot; Casey Champion' in golf_panel
     assert '$4,200,000 across 1 event.' in golf_panel
     assert 'roll-you-chip">You</span>' in golf_panel
-    assert f'href="/golf/member/{casey.id}">Casey Champion</a>' in golf_panel
-    assert 'href="/golf/stats">The Record Room' in golf_panel
+    assert f'href="/golf/handicap/member/{casey.id}">Casey Champion</a>' in golf_panel
+    assert 'href="/golf/handicap/stats">The Record Room' in golf_panel
     # The Commish's note takes the champion's name through the shim.
     assert 'Casey Champion' in text[text.index('commish'):] if 'commish' in text else True

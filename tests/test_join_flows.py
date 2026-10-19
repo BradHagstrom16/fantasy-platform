@@ -171,13 +171,13 @@ def test_cfb_pick_route_redirects_non_enrolled_to_join(app, client, monkeypatch,
 
 # ── Golf /join ───────────────────────────────────────────────────────────
 
-def test_golf_join_anonymous_redirects_to_login(client):
+def test_golf_join_anonymous_redirects_to_login(client, golf_leagues):
     resp = client.get('/golf/join', follow_redirects=False)
     assert resp.status_code == 302
     assert '/login' in resp.location
 
 
-def test_golf_join_coming_soon_rejects(app, client):
+def test_golf_join_coming_soon_rejects(app, client, golf_leagues):
     uid = _make_user(app, 'g1')
     _login(client, uid)
     resp = client.get('/golf/join', follow_redirects=False)
@@ -185,7 +185,7 @@ def test_golf_join_coming_soon_rejects(app, client):
     assert resp.location.endswith('/')
 
 
-def test_golf_join_open_renders_form(app, client, monkeypatch):
+def test_golf_join_open_renders_form(app, client, monkeypatch, golf_leagues):
     _set_status(monkeypatch, 'golf', 'open')
     uid = _make_user(app, 'g2')
     _login(client, uid)
@@ -194,11 +194,12 @@ def test_golf_join_open_renders_form(app, client, monkeypatch):
     assert b"Pick 'Em" in resp.data or b"Golf" in resp.data
 
 
-def test_golf_join_post_creates_enrollment(app, client, monkeypatch):
+def test_golf_join_post_creates_enrollment(app, client, monkeypatch, golf_leagues):
     _set_status(monkeypatch, 'golf', 'open')
     uid = _make_user(app, 'g3')
     _login(client, uid)
-    resp = client.post('/golf/join', data={'csrf_token': 'x'}, follow_redirects=False)
+    resp = client.post('/golf/join', data={'csrf_token': 'x', 'league': 'handicap'},
+                       follow_redirects=False)
     assert resp.status_code == 302
     from games.golf.models import GolfEnrollment
     with app.app_context():
@@ -207,14 +208,50 @@ def test_golf_join_post_creates_enrollment(app, client, monkeypatch):
         assert enr.season_year == 2026
 
 
-def test_golf_join_duplicate_redirects_to_dashboard(app, client, monkeypatch):
+def test_golf_join_page_marks_held_sheet_and_duplicate_post_writes_nothing(app, client, monkeypatch, golf_leagues):
     _set_status(monkeypatch, 'golf', 'open')
     uid = _make_user(app, 'g4')
     _login(client, uid)
     from games.golf.models import GolfEnrollment
     with app.app_context():
-        db.session.add(GolfEnrollment(user_id=uid, season_year=2026))
+        db.session.add(GolfEnrollment(user_id=uid, league_id=golf_leagues['handicap'].id, season_year=2026))
         db.session.commit()
+    # The join page lists every sheet (ADR-075): a member on one sees it,
+    # the held sheet marked joined and not offered again.
     resp = client.get('/golf/join', follow_redirects=False)
+    assert resp.status_code == 200
+    page = resp.get_data(as_text=True)
+    assert 'Joined.' in page and 'href="/golf/handicap/"' in page
+    assert 'value="handicap"' not in page and 'value="pollyanna"' in page
+    # Joining the held sheet again is refused with a flash and sent to it.
+    resp = client.post('/golf/join', data={'csrf_token': 'x', 'league': 'handicap'},
+                       follow_redirects=False)
     assert resp.status_code == 302
     assert '/golf' in resp.location
+    with client.session_transaction() as sess:
+        assert any('already on that sheet' in message for _, message in sess['_flashes'])
+    with app.app_context():
+        assert GolfEnrollment.query.filter_by(user_id=uid).count() == 1
+
+
+def test_golf_join_double_submit_race_flashes_held_not_500(app, client, monkeypatch, golf_leagues):
+    """Two POSTs for one sheet: the second passes the held check before the
+    first commits, and the unique key turns it into the held flash, not a 500."""
+    _set_status(monkeypatch, 'golf', 'open')
+    uid = _make_user(app, 'g5')
+    _login(client, uid)
+    from games.golf.models import GolfEnrollment
+    with app.app_context():
+        db.session.add(GolfEnrollment(user_id=uid, league_id=golf_leagues['handicap'].id, season_year=2026))
+        db.session.commit()
+    # The race: this request read its lines before the other one's row landed.
+    monkeypatch.setattr('games.golf.routes._viewer_lines', lambda: [])
+    resp = client.post('/golf/join', data={'csrf_token': 'x', 'league': 'handicap'},
+                       follow_redirects=False)
+    assert resp.status_code == 302
+    with client.session_transaction() as sess:
+        messages = [message for _, message in sess['_flashes']]
+    assert any('already on that sheet' in m for m in messages)
+    assert not any('Welcome' in m for m in messages)
+    with app.app_context():
+        assert GolfEnrollment.query.filter_by(user_id=uid).count() == 1

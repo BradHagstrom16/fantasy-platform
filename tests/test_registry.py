@@ -204,7 +204,7 @@ def test_golf_get_enrollment_returns_none_when_absent(app):
         assert enrollment.get_enrollment(uid) is None
 
 
-def test_golf_admin_enroll_is_idempotent(app):
+def test_golf_admin_enroll_is_idempotent(app, golf_leagues):
     uid = _make_user(app, username='golfuser')
     from games.golf.services import enrollment
     with app.app_context():

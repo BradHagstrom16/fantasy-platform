@@ -24,13 +24,13 @@ from games.golf.models import (
 from models.user import User
 
 EXPECTED = {
-    GolfEnrollment: {'user'},
+    GolfEnrollment: {'user', 'league'},
     GolfPlayer: set(),
     GolfTournament: set(),
     GolfTournamentField: {'tournament', 'player'},
     GolfSeasonPlayerUsage: {'user', 'player'},
     GolfTournamentResult: {'tournament', 'player'},
-    GolfPick: {'user', 'tournament', 'primary_player', 'backup_player', 'active_player'},
+    GolfPick: {'user', 'league', 'tournament', 'primary_player', 'backup_player', 'active_player'},
 }
 
 RETIRED_USER_COLLECTIONS = ('golf_enrollments', 'golf_season_usages', 'golf_picks', 'push_subscriptions')
@@ -67,7 +67,7 @@ def test_user_carries_no_retired_collection(app):
     assert not any(k.startswith('golf_') for k in keys)
 
 
-def test_declared_many_to_one_sides_load(app):
+def test_declared_many_to_one_sides_load(app, golf_leagues):
     now = datetime.now(UTC)
     user = User(username='rel_golfer', email='rel_golfer@example.com')
     user.set_password('x')
@@ -84,7 +84,7 @@ def test_declared_many_to_one_sides_load(app):
     field = GolfTournamentField(tournament_id=tournament.id, player_id=primary.id)
     result = GolfTournamentResult(tournament_id=tournament.id, player_id=primary.id,
                                   status='active', rounds_completed=0)
-    pick = GolfPick(user_id=user.id, tournament_id=tournament.id,
+    pick = GolfPick(user_id=user.id, league_id=golf_leagues['handicap'].id, tournament_id=tournament.id,
                     primary_player_id=primary.id, backup_player_id=backup.id)
     db.session.add_all([field, result, pick])
     db.session.commit()
@@ -100,3 +100,4 @@ def test_declared_many_to_one_sides_load(app):
     assert pick.tournament.name == 'Relationship Open'
     assert pick.user.username == 'rel_golfer'
     assert pick.backup_player.last_name == 'Up'
+    assert pick.league.slug == 'handicap'

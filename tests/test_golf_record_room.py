@@ -1,4 +1,4 @@
-"""The Record Room (/golf/stats): Golf Phase U5.
+"""The Record Room (/golf/handicap/stats): Golf Phase U5.
 
 Locks the page built from ``games/golf/services/stats.py``
 (games/golf/DESIGN.md §8, §9); the aggregates themselves are locked in
@@ -47,12 +47,12 @@ def season(app):
 
 # --- seed helpers (run inside the fixture's app context) --------------------
 
-def _member(season, name):
+def _member(season, name, *, league_id):
     user = User(username=name.lower(), email=f'{name.lower()}@test.com', display_name=name)
     user.set_password('pw')
     db.session.add(user)
     db.session.flush()
-    db.session.add(GolfEnrollment(user_id=user.id, season_year=season))
+    db.session.add(GolfEnrollment(user_id=user.id, league_id=league_id, season_year=season))
     db.session.commit()
     return user
 
@@ -83,15 +83,15 @@ def _result(tournament, player, position='1', status='complete', earnings=0):
     db.session.commit()
 
 
-def _banked(user, tournament, golfer, backup, points):
+def _banked(user, tournament, golfer, backup, points, *, league_id):
     """A resolved pick and the usage row the scoring writes with it."""
     db.session.add(GolfPick(
-        user_id=user.id, tournament_id=tournament.id, primary_player_id=golfer.id,
+        user_id=user.id, league_id=league_id, tournament_id=tournament.id, primary_player_id=golfer.id,
         backup_player_id=backup.id, active_player_id=golfer.id, points_earned=points,
         primary_used=True,
     ))
     db.session.add(GolfSeasonPlayerUsage(
-        user_id=user.id, player_id=golfer.id, season_year=tournament.season_year,
+        user_id=user.id, league_id=league_id, player_id=golfer.id, season_year=tournament.season_year,
     ))
     db.session.commit()
 
@@ -103,7 +103,7 @@ def _login(client, user):
 
 
 def _page(client, **query):
-    resp = client.get('/golf/stats', query_string=query)
+    resp = client.get('/golf/handicap/stats', query_string=query)
     assert resp.status_code == 200
     return resp.get_data(as_text=True)
 
@@ -127,13 +127,13 @@ def _count_sql():
         event.remove(db.engine, 'before_cursor_execute', _before)
 
 
-def _two_events(season):
+def _two_events(season, *, league_id):
     """Alice and Bob over two banked events; Åberg earns and nobody spends him.
 
     Alice banks Scheffler's $2,000,000 then J.J. Spaun's $300,000; Bob banks
     McIlroy's $400,000 then misses the cut on Scheffler.
     """
-    alice, bob = _member(season, 'Alice'), _member(season, 'Bob')
+    alice, bob = _member(season, 'Alice', league_id=league_id), _member(season, 'Bob', league_id=league_id)
     g = {
         'scott': _player('Scottie', 'Scheffler'), 'rory': _player('Rory', 'McIlroy'),
         'spaun': _player('J.J.', 'Spaun'), 'aberg': _player('Ludvig', 'Åberg'),
@@ -147,10 +147,10 @@ def _two_events(season):
     _result(genesis, g['spaun'], position='T8', earnings=300_000)
     _result(genesis, g['scott'], position='CUT', status='cut')
     _result(genesis, g['aberg'], position='3', earnings=900_000)
-    _banked(alice, sony, g['scott'], g['spare'], 2_000_000)
-    _banked(bob, sony, g['rory'], g['spare'], 400_000)
-    _banked(alice, genesis, g['spaun'], g['spare'], 300_000)
-    _banked(bob, genesis, g['scott'], g['spare'], 0)
+    _banked(alice, sony, g['scott'], g['spare'], 2_000_000, league_id=league_id)
+    _banked(bob, sony, g['rory'], g['spare'], 400_000, league_id=league_id)
+    _banked(alice, genesis, g['spaun'], g['spare'], 300_000, league_id=league_id)
+    _banked(bob, genesis, g['scott'], g['spare'], 0, league_id=league_id)
     return alice, bob, g, (sony, genesis)
 
 
@@ -158,8 +158,8 @@ def _two_events(season):
 # The page
 # ============================================================================
 
-def test_record_room_is_public_with_a_contents_line_and_five_leaves(app, client, season):
-    _two_events(season)
+def test_record_room_is_public_with_a_contents_line_and_five_leaves(app, client, season, golf_leagues):
+    _two_events(season, league_id=golf_leagues['handicap'].id)
     body = _page(client)
 
     assert '<h1 class="golf-title golf-title--page">The Record Room</h1>' in body
@@ -174,14 +174,14 @@ def test_record_room_is_public_with_a_contents_line_and_five_leaves(app, client,
     assert body.count('<h1') == 1
 
 
-def test_stats_pill_is_lit_in_the_record_room(app, client, season):
-    _two_events(season)
+def test_stats_pill_is_lit_in_the_record_room(app, client, season, golf_leagues):
+    _two_events(season, league_id=golf_leagues['handicap'].id)
     body = _page(client)
-    assert re.search(r'class="subnav-pill active"\s+href="/golf/stats">Stats</a>', body)
+    assert re.search(r'class="subnav-pill active"\s+href="/golf/handicap/stats">Stats</a>', body)
 
 
-def test_race_is_drawn_finished_for_a_guest(app, client, season):
-    alice, bob, *_ = _two_events(season)
+def test_race_is_drawn_finished_for_a_guest(app, client, season, golf_leagues):
+    alice, bob, *_ = _two_events(season, league_id=golf_leagues['handicap'].id)
     race = _leaf(_page(client), 'golf-race')
 
     assert 'through the Genesis Invitational.' in race
@@ -191,7 +191,7 @@ def test_race_is_drawn_finished_for_a_guest(app, client, season):
     assert 'Alice, in the lead' in race
     assert 'Alice leads with $2,300,000.' in race           # the drawing's own description
     # The standings, in the sheet's order, each a link to a scorecard.
-    rows = re.findall(r'data-race-rank>([^<]+)</span>.*?href="/golf/member/(\d+)">([^<]+)</a>.*?'
+    rows = re.findall(r'data-race-rank>([^<]+)</span>.*?href="/golf/handicap/member/(\d+)">([^<]+)</a>.*?'
                       r'data-race-value>([^<]+)<', race, re.S)
     assert rows == [('1', str(alice.id), 'Alice', '$2,300,000'),
                     ('2', str(bob.id), 'Bob', '$400,000')]
@@ -201,8 +201,8 @@ def test_race_is_drawn_finished_for_a_guest(app, client, season):
     assert 'autoplay' not in race
 
 
-def test_race_marks_the_members_own_line(app, client, season):
-    alice, bob, *_ = _two_events(season)
+def test_race_marks_the_members_own_line(app, client, season, golf_leagues):
+    alice, bob, *_ = _two_events(season, league_id=golf_leagues['handicap'].id)
     _login(client, bob)
     race = _leaf(_page(client), 'golf-race')
 
@@ -213,8 +213,8 @@ def test_race_marks_the_members_own_line(app, client, season):
     assert 'golf-race-name--you' in race and 'golf-race-name--leader' in race
 
 
-def test_race_replay_payload_is_the_servers_geometry(app, client, season):
-    _two_events(season)
+def test_race_replay_payload_is_the_servers_geometry(app, client, season, golf_leagues):
+    _two_events(season, league_id=golf_leagues['handicap'].id)
     race = _leaf(_page(client), 'golf-race')
     payload = json.loads(re.search(
         r'<script type="application/json" data-race-data>(.*?)</script>', race, re.S).group(1))
@@ -227,10 +227,10 @@ def test_race_replay_payload_is_the_servers_geometry(app, client, season):
     assert [[float(x), float(y)] for x, y in (p.split(',') for p in drawn.split())] == alice['coords']
 
 
-def test_race_is_mirrored_as_a_table_for_a_screen_reader(app, client, season):
+def test_race_is_mirrored_as_a_table_for_a_screen_reader(app, client, season, golf_leagues):
     """The wrapper is hidden, never the table: a visually-hidden <table> loses
     its semantics in some screen readers."""
-    _two_events(season)
+    _two_events(season, league_id=golf_leagues['handicap'].id)
     race = _leaf(_page(client), 'golf-race')
 
     mirror = re.search(r'<div class="visually-hidden">\s*<table>(.*?)</table>\s*</div>', race, re.S)
@@ -241,16 +241,16 @@ def test_race_is_mirrored_as_a_table_for_a_screen_reader(app, client, season):
     assert 'Bob $400,000 $400,000' in table
 
 
-def test_a_shared_lead_is_said_and_drawn_as_shared(app, client, season):
+def test_a_shared_lead_is_said_and_drawn_as_shared(app, client, season, golf_leagues):
     """Two members on the same winner: neither is "the leader"."""
-    amy, zed, low = (_member(season, name) for name in ('Amy', 'Zed', 'Low'))
+    amy, zed, low = (_member(season, name, league_id=golf_leagues['handicap'].id) for name in ('Amy', 'Zed', 'Low'))
     winner, other, spare = _player('The', 'Winner'), _player('An', 'Other'), _player('Spare', 'Golfer')
     for name, day in (('The American Express', 22), ('Farmers Insurance Open', 29)):
         t = _event(season, name, datetime(2026, 1, day))
         _result(t, winner, earnings=500_000)
         _result(t, other, position='40', earnings=10_000)
         db.session.add_all([
-            GolfPick(user_id=member.id, tournament_id=t.id, primary_player_id=golfer.id,
+            GolfPick(user_id=member.id, league_id=golf_leagues['handicap'].id, tournament_id=t.id, primary_player_id=golfer.id,
                      backup_player_id=spare.id, active_player_id=golfer.id,
                      points_earned=points, primary_used=True)
             for member, golfer, points in ((amy, winner, 500_000), (zed, winner, 500_000),
@@ -272,12 +272,12 @@ def test_a_shared_lead_is_said_and_drawn_as_shared(app, client, season):
         'the American Express', 'the Farmers Insurance Open']
 
 
-def test_one_banked_event_draws_dots_and_no_replay(app, client, season):
-    alice = _member(season, 'Alice')
+def test_one_banked_event_draws_dots_and_no_replay(app, client, season, golf_leagues):
+    alice = _member(season, 'Alice', league_id=golf_leagues['handicap'].id)
     scott, spare = _player('Scottie', 'Scheffler'), _player('Spare', 'Golfer')
     sony = _event(season, 'Sony Open', datetime(2026, 1, 15))
     _result(sony, scott, earnings=500_000)
-    _banked(alice, sony, scott, spare, 500_000)
+    _banked(alice, sony, scott, spare, 500_000, league_id=golf_leagues['handicap'].id)
     body = _page(client)
 
     race = _leaf(body, 'golf-race')
@@ -287,8 +287,8 @@ def test_one_banked_event_draws_dots_and_no_replay(app, client, season):
     assert '1 of 1 event banked' in body
 
 
-def test_a_season_with_nothing_banked_says_so_on_every_leaf(app, client, season):
-    _member(season, 'Alice')
+def test_a_season_with_nothing_banked_says_so_on_every_leaf(app, client, season, golf_leagues):
+    _member(season, 'Alice', league_id=golf_leagues['handicap'].id)
     _event(season, 'On The Course', datetime(2026, 1, 15), finalized=False)
     body = _page(client)
 
@@ -301,9 +301,9 @@ def test_a_season_with_nothing_banked_says_so_on_every_leaf(app, client, season)
     assert '<svg' not in body and 'js/golf/' not in body
 
 
-def test_banked_events_with_no_money_draw_no_race(app, client, season):
+def test_banked_events_with_no_money_draw_no_race(app, client, season, golf_leagues):
     """Nobody picked the opener: an axis that tops out at $1 says nothing."""
-    _member(season, 'Alice')
+    _member(season, 'Alice', league_id=golf_leagues['handicap'].id)
     _event(season, 'Sony Open', datetime(2026, 1, 15))
     body = _page(client)
 
@@ -312,8 +312,8 @@ def test_banked_events_with_no_money_draw_no_race(app, client, season):
     assert '<svg' not in body and 'season-replay.js' not in body
 
 
-def test_lines_are_sentences_not_awards(app, client, season):
-    _two_events(season)
+def test_lines_are_sentences_not_awards(app, client, season, golf_leagues):
+    _two_events(season, league_id=golf_leagues['handicap'].id)
     lines = ' '.join(re.sub(r'<[^>]+>', ' ', _leaf(_page(client), 'golf-lines')).split())
 
     assert 'Pick of the season Alice spent Scottie Scheffler at the Sony Open for $2,000,000 .' in lines
@@ -326,8 +326,8 @@ def test_lines_are_sentences_not_awards(app, client, season):
         assert medal not in lines.lower()
 
 
-def test_form_guide_burn_list_and_still_on_the_board(app, client, season):
-    alice, bob, g, _events = _two_events(season)
+def test_form_guide_burn_list_and_still_on_the_board(app, client, season, golf_leagues):
+    alice, bob, g, _events = _two_events(season, league_id=golf_leagues['handicap'].id)
     body = _page(client)
 
     form = ' '.join(re.sub(r'<[^>]+>', ' ', _leaf(body, 'golf-form')).split())
@@ -354,13 +354,13 @@ def test_form_guide_burn_list_and_still_on_the_board(app, client, season):
     assert 'Scheffler' not in unspent and 'Spaun' not in unspent
 
 
-def test_record_room_reads_banked_tournaments_only(app, client, season):
+def test_record_room_reads_banked_tournaments_only(app, client, season, golf_leagues):
     """A week on the course leaks into no leaf: not its picks, not its money."""
-    alice, bob, g, _events = _two_events(season)
+    alice, bob, g, _events = _two_events(season, league_id=golf_leagues['handicap'].id)
     live = _event(season, 'Live Invitational', datetime(2026, 3, 5), finalized=False)
     hot = _player('Hot', 'Livegolfer')
     _result(live, hot, earnings=9_000_000)
-    db.session.add(GolfPick(user_id=bob.id, tournament_id=live.id, primary_player_id=hot.id,
+    db.session.add(GolfPick(user_id=bob.id, league_id=golf_leagues['handicap'].id, tournament_id=live.id, primary_player_id=hot.id,
                             backup_player_id=g['spare'].id, active_player_id=hot.id,
                             points_earned=9_000_000))
     db.session.commit()
@@ -376,50 +376,50 @@ def test_record_room_reads_banked_tournaments_only(app, client, season):
 # Seasons
 # ============================================================================
 
-def test_record_room_reads_one_season(app, client, season):
-    _two_events(season)
+def test_record_room_reads_one_season(app, client, season, golf_leagues):
+    _two_events(season, league_id=golf_leagues['handicap'].id)
     past = User(username='past', email='past@test.com', display_name='PastMember')
     past.set_password('pw')
     db.session.add(past)
     db.session.flush()
-    db.session.add(GolfEnrollment(user_id=past.id, season_year=season - 1))
+    db.session.add(GolfEnrollment(user_id=past.id, league_id=golf_leagues['handicap'].id, season_year=season - 1))
     db.session.commit()
     old, spare = _player('Old', 'Timer'), GolfPlayer.query.filter_by(last_name='Golfer').one()
     last_year = _event(season - 1, 'Last Year Open', datetime(2025, 3, 6))
     _result(last_year, old, earnings=77_000)
-    _banked(past, last_year, old, spare, 77_000)
+    _banked(past, last_year, old, spare, 77_000, league_id=golf_leagues['handicap'].id)
 
     now = _page(client)
     assert 'PastMember' not in now and 'Old Timer' not in now and 'Last Year Open' not in now
-    assert f'href="/golf/stats?season={season - 1}">{season - 1} season</a>' in now
+    assert f'href="/golf/handicap/stats?season={season - 1}">{season - 1} season</a>' in now
 
     then = _page(client, season=season - 1)
     assert 'Alice' not in then and 'Scheffler' not in then and 'Sony Open' not in then
     assert 'PastMember' in then and 'Old Timer' in then
-    assert f'href="/golf/member/{past.id}?season={season - 1}"' in then
-    assert f'href="/golf/stats">{season} season</a>' in then
+    assert f'href="/golf/handicap/member/{past.id}?season={season - 1}"' in then
+    assert f'href="/golf/handicap/stats">{season} season</a>' in then
 
-    assert client.get('/golf/stats', query_string={'season': season - 5}).status_code == 404
-    assert client.get('/golf/stats', query_string={'season': 'next'}).status_code == 404
+    assert client.get('/golf/handicap/stats', query_string={'season': season - 5}).status_code == 404
+    assert client.get('/golf/handicap/stats', query_string={'season': 'next'}).status_code == 404
 
 
-def test_record_room_of_a_banked_season_names_the_champion(app, client, season):
+def test_record_room_of_a_banked_season_names_the_champion(app, client, season, golf_leagues):
     """Every event banked: the fold leads the room with the race's leader
     and says the Commish has not closed the record yet; no /records link."""
-    alice, bob, _g, _events = _two_events(season)
+    alice, bob, _g, _events = _two_events(season, league_id=golf_leagues['handicap'].id)
     body = _page(client)
     fold = _leaf(body, 'golf-champion')
     assert '>Champion</h2>' in fold
-    assert f'href="/golf/member/{alice.id}">Alice</a>' in fold
+    assert f'href="/golf/handicap/member/{alice.id}">Alice</a>' in fold
     assert 'golf-money--banked">$2,300,000' in fold
     assert 'Bob' not in fold
     assert 'not on the club' in fold and '/records' not in fold
     assert body.index('id="golf-champion"') < body.index('id="golf-race"')
 
 
-def test_record_room_links_the_record_once_the_season_is_closed(app, client, season):
+def test_record_room_links_the_record_once_the_season_is_closed(app, client, season, golf_leagues):
     from models.records import FinishDraft, record_season
-    alice, bob, _g, _events = _two_events(season)
+    alice, bob, _g, _events = _two_events(season, league_id=golf_leagues['handicap'].id)
     record_season('golf', season, [
         FinishDraft(alice.id, 'Alice', 1, 'champion', '$2,300,000'),
         FinishDraft(bob.id, 'Bob', 2, None, '$400,000'),
@@ -431,14 +431,14 @@ def test_record_room_links_the_record_once_the_season_is_closed(app, client, sea
     assert 'golf-money--banked">$2,300,000' in fold
 
 
-def test_record_room_of_a_running_season_has_no_champion(app, client, season):
-    _two_events(season)
+def test_record_room_of_a_running_season_has_no_champion(app, client, season, golf_leagues):
+    _two_events(season, league_id=golf_leagues['handicap'].id)
     _event(season, 'Masters Tournament', datetime(2026, 4, 9), finalized=False)
     body = _page(client)
     assert 'golf-champion' not in body
 
 
-def test_record_room_of_a_season_with_no_tournaments_is_not_a_404(app, client, season):
+def test_record_room_of_a_season_with_no_tournaments_is_not_a_404(app, client, season, golf_leagues):
     """The configured season is always a room, even before its schedule is seeded."""
     body = _page(client)
     assert 'the schedule is not posted yet' in body and '0 of 0' not in body
@@ -449,8 +449,9 @@ def test_record_room_of_a_season_with_no_tournaments_is_not_a_404(app, client, s
 # No query per member, per week or per golfer
 # ============================================================================
 
-def test_record_room_query_count_does_not_grow(app, client, season):
-    alice, bob, g, _events = _two_events(season)
+def test_record_room_query_count_does_not_grow(app, client, season, golf_leagues):
+    league_id = golf_leagues['handicap'].id  # read before db.session.remove() detaches the league
+    alice, bob, g, _events = _two_events(season, league_id=league_id)
     spare_id = g['spare'].id
 
     # Warm the before_request status refresh so both measured requests skip it.
@@ -460,13 +461,13 @@ def test_record_room_query_count_does_not_grow(app, client, season):
         _page(client)
 
     spare = db.session.get(GolfPlayer, spare_id)
-    members = [_member(season, f'Extra{i}') for i in range(6)]
+    members = [_member(season, f'Extra{i}', league_id=league_id) for i in range(6)]
     for week in range(8):
         banked = _event(season, f'Week {week}', datetime(2026, 3, 1 + week))
         for i, member in enumerate(members):
             golfer = _player(f'W{week}', f'Golfer{i}')
             _result(banked, golfer, position=str(i + 1), earnings=50_000 * (i + 1))
-            _banked(member, banked, golfer, spare, 50_000 * (i + 1))
+            _banked(member, banked, golfer, spare, 50_000 * (i + 1), league_id=league_id)
     db.session.remove()
     with _count_sql() as large:
         _page(client)
@@ -481,8 +482,8 @@ def test_record_room_query_count_does_not_grow(app, client, season):
 # The scripts: local, versioned, and enhancement only
 # ============================================================================
 
-def test_scripts_are_local_versioned_and_load_no_library(app, client, season):
-    _two_events(season)
+def test_scripts_are_local_versioned_and_load_no_library(app, client, season, golf_leagues):
+    _two_events(season, league_id=golf_leagues['handicap'].id)
     body = _page(client)
 
     tags = re.findall(r'<script src="(/static/js/golf/[^"]+)" defer></script>', body)

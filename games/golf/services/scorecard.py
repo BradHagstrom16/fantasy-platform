@@ -11,7 +11,7 @@ not yet revealed is dropped here, before a row is built from it.
 """
 from dataclasses import dataclass
 
-from games.golf.models import PENALTY_PER_INCIDENT, GolfPick, GolfTournament
+from games.golf.models import GolfPick, GolfTournament
 from games.golf.services.field import spent_golfers
 from games.golf.services.sheet import SheetRow, WeekLine, week_lines
 from games.golf.services.stats import SpentWeek
@@ -63,7 +63,8 @@ class Scorecard:
 
 
 def build_scorecard(member, viewer_id, sheet, tournaments, picks, results, usage,
-                    ledger, penalty_paid, live=None, live_lines=None, next_tournament=None):
+                    ledger, penalty_paid, penalty_per_incident, live=None, live_lines=None,
+                    next_tournament=None):
     """A member's season as their scorecard shows it.
 
     ``sheet`` is ``sheet.build_sheet`` for the season (with the live event's
@@ -71,7 +72,9 @@ def build_scorecard(member, viewer_id, sheet, tournaments, picks, results, usage
     order; ``picks`` every pick the member has on them, golfers and
     tournament loaded; ``results`` the results of those picks' golfers;
     ``usage`` the member's spent golfers by id; ``ledger``
-    ``stats.override_tally`` over the revealed weeks. ``live`` and
+    ``stats.override_tally`` over the revealed weeks; ``penalty_paid`` what
+    the member's line has paid toward the pot, ``penalty_per_incident`` its
+    league's rate. ``live`` and
     ``live_lines`` are the sheet's event and its ``week_lines``;
     ``next_tournament`` is the week still open for a pick.
     """
@@ -131,7 +134,7 @@ def build_scorecard(member, viewer_id, sheet, tournaments, picks, results, usage
              + [golfer for golfer in by_week if not golfer.week])
 
     major_cuts = sum(1 for pick in picks if pick.penalty_triggered)
-    pot_owed = major_cuts * PENALTY_PER_INCIDENT
+    pot_owed = major_cuts * penalty_per_incident
 
     return Scorecard(
         member=member,

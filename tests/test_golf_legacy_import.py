@@ -33,6 +33,7 @@ from games.golf.models import (
     GolfTournamentField,
     GolfTournamentResult,
 )
+from games.golf.services.leagues import league_by_slug
 from games.golf.services.legacy_import import (
     import_season,
     load_snapshot,
@@ -50,6 +51,8 @@ GOLF_TABLES = (GolfEnrollment, GolfPlayer, GolfTournament, GolfTournamentField,
                GolfTournamentResult, GolfSeasonPlayerUsage, GolfPick)
 # Generated so no literal password sits beside a username (GitGuardian).
 PLATFORM_PW = secrets.token_urlsafe(16)
+# The import lands in a league (ADR-075), so every test needs the seeded rows.
+pytestmark = pytest.mark.usefixtures('golf_leagues')
 
 
 # --- helpers ---------------------------------------------------------------
@@ -258,9 +261,16 @@ def test_new_user_defaults(app, tmp_path):
 
 # --- enrollments -----------------------------------------------------------
 
-def test_enrollment_carries_totals_has_paid_penalty_paid_not_is_admin(app, tmp_path):
+def test_enrollment_carries_totals_has_paid_penalty_paid_not_is_admin(app, tmp_path, golf_leagues):
     casey, _ = _seed_platform_users()
     report = _import(_legacy(tmp_path))
+
+    # No league named: every row lands on the house league's sheet (ADR-075).
+    assert report.outcome == 'committed', report.render()
+    assert 'season 2026 into the Handicap Pay Sheet (handicap)' in report.render()
+    for model in (GolfEnrollment, GolfPick, GolfSeasonPlayerUsage):
+        rows = db.session.scalars(select(model)).all()
+        assert rows and {r.league_id for r in rows} == {golf_leagues['handicap'].id}, model.__name__
 
     e = db.session.scalars(select(GolfEnrollment).filter_by(user_id=casey.id, season_year=SEASON)).one()
     assert e.total_points == 1_150_000
@@ -507,7 +517,8 @@ def test_fidelity_reports_missing_player_instead_of_raising(app, tmp_path):
     snapshot = load_snapshot(conn, SEASON, str(path))
     conn.close()
 
-    _, diffs = import_season(snapshot, resolve_users_readonly(snapshot.users), SEASON, check_only=True)
+    _, diffs = import_season(snapshot, resolve_users_readonly(snapshot.users), SEASON,
+                             league=league_by_slug('handicap'), check_only=True)
 
     kinds = {d.kind for d in diffs}
     assert 'golf_player' in kinds        # the player loop flags the missing row

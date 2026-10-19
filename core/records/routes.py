@@ -12,7 +12,8 @@ from models.records import champions, finishes_for, seasons_on_record
 
 # The room's own archive of a season, by endpoint name so this module never
 # imports a game: a bare endpoint, or ``(endpoint, kwargs)`` for a page that
-# takes the season as a query (the Pay Sheet's Record Room, ``?season=``). A
+# needs URL arguments (the Pay Sheet's Record Room: its league in the path,
+# the season as ``?season=``). A
 # season with no entry simply shows no link. Only a PUBLIC page pinned to
 # that season belongs here: this page is public, and a live room page (the
 # Docket's ledger is members-only and always the current season) would send
@@ -21,12 +22,12 @@ from models.records import champions, finishes_for, seasons_on_record
 SEASON_ARCHIVES = {
     ('cfb', 2025): 'cfb.history',
     ('worldcup', 2026): 'worldcup.leaderboard',
-    ('golf', 2026): ('golf.record_room', {'season': 2026}),
+    ('golf', 2026): ('golf.record_room', {'league': 'handicap', 'season': 2026}),
 }
 
 
 def archive_url(value) -> str:
-    """The URL of a SEASON_ARCHIVES value: an endpoint, or one with its query."""
+    """The URL of a SEASON_ARCHIVES value: an endpoint, or one with its arguments."""
     if isinstance(value, tuple):
         endpoint, kwargs = value
         return url_for(endpoint, **kwargs)

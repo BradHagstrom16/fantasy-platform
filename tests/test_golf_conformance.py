@@ -78,8 +78,8 @@ def _make_user(username='golfer', is_admin=False, display_name=None, avatar=None
     return u
 
 
-def _make_enrollment(user, season_year=SEASON):
-    e = GolfEnrollment(user_id=user.id, season_year=season_year, total_points=0)
+def _make_enrollment(user, season_year=SEASON, *, league_id):
+    e = GolfEnrollment(user_id=user.id, league_id=league_id, season_year=season_year, total_points=0)
     db.session.add(e)
     db.session.commit()
     return e
@@ -121,9 +121,9 @@ def _add_to_field(tournament, player):
     return fe
 
 
-def _mark_used(user, player, season_year=SEASON):
+def _mark_used(user, player, season_year=SEASON, *, league_id):
     usage = GolfSeasonPlayerUsage(
-        user_id=user.id, player_id=player.id, season_year=season_year
+        user_id=user.id, league_id=league_id, player_id=player.id, season_year=season_year
     )
     db.session.add(usage)
     db.session.commit()
@@ -145,9 +145,10 @@ def _make_result(tournament, player, status='complete', rounds_completed=4,
     return r
 
 
-def _make_pick(user, tournament, primary, backup, **kwargs):
+def _make_pick(user, tournament, primary, backup, *, league_id, **kwargs):
     pick = GolfPick(
         user_id=user.id,
+        league_id=league_id,
         tournament_id=tournament.id,
         primary_player_id=primary.id,
         backup_player_id=backup.id,
@@ -180,28 +181,28 @@ def _patch_mail(monkeypatch):
 # Golf-scoped standings (ADR-036)
 # ============================================================================
 
-def test_index_standings_scoped_to_golf_enrollments(app, client):
+def test_index_standings_scoped_to_golf_enrollments(app, client, golf_leagues):
     """index() lists only current-season golf enrollees, not every platform user."""
     enrolled = _make_user('enrolled_golfer', display_name='EnrolledGolfer')
-    _make_enrollment(enrolled)
+    _make_enrollment(enrolled, league_id=golf_leagues['handicap'].id)
     # A user in another game only — never enrolled in golf.
     _make_user('worldcup_only', display_name='WorldCupOnly')
 
-    resp = client.get('/golf/')
+    resp = client.get('/golf/handicap/')
     assert resp.status_code == 200
     body = resp.get_data(as_text=True)
     assert 'EnrolledGolfer' in body
     assert 'WorldCupOnly' not in body
 
 
-def test_index_standings_prior_season_enrollment_excluded(app, client):
+def test_index_standings_prior_season_enrollment_excluded(app, client, golf_leagues):
     """A prior-season enrollment must not appear on the current-season board."""
     current = _make_user('current', display_name='CurrentSeason')
-    _make_enrollment(current)
+    _make_enrollment(current, league_id=golf_leagues['handicap'].id)
     old = _make_user('old', display_name='OldSeason')
-    _make_enrollment(old, season_year=SEASON - 1)
+    _make_enrollment(old, season_year=SEASON - 1, league_id=golf_leagues['handicap'].id)
 
-    body = client.get('/golf/').get_data(as_text=True)
+    body = client.get('/golf/handicap/').get_data(as_text=True)
     assert 'CurrentSeason' in body
     assert 'OldSeason' not in body
 
@@ -210,10 +211,10 @@ def test_index_standings_prior_season_enrollment_excluded(app, client):
 # Enrollment-scoped mail
 # ============================================================================
 
-def test_picks_open_mail_only_golf_enrollees(app, monkeypatch):
+def test_picks_open_mail_only_golf_enrollees(app, monkeypatch, golf_leagues):
     captured = _patch_mail(monkeypatch)
     enrolled = _make_user('enrolled')
-    _make_enrollment(enrolled)
+    _make_enrollment(enrolled, league_id=golf_leagues['handicap'].id)
     _make_user('non_golf')  # no golf enrollment
     tournament = _make_tournament(status='upcoming')
 
@@ -225,41 +226,41 @@ def test_picks_open_mail_only_golf_enrollees(app, monkeypatch):
     assert sent == 1
 
 
-def test_reminder_mail_only_golf_enrollees(app):
+def test_reminder_mail_only_golf_enrollees(app, golf_leagues):
     """get_users_without_picks returns only current-season enrollees with no pick."""
     enrolled = _make_user('enrolled')
-    _make_enrollment(enrolled)
+    _make_enrollment(enrolled, league_id=golf_leagues['handicap'].id)
     _make_user('non_golf')  # not enrolled
     old = _make_user('old_season')
-    _make_enrollment(old, season_year=SEASON - 1)
+    _make_enrollment(old, season_year=SEASON - 1, league_id=golf_leagues['handicap'].id)
     tournament = _make_tournament(status='active')
 
-    recipients = get_users_without_picks(tournament.id, SEASON)
+    recipients = get_users_without_picks(tournament.id, SEASON, golf_leagues['handicap'].id)
     ids = {u.id for u in recipients}
     assert enrolled.id in ids
     assert 'non_golf' not in {u.username for u in recipients}
     assert old.id not in ids
 
 
-def test_reminder_mail_excludes_users_who_picked(app):
+def test_reminder_mail_excludes_users_who_picked(app, golf_leagues):
     picked = _make_user('picked')
-    _make_enrollment(picked)
+    _make_enrollment(picked, league_id=golf_leagues['handicap'].id)
     waiting = _make_user('waiting')
-    _make_enrollment(waiting)
+    _make_enrollment(waiting, league_id=golf_leagues['handicap'].id)
     tournament = _make_tournament(status='active')
     p1, p2 = _make_player('P1', 'A', 'One'), _make_player('P2', 'B', 'Two')
-    _make_pick(picked, tournament, p1, p2)
+    _make_pick(picked, tournament, p1, p2, league_id=golf_leagues['handicap'].id)
 
-    recipients = get_users_without_picks(tournament.id, SEASON)
+    recipients = get_users_without_picks(tournament.id, SEASON, golf_leagues['handicap'].id)
     ids = {u.id for u in recipients}
     assert waiting.id in ids
     assert picked.id not in ids
 
 
-def test_recap_mail_only_golf_enrollees(app, monkeypatch):
+def test_recap_mail_only_golf_enrollees(app, monkeypatch, golf_leagues):
     captured = _patch_mail(monkeypatch)
     enrolled = _make_user('enrolled')
-    _make_enrollment(enrolled)
+    _make_enrollment(enrolled, league_id=golf_leagues['handicap'].id)
     _make_user('non_golf')  # not enrolled
     tournament = _make_tournament(status='complete', results_finalized=True)
 
@@ -271,7 +272,7 @@ def test_recap_mail_only_golf_enrollees(app, monkeypatch):
     assert sent == 1
 
 
-def test_recap_null_total_points_renders_zero(app, monkeypatch):
+def test_recap_null_total_points_renders_zero(app, monkeypatch, golf_leagues):
     """An enrollment with NULL total_points must not crash the recap formatter.
 
     The column has ``default=0`` but not ``nullable=False``, so ``None`` is
@@ -280,7 +281,7 @@ def test_recap_null_total_points_renders_zero(app, monkeypatch):
     """
     captured = _patch_mail(monkeypatch)
     member = _make_user('null_pts')
-    enrollment = _make_enrollment(member)
+    enrollment = _make_enrollment(member, league_id=golf_leagues['handicap'].id)
     enrollment.total_points = None
     db.session.commit()
 
@@ -296,7 +297,7 @@ def test_recap_null_total_points_renders_zero(app, monkeypatch):
 # Email HTML escaping
 # ============================================================================
 
-def test_email_html_escapes_dynamic_values(app, monkeypatch):
+def test_email_html_escapes_dynamic_values(app, monkeypatch, golf_leagues):
     """Tournament names are HTML-escaped in the picks-open letter.
 
     (Display names left broadcasts with the Club Letter's greeting policy —
@@ -304,7 +305,7 @@ def test_email_html_escapes_dynamic_values(app, monkeypatch):
     """
     captured = _patch_mail(monkeypatch)
     member = _make_user('member')
-    _make_enrollment(member)
+    _make_enrollment(member, league_id=golf_leagues['handicap'].id)
     tournament = _make_tournament(name='The <Open> & Masters', status='upcoming')
 
     send_picks_open_email(tournament.id)
@@ -317,11 +318,11 @@ def test_email_html_escapes_dynamic_values(app, monkeypatch):
     assert 'The &lt;Open&gt; &amp; Masters' in html
 
 
-def test_recap_email_escapes_display_name(app, monkeypatch):
+def test_recap_email_escapes_display_name(app, monkeypatch, golf_leagues):
     """The recap greets by display name; a hostile name is escaped."""
     captured = _patch_mail(monkeypatch)
     hostile = _make_user('hostile', display_name='Evil<script>&amp')
-    _make_enrollment(hostile)
+    _make_enrollment(hostile, league_id=golf_leagues['handicap'].id)
     tournament = _make_tournament(status='complete', results_finalized=True)
 
     send_results_recap_email(tournament.id)
@@ -332,18 +333,18 @@ def test_recap_email_escapes_display_name(app, monkeypatch):
     assert 'Evil&lt;script&gt;' in html
 
 
-def test_recap_email_escapes_golfer_name(app, monkeypatch):
+def test_recap_email_escapes_golfer_name(app, monkeypatch, golf_leagues):
     """Golfer names interpolated into the recap HTML are escaped."""
     captured = _patch_mail(monkeypatch)
     member = _make_user('member')
-    _make_enrollment(member)
+    _make_enrollment(member, league_id=golf_leagues['handicap'].id)
     tournament = _make_tournament(status='complete', results_finalized=True)
     primary = _make_player('P1', 'Rory', '<b>McIlroy</b>')
     backup = _make_player('P2', 'Jon', 'Rahm')
     _add_to_field(tournament, primary)
     _add_to_field(tournament, backup)
     _make_result(tournament, primary, earnings=100000, final_position='1')
-    pick = _make_pick(member, tournament, primary, backup)
+    pick = _make_pick(member, tournament, primary, backup, league_id=golf_leagues['handicap'].id)
     pick.active_player_id = primary.id
     pick.points_earned = 100000
     db.session.commit()
@@ -359,15 +360,15 @@ def test_recap_email_escapes_golfer_name(app, monkeypatch):
 # Avatars on tournament_detail standings
 # ============================================================================
 
-def test_tournament_detail_renders_avatar(app, client):
+def test_tournament_detail_renders_avatar(app, client, golf_leagues):
     """The player column renders get_avatar() immediately before the display name."""
     member = _make_user('member', display_name='ZorpTheGolfer', avatar='🎯')
-    _make_enrollment(member)
+    _make_enrollment(member, league_id=golf_leagues['handicap'].id)
     tournament = _make_tournament(status='complete', results_finalized=True)
     p1, p2 = _make_player('P1', 'A', 'One'), _make_player('P2', 'B', 'Two')
-    _make_pick(member, tournament, p1, p2)
+    _make_pick(member, tournament, p1, p2, league_id=golf_leagues['handicap'].id)
 
-    body = client.get(f'/golf/tournament/{tournament.id}').get_data(as_text=True)
+    body = client.get(f'/golf/handicap/tournament/{tournament.id}').get_data(as_text=True)
     assert '🎯' in body
     assert 'ZorpTheGolfer' in body
     # Avatar renders before the name.
@@ -378,7 +379,7 @@ def test_tournament_detail_renders_avatar(app, client):
 # Complete-vs-finalized gating
 # ============================================================================
 
-def test_final_mode_gated_on_results_finalized(app, client):
+def test_final_mode_gated_on_results_finalized(app, client, golf_leagues):
     """Complete-but-unfinalized says Projected; a finalized board says Banked.
 
     The two money states are named in words and never share a board
@@ -387,7 +388,7 @@ def test_final_mode_gated_on_results_finalized(app, client):
     visible across the shared fixture session.
     """
     member = _make_user('member')
-    _make_enrollment(member)
+    _make_enrollment(member, league_id=golf_leagues['handicap'].id)
     p1, p2 = _make_player('P1', 'A', 'One'), _make_player('P2', 'B', 'Two')
 
     # Complete but NOT finalized → projected mode.
@@ -396,9 +397,9 @@ def test_final_mode_gated_on_results_finalized(app, client):
     _add_to_field(pending, p1)
     _add_to_field(pending, p2)
     _make_result(pending, p1, earnings=100000, final_position='1')
-    _make_pick(member, pending, p1, p2)
+    _make_pick(member, pending, p1, p2, league_id=golf_leagues['handicap'].id)
 
-    body = client.get(f'/golf/tournament/{pending.id}').get_data(as_text=True)
+    body = client.get(f'/golf/handicap/tournament/{pending.id}').get_data(as_text=True)
     assert 'Projected' in body
     assert 'Banked' not in body
     assert 'Earnings' not in body
@@ -410,9 +411,9 @@ def test_final_mode_gated_on_results_finalized(app, client):
     _add_to_field(final, p3)
     _add_to_field(final, p4)
     _make_result(final, p3, earnings=100000, final_position='1')
-    _make_pick(member, final, p3, p4, active_player_id=p3.id, points_earned=100000)
+    _make_pick(member, final, p3, p4, active_player_id=p3.id, points_earned=100000, league_id=golf_leagues['handicap'].id)
 
-    body2 = client.get(f'/golf/tournament/{final.id}').get_data(as_text=True)
+    body2 = client.get(f'/golf/handicap/tournament/{final.id}').get_data(as_text=True)
     assert 'Banked' in body2
     assert 'Projected' not in body2
 
@@ -432,15 +433,15 @@ def _override_post(client, tournament, user, primary, backup, note='t', confirm=
     }
     if confirm:
         data['confirm'] = '1'  # the U6 gate: a complete tournament re-resolves only on confirm
-    return client.post('/golf/admin/override-pick', data=data, follow_redirects=True)
+    return client.post('/golf/handicap/admin/override-pick', data=data, follow_redirects=True)
 
 
-def test_admin_override_rejects_used_or_non_field_player(app, client, monkeypatch):
+def test_admin_override_rejects_used_or_non_field_player(app, client, monkeypatch, golf_leagues):
     """POST validation blocks non-field and already-used golfers; nothing mutates."""
     _set_status(monkeypatch, 'golf', 'open')
     admin = _make_user('gadmin', is_admin=True)
     member = _make_user('member')
-    _make_enrollment(member)
+    _make_enrollment(member, league_id=golf_leagues['handicap'].id)
     tournament = _make_tournament(status='upcoming')
     in_field_a = _make_player('A', 'In', 'FieldA')
     in_field_b = _make_player('B', 'In', 'FieldB')
@@ -449,7 +450,7 @@ def test_admin_override_rejects_used_or_non_field_player(app, client, monkeypatc
     _add_to_field(tournament, in_field_a)
     _add_to_field(tournament, in_field_b)
     _add_to_field(tournament, used)
-    _mark_used(member, used)  # used in a prior tournament this season
+    _mark_used(member, used, league_id=golf_leagues['handicap'].id)  # used in a prior tournament this season
     _login(client, admin)
 
     # Non-field primary → rejected, no pick created.
@@ -482,19 +483,19 @@ def test_admin_override_rejects_used_or_non_field_player(app, client, monkeypatc
             user_id=member.id, tournament_id=tournament.id).first() is None
 
 
-def test_admin_override_rejection_does_not_mutate_existing_pick(app, client, monkeypatch):
+def test_admin_override_rejection_does_not_mutate_existing_pick(app, client, monkeypatch, golf_leagues):
     """A rejected override leaves an existing valid pick untouched (validate-before-mutate)."""
     _set_status(monkeypatch, 'golf', 'open')
     admin = _make_user('gadmin', is_admin=True)
     member = _make_user('member')
-    _make_enrollment(member)
+    _make_enrollment(member, league_id=golf_leagues['handicap'].id)
     tournament = _make_tournament(status='upcoming')
     a = _make_player('A', 'Alpha', 'One')
     b = _make_player('B', 'Bravo', 'Two')
     off_field = _make_player('O', 'Off', 'Field')
     _add_to_field(tournament, a)
     _add_to_field(tournament, b)
-    _make_pick(member, tournament, a, b)
+    _make_pick(member, tournament, a, b, league_id=golf_leagues['handicap'].id)
     _login(client, admin)
 
     # Attempt to override to an off-field primary → rejected.
@@ -507,12 +508,12 @@ def test_admin_override_rejection_does_not_mutate_existing_pick(app, client, mon
         assert pick.backup_player_id == b.id
 
 
-def test_admin_override_valid_submission_saves(app, client, monkeypatch):
+def test_admin_override_valid_submission_saves(app, client, monkeypatch, golf_leagues):
     """A valid override for an upcoming tournament creates the pick."""
     _set_status(monkeypatch, 'golf', 'open')
     admin = _make_user('gadmin', is_admin=True)
     member = _make_user('member')
-    _make_enrollment(member)
+    _make_enrollment(member, league_id=golf_leagues['handicap'].id)
     tournament = _make_tournament(status='upcoming')
     a = _make_player('A', 'Alpha', 'One')
     b = _make_player('B', 'Bravo', 'Two')
@@ -547,12 +548,12 @@ def test_admin_override_rejects_unenrolled_user(app, client, monkeypatch):
         assert GolfPick.query.filter_by(user_id=stranger.id).first() is None
 
 
-def test_admin_override_rejects_cross_season_tournament(app, client, monkeypatch):
+def test_admin_override_rejects_cross_season_tournament(app, client, monkeypatch, golf_leagues):
     """A tournament from another season can't be overridden via a crafted POST."""
     _set_status(monkeypatch, 'golf', 'open')
     admin = _make_user('gadmin', is_admin=True)
     member = _make_user('member')
-    _make_enrollment(member)  # current season only
+    _make_enrollment(member, league_id=golf_leagues['handicap'].id)  # current season only
     old = _make_tournament(name='Last Year Open', status='complete',
                            season_year=SEASON - 1)
     a = _make_player('A', 'Alpha', 'One')
@@ -568,12 +569,12 @@ def test_admin_override_rejects_cross_season_tournament(app, client, monkeypatch
             user_id=member.id, tournament_id=old.id).first() is None
 
 
-def test_admin_override_complete_resolution_failure_rolls_back(app, client, monkeypatch):
+def test_admin_override_complete_resolution_failure_rolls_back(app, client, monkeypatch, golf_leagues):
     """A complete-tournament override that can't resolve persists nothing."""
     _set_status(monkeypatch, 'golf', 'open')
     admin = _make_user('gadmin', is_admin=True)
     member = _make_user('member')
-    _make_enrollment(member)
+    _make_enrollment(member, league_id=golf_leagues['handicap'].id)
     tournament = _make_tournament(status='complete', results_finalized=True)
     a = _make_player('A', 'Alpha', 'One')
     b = _make_player('B', 'Bravo', 'Two')
@@ -589,7 +590,7 @@ def test_admin_override_complete_resolution_failure_rolls_back(app, client, monk
             user_id=member.id, tournament_id=tournament.id).first() is None
 
 
-def test_admin_override_excludes_own_pick_players_from_used_ids(app, client, monkeypatch):
+def test_admin_override_excludes_own_pick_players_from_used_ids(app, client, monkeypatch, golf_leagues):
     """The GET form excludes the pick's own players from the used list.
 
     A player used only because it IS the existing pick keeps being selectable;
@@ -598,20 +599,20 @@ def test_admin_override_excludes_own_pick_players_from_used_ids(app, client, mon
     _set_status(monkeypatch, 'golf', 'open')
     admin = _make_user('gadmin', is_admin=True)
     member = _make_user('member')
-    _make_enrollment(member)
+    _make_enrollment(member, league_id=golf_leagues['handicap'].id)
     tournament = _make_tournament(status='complete', results_finalized=True)
     own = _make_player('OWN', 'Own', 'Pick')
     backup = _make_player('BKP', 'Own', 'Backup')
     elsewhere = _make_player('ELS', 'Used', 'Elsewhere')
     for p in (own, backup, elsewhere):
         _add_to_field(tournament, p)
-    _make_pick(member, tournament, own, backup)
-    _mark_used(member, own)        # the pick's own player is "used"
-    _mark_used(member, elsewhere)  # a genuinely locked player
+    _make_pick(member, tournament, own, backup, league_id=golf_leagues['handicap'].id)
+    _mark_used(member, own, league_id=golf_leagues['handicap'].id)        # the pick's own player is "used"
+    _mark_used(member, elsewhere, league_id=golf_leagues['handicap'].id)  # a genuinely locked player
     _login(client, admin)
 
     body = client.get(
-        f'/golf/admin/override-pick?tournament_id={tournament.id}&user_id={member.id}'
+        f'/golf/handicap/admin/override-pick?tournament_id={tournament.id}&user_id={member.id}'
     ).get_data(as_text=True)
 
     # own pick's player is NOT marked used; the elsewhere-locked player IS.
@@ -631,17 +632,17 @@ def _banked_tournament_with_two_golfers():
     return tournament, a, b
 
 
-def test_admin_override_on_a_complete_tournament_requires_confirm(app, client, monkeypatch):
+def test_admin_override_on_a_complete_tournament_requires_confirm(app, client, monkeypatch, golf_leagues):
     """The first POST on a complete tournament renders the consequence and
     commits nothing: no pick, no usage, the member's total untouched."""
     _set_status(monkeypatch, 'golf', 'open')
     admin = _make_user('gadmin', is_admin=True)
     member = _make_user('member', display_name='Casey Member')
-    enrollment = _make_enrollment(member)
+    enrollment = _make_enrollment(member, league_id=golf_leagues['handicap'].id)
     tournament, a, b = _banked_tournament_with_two_golfers()
     _login(client, admin)
 
-    resp = client.post('/golf/admin/override-pick', data={
+    resp = client.post('/golf/handicap/admin/override-pick', data={
         'csrf_token': 'x',
         'tournament_id': tournament.id,
         'user_id': member.id,
@@ -663,13 +664,13 @@ def test_admin_override_on_a_complete_tournament_requires_confirm(app, client, m
         assert db.session.get(GolfEnrollment, enrollment.id).total_points == 0
 
 
-def test_admin_override_confirm_keeps_an_existing_pick_until_confirmed(app, client, monkeypatch):
+def test_admin_override_confirm_keeps_an_existing_pick_until_confirmed(app, client, monkeypatch, golf_leagues):
     """With a resolved pick in place, the unconfirmed POST shows old -> new
     and leaves the pick, its money and its usage exactly as they were."""
     _set_status(monkeypatch, 'golf', 'open')
     admin = _make_user('gadmin', is_admin=True)
     member = _make_user('member')
-    _make_enrollment(member)
+    _make_enrollment(member, league_id=golf_leagues['handicap'].id)
     tournament, a, b = _banked_tournament_with_two_golfers()
     c = _make_player('C', 'Charlie', 'Three')
     d = _make_player('D', 'Delta', 'Four')
@@ -677,8 +678,8 @@ def test_admin_override_confirm_keeps_an_existing_pick_until_confirmed(app, clie
     _add_to_field(tournament, d)
     _make_result(tournament, c, earnings=100000, final_position='5')
     _make_result(tournament, d, earnings=0, final_position='CUT', status='cut')
-    _make_pick(member, tournament, c, d, active_player_id=c.id, points_earned=100000)
-    _mark_used(member, c)
+    _make_pick(member, tournament, c, d, active_player_id=c.id, points_earned=100000, league_id=golf_leagues['handicap'].id)
+    _mark_used(member, c, league_id=golf_leagues['handicap'].id)
     _login(client, admin)
 
     body = _override_post(client, tournament, member, a, b).get_data(as_text=True)
@@ -693,17 +694,17 @@ def test_admin_override_confirm_keeps_an_existing_pick_until_confirmed(app, clie
             user_id=member.id, player_id=c.id).count() == 1
 
 
-def test_admin_override_confirmed_commits_and_reresolves(app, client, monkeypatch):
+def test_admin_override_confirmed_commits_and_reresolves(app, client, monkeypatch, golf_leagues):
     """confirm=1 writes the override, re-resolves the pick and recalculates
     the season total in one step."""
     _set_status(monkeypatch, 'golf', 'open')
     admin = _make_user('gadmin', is_admin=True)
     member = _make_user('member')
-    enrollment = _make_enrollment(member)
+    enrollment = _make_enrollment(member, league_id=golf_leagues['handicap'].id)
     tournament, a, b = _banked_tournament_with_two_golfers()
     _login(client, admin)
 
-    resp = client.post('/golf/admin/override-pick', data={
+    resp = client.post('/golf/handicap/admin/override-pick', data={
         'csrf_token': 'x',
         'tournament_id': tournament.id,
         'user_id': member.id,
@@ -722,12 +723,12 @@ def test_admin_override_confirmed_commits_and_reresolves(app, client, monkeypatc
         assert e.total_points == 250000
 
 
-def test_admin_override_upcoming_tournament_needs_no_confirm(app, client, monkeypatch):
+def test_admin_override_upcoming_tournament_needs_no_confirm(app, client, monkeypatch, golf_leagues):
     """Before the event, an override changes no money: it saves in one step."""
     _set_status(monkeypatch, 'golf', 'open')
     admin = _make_user('gadmin', is_admin=True)
     member = _make_user('member')
-    _make_enrollment(member)
+    _make_enrollment(member, league_id=golf_leagues['handicap'].id)
     tournament = _make_tournament(status='upcoming')
     a = _make_player('A', 'Alpha', 'One')
     b = _make_player('B', 'Bravo', 'Two')
@@ -742,22 +743,22 @@ def test_admin_override_upcoming_tournament_needs_no_confirm(app, client, monkey
             user_id=member.id, tournament_id=tournament.id).first() is not None
 
 
-def test_clear_resolution_is_season_scoped(app):
+def test_clear_resolution_is_season_scoped(app, golf_leagues):
     """Clearing this season's pick drops this season's usage row even when the
     same golfer counted for the member in an earlier season."""
     member = _make_user('member')
-    _make_enrollment(member)
-    _make_enrollment(member, season_year=SEASON - 1)
+    _make_enrollment(member, league_id=golf_leagues['handicap'].id)
+    _make_enrollment(member, season_year=SEASON - 1, league_id=golf_leagues['handicap'].id)
     golfer = _make_player('X', 'Xavier', 'Ten')
     other = _make_player('Y', 'Yves', 'Eleven')
     old = _make_tournament(name='Last Year Open', status='complete',
                            results_finalized=True, season_year=SEASON - 1)
     this = _make_tournament(status='complete', results_finalized=True)
-    _make_pick(member, old, golfer, other, active_player_id=golfer.id, points_earned=5000)
-    _mark_used(member, golfer, season_year=SEASON - 1)
+    _make_pick(member, old, golfer, other, active_player_id=golfer.id, points_earned=5000, league_id=golf_leagues['handicap'].id)
+    _mark_used(member, golfer, season_year=SEASON - 1, league_id=golf_leagues['handicap'].id)
     pick = _make_pick(member, this, golfer, other, active_player_id=golfer.id,
-                      points_earned=7000)
-    _mark_used(member, golfer)
+                      points_earned=7000, league_id=golf_leagues['handicap'].id)
+    _mark_used(member, golfer, league_id=golf_leagues['handicap'].id)
 
     pick.clear_resolution(SEASON)
     db.session.commit()

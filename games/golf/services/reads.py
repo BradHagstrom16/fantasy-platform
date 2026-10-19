@@ -21,17 +21,17 @@ from games.golf.models import (
 )
 
 
-def season_enrollments(season_year):
-    """A season's enrollees with their users loaded (no query per row)."""
+def season_enrollments(season_year, league_id):
+    """A league's enrollees for a season with their users loaded (no query per row)."""
     return db.session.scalars(
         select(GolfEnrollment)
         .options(joinedload(GolfEnrollment.user))
-        .filter_by(season_year=season_year)
+        .filter_by(season_year=season_year, league_id=league_id)
     ).all()
 
 
-def tournament_picks(tournament_id):
-    """A tournament's picks with the member and both golfers loaded."""
+def tournament_picks(tournament_id, league_id):
+    """A league's picks for a tournament with the member and both golfers loaded."""
     return db.session.scalars(
         select(GolfPick)
         .options(
@@ -39,7 +39,7 @@ def tournament_picks(tournament_id):
             joinedload(GolfPick.primary_player),
             joinedload(GolfPick.backup_player),
         )
-        .filter_by(tournament_id=tournament_id)
+        .filter_by(tournament_id=tournament_id, league_id=league_id)
     ).all()
 
 

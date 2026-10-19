@@ -32,6 +32,7 @@ from zoneinfo import ZoneInfo
 
 import requests
 from flask import current_app, has_app_context
+from sqlalchemy import select
 
 from extensions import db
 from games.golf.constants import (
@@ -590,14 +591,18 @@ class TournamentSync:
                 from games.golf.services.reminders import send_picks_open_email
                 # Pass tournament_id instead of tournament object to avoid session issues
                 emails_sent = send_picks_open_email(tournament_id)
+                # gstack-shortcut(dec-6e3392bc): per-tournament latch, upgrade when a duplicate letter lands
+                # The sender mails every league in one call and returns the total,
+                # so the flag latches once any letter in any league went out; a
+                # league whose every send failed is logged by the sender, not retried.
                 if emails_sent > 0:
                     # Re-query tournament to update flag
                     tournament = db.session.get(GolfTournament, tournament_id)
                     tournament.picks_open_notified = True
                     db.session.commit()
                     logger.info("Sent 'picks open' email to %s users for %s", emails_sent, tournament.name)
-            except Exception as e:
-                logger.error("Failed to send 'picks open' email for tournament %s: %s", tournament_id, e)
+            except Exception:
+                logger.exception("Failed to send 'picks open' email for tournament %s", tournament_id)
 
         # Check if it's Wednesday evening and field is still insufficient - send admin alert
         if is_wednesday_evening and field_count < MIN_FIELD_SIZE:
@@ -799,6 +804,7 @@ class TournamentSync:
                         cleanup_ids.add(pick.active_player_id)
                     GolfSeasonPlayerUsage.query.filter(
                         GolfSeasonPlayerUsage.user_id == pick.user_id,
+                        GolfSeasonPlayerUsage.league_id == pick.league_id,
                         GolfSeasonPlayerUsage.season_year == tournament.season_year,
                         GolfSeasonPlayerUsage.player_id.in_(cleanup_ids),
                     ).delete(synchronize_session=False)
@@ -806,12 +812,13 @@ class TournamentSync:
                     if not pick.resolve_pick():
                         raise RuntimeError("Pick resolution incomplete")
 
-                    enrollment = GolfEnrollment.query.filter_by(
+                    # Every pick sits on a line in its own league; a pick
+                    # without one is corrupt data, rolled back and logged below.
+                    db.session.scalars(select(GolfEnrollment).filter_by(
                         user_id=pick.user_id,
-                        season_year=tournament.season_year
-                    ).first()
-                    if enrollment:
-                        enrollment.calculate_total_points()
+                        league_id=pick.league_id,
+                        season_year=tournament.season_year,
+                    )).one().calculate_total_points()
 
                 processed += 1
             except Exception as exc:  # noqa: BLE001 - roll back this pick, continue
@@ -842,13 +849,17 @@ class TournamentSync:
                 from games.golf.services.reminders import send_results_recap_email
                 tournament_id = tournament.id
                 emails_sent = send_results_recap_email(tournament_id)
+                # gstack-shortcut(dec-6e3392bc): per-tournament latch, upgrade when a duplicate letter lands
+                # The sender mails every league in one call and returns the total,
+                # so the flag latches once any letter in any league went out; a
+                # league whose every send failed is logged by the sender, not retried.
                 if emails_sent > 0:
                     tournament = db.session.get(GolfTournament, tournament_id)
                     tournament.recap_email_sent = True
                     db.session.commit()
                     logger.info("Sent results recap to %s users for %s", emails_sent, tournament.name)
-            except Exception as e:
-                logger.error("Failed to send results recap for tournament %s: %s", tournament.id, e)
+            except Exception:
+                logger.exception("Failed to send results recap for tournament %s", tournament.id)
 
         return processed
 

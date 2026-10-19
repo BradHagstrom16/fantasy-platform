@@ -3,6 +3,14 @@ The Pay Sheet — Routes
 ========================
 All route handlers for the The Pay Sheet game.
 Mounted at /golf/ via blueprint url_prefix.
+
+The league lives in the URL (ADR-075): league pages are ``/golf/<league>/...``
+and the shared pages (``/golf/``, ``/golf/join``, ``/golf/schedule``,
+``/golf/leaderboard``) carry none. ``_pull_league`` resolves the league into
+``g.golf_league`` before any view runs (the URL's, else the viewer's), and
+``_push_league`` hands it back to every ``url_for`` inside the room, so a
+link built in a room page stays in its league. Outside the room nothing fills
+it in and a league page's ``url_for`` without ``league=`` raises.
 """
 import logging
 from datetime import UTC, datetime
@@ -12,6 +20,8 @@ from flask import (
     abort,
     current_app,
     flash,
+    g,
+    has_request_context,
     jsonify,
     redirect,
     render_template,
@@ -20,14 +30,15 @@ from flask import (
 )
 from flask_login import current_user, login_required
 from sqlalchemy import and_, func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import contains_eager, joinedload
 
 from extensions import db
 from games.common import enrollment_required, game_must_be_open
 from games.golf import golf_bp
 from games.golf.models import (
-    PENALTY_PER_INCIDENT,
     GolfEnrollment,
+    GolfLeague,
     GolfPick,
     GolfPlayer,
     GolfSeasonPlayerUsage,
@@ -36,7 +47,9 @@ from games.golf.models import (
     GolfTournamentResult,
 )
 from games.golf.services.api_usage import read_api_usage
+from games.golf.services.enrollment import enrollments_for, get_enrollment
 from games.golf.services.field import build_field, search_key, top_unspent_ids
+from games.golf.services.leagues import house_league, league_by_slug, leagues
 from games.golf.services.reads import (
     next_tournament as _next_tournament,
 )
@@ -80,27 +93,132 @@ logger = logging.getLogger(__name__)
 
 
 # ============================================================================
+# The league: resolved from the URL, handed back to url_for, remembered
+# ============================================================================
+
+LEAGUE_COOKIE = 'golf_league'
+LEAGUE_COOKIE_MAX_AGE = 180 * 24 * 60 * 60  # 180 days
+
+
+def _viewer_lines() -> list[GolfEnrollment]:
+    """The viewer's lines this season, house league first ([] when anonymous).
+
+    One query a request: the resolver, the context processor and the cookie
+    hook all read this list (``_pull_league`` drops it at each request's start).
+    """
+    if 'golf_lines' not in g:
+        g.golf_lines = (enrollments_for(current_user.id)
+                        if current_user.is_authenticated else [])
+    return g.golf_lines
+
+
+def _viewer_line() -> GolfEnrollment | None:
+    """The viewer's line in the league on the page, or None."""
+    return next(
+        (line for line in _viewer_lines() if line.league_id == g.golf_league.id), None)
+
+
+def viewer_league() -> GolfLeague:
+    """The league a page without one in its URL is about.
+
+    Anonymous or no line: the house league. One line: its league. More: the
+    league the ``golf_league`` cookie remembers when it is one of theirs,
+    else the lowest ordinal.
+    """
+    lines = _viewer_lines()
+    if not lines:
+        return house_league()
+    remembered = request.cookies.get(LEAGUE_COOKIE)
+    return next((line.league for line in lines if line.league.slug == remembered),
+                lines[0].league)
+
+
+@golf_bp.url_value_preprocessor
+def _pull_league(endpoint, values):
+    """Resolve ``g.golf_league`` before the view: the URL's league, else the
+    viewer's. An unknown slug is the club's 404, with ``g.golf_league`` None
+    (the one boundary the sub-nav and the context processor tolerate)."""
+    g.pop('golf_lines', None)
+    slug = values.pop('league', None)
+    if slug is None:
+        g.golf_league = viewer_league()
+        return
+    g.golf_league = league_by_slug(slug)
+    if g.golf_league is None:
+        abort(404)
+
+
+@golf_bp.url_defaults
+def _push_league(endpoint, values):
+    """Inside the room, a league page's url_for stays in the page's league."""
+    if ('league' not in values and has_request_context() and request.blueprint == 'golf'
+            and g.get('golf_league') is not None
+            and current_app.url_map.is_endpoint_expecting(endpoint, 'league')):
+        values['league'] = g.golf_league.slug
+
+
+@golf_bp.after_request
+def _remember_league(response):
+    """A member of more than one league comes back to the last one visited."""
+    rule = request.url_rule
+    league = g.get('golf_league')
+    if (league is not None and rule is not None and 'league' in rule.arguments
+            and request.cookies.get(LEAGUE_COOKIE) != league.slug):
+        lines = _viewer_lines()
+        if len(lines) > 1 and any(line.league_id == league.id for line in lines):
+            response.set_cookie(LEAGUE_COOKIE, league.slug,
+                                max_age=LEAGUE_COOKIE_MAX_AGE, samesite='Lax',
+                                httponly=True,
+                                secure=current_app.config.get('SESSION_COOKIE_SECURE', False))
+    return response
+
+
+# ============================================================================
 # Decorators
 # ============================================================================
 
 def golf_admin_required(f):
-    """Decorator requiring Golf admin access.
+    """Decorator requiring Golf admin access in the page's league.
 
-    Two-tier check: platform admin (User.is_admin) always passes.
-    Otherwise requires GolfEnrollment.is_admin for the current season.
+    Two-tier check: platform admin (User.is_admin) always passes. Otherwise
+    the viewer's line in ``g.golf_league`` this season must carry is_admin
+    (the league's commissioner).
     """
     @wraps(f)
     @login_required
     def decorated_function(*args, **kwargs):
         if current_user.is_admin:
             return f(*args, **kwargs)
-        season_year = current_app.config['SEASON_YEAR']
-        enrollment = GolfEnrollment.query.filter_by(
-            user_id=current_user.id, season_year=season_year
-        ).first()
+        enrollment = _viewer_line()
         if not enrollment or not enrollment.is_admin:
             flash('Golf admin access required.', 'error')
             return redirect(url_for('golf.index'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+
+def golf_platform_admin_required(f):
+    """Platform admin only (Brad's ruling 10): settling the book is his, never
+    a league commissioner's. Stacked under ``golf_admin_required``, so anyone
+    reaching it already holds the league's admin."""
+    @wraps(f)
+    @login_required
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_admin:
+            flash('Platform admin only.', 'error')
+            return redirect(url_for('golf.admin_dashboard'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+
+def golf_league_member_required(f):
+    """A line in the page's league: a member of one league cannot pick on the
+    other's sheet. Stacked under ``enrollment_required('golf')``."""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if _viewer_line() is None:
+            flash(f'Join the {g.golf_league.name} to pick there.', 'info')
+            return redirect(url_for('golf.join'))
         return f(*args, **kwargs)
     return decorated_function
 
@@ -109,32 +227,29 @@ def golf_admin_required(f):
 # Context Processor — inject golf-specific globals into golf templates
 # ============================================================================
 
-def _viewer_enrollment():
-    """The viewer's line this season, or None: the sub-nav's two member pills."""
-    if not current_user.is_authenticated:
-        return None
-    return db.session.scalar(
-        select(GolfEnrollment).filter_by(
-            user_id=current_user.id, season_year=current_app.config['SEASON_YEAR'],
-        )
-    )
-
-
 @golf_bp.context_processor
 def inject_golf_globals():
-    """Inject golf-specific variables into all golf templates."""
-    enrollment = _viewer_enrollment()
+    """Inject golf-specific variables into all golf templates.
+
+    ``golf_league`` is None only on the 404 for an unknown league, where the
+    sub-nav shows its label alone and the viewer has no line.
+    """
+    league = g.get('golf_league')
+    lines = _viewer_lines()
+    line = _viewer_line() if league is not None else None
     return {
         'body_class': 'game-golf',
-        # Admin pill: platform admin, or the season's enrollment admin.
+        'golf_league': league,
+        'golf_lines': lines,
+        # Admin pill: platform admin, or this league's commissioner.
         'golf_is_admin': current_user.is_authenticated and bool(
-            current_user.is_admin or (enrollment and enrollment.is_admin)),
-        # My Scorecard pill: only a member with a line has a scorecard.
-        'golf_has_line': enrollment is not None,
+            current_user.is_admin or (line and line.is_admin)),
+        # My Scorecard pill: only a member with a line in this league has one.
+        'golf_has_line': line is not None,
         'golf_current_time': get_current_time(),
         'season_year': current_app.config['SEASON_YEAR'],
-        'entry_fee': current_app.config['ENTRY_FEE'],
-        'penalty_per_incident': PENALTY_PER_INCIDENT,
+        'entry_fee': league.entry_fee if league is not None else None,
+        'penalty_per_incident': league.penalty_per_incident if league is not None else None,
         'format_score_to_par': format_score_to_par,
         'format_lock': format_lock,
         'the_event': the_event,
@@ -184,7 +299,8 @@ def _champions(season_year, fallback):
     From the club's record when the Commish has closed the season (the
     linked place-1 rows, one query), else ``fallback``: the page's own
     leaders, with ``on_record`` False so the fold says the record is still
-    open. Each champion is {user, name, figure}.
+    open. Each champion is {user, name, figure}. Not yet league-scoped: the
+    record learns the league in PR C (C1), before any golf season closes.
     """
     on_record = [row for row in finishes_for('golf', season_year) if row.place == 1]
     if on_record:
@@ -221,14 +337,21 @@ def _room_names(enrollments):
 # ============================================================================
 
 @golf_bp.route('/')
+def room():
+    """The room's door: on to the viewer's league (``viewer_league``)."""
+    return redirect(url_for('golf.index'))
+
+
+@golf_bp.route('/<league>/')
 def index():
-    """The Sheet: the season's standings."""
+    """The Sheet: the league's season standings."""
     season_year = current_app.config['SEASON_YEAR']
+    league = g.golf_league
     viewer_id = current_user.id if current_user.is_authenticated else None
 
-    # Standings are golf-enrollment-scoped (ADR-036): only current-season golf
-    # enrollees have a line. The sheet is never padded with platform users.
-    enrollments = season_enrollments(season_year)
+    # Standings are golf-enrollment-scoped (ADR-036): only this league's
+    # current-season enrollees have a line. Never padded with platform users.
+    enrollments = season_enrollments(season_year, league.id)
     tournaments = season_tournaments(season_year)
 
     # The week turns over at the lock (the pick form's own test), never at a
@@ -239,7 +362,7 @@ def index():
     lines = clock = None
     if event:
         results = tournament_results(event.id)
-        lines = week_lines(event, tournament_picks(event.id), results)
+        lines = week_lines(event, tournament_picks(event.id, league.id), results)
         clock = event_clock(event, results, get_current_time())
     sheet = build_sheet(enrollments, viewer_id, lines)
 
@@ -253,10 +376,12 @@ def index():
                 joinedload(GolfPick.primary_player),
                 joinedload(GolfPick.backup_player),
             )
-            .filter_by(user_id=viewer_id, tournament_id=next_tournament.id)
+            .filter_by(user_id=viewer_id, league_id=league.id,
+                       tournament_id=next_tournament.id)
         )
 
-    # A signed-in visitor with no line is offered a seat while the room takes them.
+    # A signed-in visitor with no line on this league's sheet is offered a
+    # seat while the room takes them.
     # (Imported here like games/common.py does: the registry imports every game.)
     from games.registry import get_entry
     entry = get_entry('golf')
@@ -279,19 +404,20 @@ def index():
         on_record, season_year, 'The season is banked.',
         url_for('golf.record_room'), 'The Record Room')
 
-    # Prize pool: entry fees (season-scoped enrollments) + the major cut/DQ
-    # side pot (ADR-034). Pot = flagged picks x $15 across the active season.
-    entry_total = len(enrollments) * current_app.config['ENTRY_FEE']
+    # Prize pool: the league's entry fees (season-scoped enrollments) + its
+    # major cut/DQ side pot (ADR-034): flagged picks x the league's penalty.
+    entry_total = len(enrollments) * league.entry_fee
     penalty_pick_count = (
         db.session.query(func.count(GolfPick.id))
         .join(GolfTournament, GolfPick.tournament_id == GolfTournament.id)
         .filter(
             GolfPick.penalty_triggered.is_(True),
+            GolfPick.league_id == league.id,
             GolfTournament.season_year == season_year,
         )
         .scalar()
     ) or 0
-    total_penalty_pot = penalty_pick_count * PENALTY_PER_INCIDENT
+    total_penalty_pot = penalty_pick_count * league.penalty_per_incident
 
     return render_template('golf/index.html',
         sheet=sheet,
@@ -315,26 +441,40 @@ def index():
 @login_required
 @game_must_be_open('golf')
 def join():
-    """Enrollment page for The Pay Sheet."""
+    """The Pay Sheet's one join page: every league, the member chooses one.
+
+    A member may hold a line in each league; the page marks the ones they
+    hold, and a member on every sheet still sees it.
+    """
     season_year = current_app.config['SEASON_YEAR']
-    existing = GolfEnrollment.query.filter_by(
-        user_id=current_user.id, season_year=season_year
-    ).first()
-    if existing:
-        flash("You are already enrolled in The Pay Sheet!", 'info')
-        return redirect(url_for('golf.index'))
+    all_leagues = leagues()
+    joined = {line.league_id for line in _viewer_lines()}
 
     if request.method == 'POST':
-        enrollment = GolfEnrollment(
-            user_id=current_user.id,
-            season_year=season_year,
-        )
-        db.session.add(enrollment)
-        db.session.commit()
-        flash("Welcome to The Pay Sheet!", 'success')
-        return redirect(url_for('golf.index'))
+        league = next((lg for lg in all_leagues if lg.slug == request.form.get('league')), None)
+        if league is None:
+            abort(400)
+        if league.id in joined:
+            flash('You are already on that sheet.', 'info')
+        else:
+            db.session.add(GolfEnrollment(
+                user_id=current_user.id, league_id=league.id, season_year=season_year,
+            ))
+            try:
+                db.session.commit()
+            except IntegrityError:
+                # Concurrent double-submit: the unique (user, league, season)
+                # key is the backstop, the first POST won. Anything else (no
+                # line appeared) is a real failure: re-raise.
+                db.session.rollback()
+                if get_enrollment(current_user.id, league) is None:
+                    raise
+                flash('You are already on that sheet.', 'info')
+            else:
+                flash(f'Welcome to the {league.name}!', 'success')
+        return redirect(url_for('golf.index', league=league.slug))
 
-    return render_template('golf/join.html')
+    return render_template('golf/join.html', leagues=all_leagues, joined=joined)
 
 
 @golf_bp.route('/leaderboard')
@@ -358,13 +498,14 @@ def schedule():
     return render_template('golf/schedule.html', tournaments=tournaments)
 
 
-@golf_bp.route('/tournament/<int:tournament_id>')
+@golf_bp.route('/<league>/tournament/<int:tournament_id>')
 def tournament_detail(tournament_id):
-    """The Board: one tournament's picks and what each is worth."""
+    """The Board: one tournament's picks on the league's sheet and what each is worth."""
     tournament = db.get_or_404(GolfTournament, tournament_id)
+    league = g.golf_league
     viewer_id = current_user.id if current_user.is_authenticated else None
 
-    picks = tournament_picks(tournament_id)
+    picks = tournament_picks(tournament_id, league.id)
     my_pick = next((p for p in picks if p.user_id == viewer_id), None)
 
     # Picks open to the room at the lock, the pick form's own test, never at a
@@ -378,7 +519,7 @@ def tournament_detail(tournament_id):
         results = tournament_results(tournament_id)
         board = build_board(
             week_lines(tournament, picks, results),
-            season_enrollments(tournament.season_year),
+            season_enrollments(tournament.season_year, league.id),
             viewer_id,
         )
         if not tournament.results_finalized:
@@ -408,7 +549,7 @@ def tournament_detail(tournament_id):
     )
 
 
-@golf_bp.route('/results')
+@golf_bp.route('/<league>/results')
 def results():
     """Redirect to most recent completed tournament."""
     season_year = current_app.config['SEASON_YEAR']
@@ -431,7 +572,7 @@ def results():
 # Season surfaces: the scorecard and the Record Room (DESIGN.md §8)
 # ============================================================================
 
-@golf_bp.route('/member')
+@golf_bp.route('/<league>/member')
 def member_lookup():
     """The member switcher's landing: ``?user_id=`` on to the scorecard's own URL."""
     raw = request.args.get('user_id', '')
@@ -442,29 +583,31 @@ def member_lookup():
             'golf.member_scorecard', user_id=int(raw),
             season=int(season) if season.isdecimal() else None,
         ))
-    if _viewer_enrollment():
+    if _viewer_line():
         return redirect(url_for('golf.member_scorecard', user_id=current_user.id))
     return redirect(url_for('golf.index'))
 
 
-@golf_bp.route('/member/<int:user_id>')
+@golf_bp.route('/<league>/member/<int:user_id>')
 def member_scorecard(user_id):
-    """A member's scorecard: their season, the newest week first.
+    """A member's scorecard in the league: their season, the newest week first.
 
     Public like the sheet and the board. Secrecy is the lock's: until a week
-    is revealed, nobody but the member is handed its pick.
+    is revealed, nobody but the member is handed its pick. A member with no
+    line in this league that season has no scorecard here.
     """
     season_year = _selected_season()
+    league = g.golf_league
     member = db.get_or_404(User, user_id)
     seasons = sorted(db.session.scalars(
-        select(GolfEnrollment.season_year).filter_by(user_id=user_id)
+        select(GolfEnrollment.season_year).filter_by(user_id=user_id, league_id=league.id)
     ), reverse=True)
     if season_year not in seasons:
         abort(404)
     viewer_id = current_user.id if current_user.is_authenticated else None
     this_season = season_year == current_app.config['SEASON_YEAR']
 
-    enrollments = season_enrollments(season_year)
+    enrollments = season_enrollments(season_year, league.id)
     enrollment = next(e for e in enrollments if e.user_id == user_id)
     tournaments = season_tournaments(season_year)
 
@@ -473,7 +616,8 @@ def member_scorecard(user_id):
     event = live_event([t for t in tournaments if t.is_deadline_passed()])
     lines = None
     if event:
-        lines = week_lines(event, tournament_picks(event.id), tournament_results(event.id))
+        lines = week_lines(event, tournament_picks(event.id, league.id),
+                           tournament_results(event.id))
     sheet = build_sheet(enrollments, viewer_id, lines)
 
     picks = db.session.scalars(
@@ -484,7 +628,8 @@ def member_scorecard(user_id):
             joinedload(GolfPick.primary_player),
             joinedload(GolfPick.backup_player),
         )
-        .where(GolfPick.user_id == user_id, GolfTournament.season_year == season_year)
+        .where(GolfPick.user_id == user_id, GolfPick.league_id == league.id,
+               GolfTournament.season_year == season_year)
     ).all()
     results = db.session.scalars(
         select(GolfTournamentResult)
@@ -494,23 +639,25 @@ def member_scorecard(user_id):
                 [GolfPick.primary_player_id, GolfPick.backup_player_id]),
         ))
         .join(GolfTournament, GolfTournament.id == GolfPick.tournament_id)
-        .where(GolfPick.user_id == user_id, GolfTournament.season_year == season_year)
+        .where(GolfPick.user_id == user_id, GolfPick.league_id == league.id,
+               GolfTournament.season_year == season_year)
     ).all()
     usage = {
         row.player_id: row.player for row in db.session.scalars(
             select(GolfSeasonPlayerUsage)
             .options(joinedload(GolfSeasonPlayerUsage.player))
-            .filter_by(user_id=user_id, season_year=season_year)
+            .filter_by(user_id=user_id, league_id=league.id, season_year=season_year)
         )
     }
     ledger = override_tally(
-        season_year, [t.id for t in tournaments if revealed(t)], _room_names(enrollments),
+        season_year, league.id, [t.id for t in tournaments if revealed(t)],
+        _room_names(enrollments),
     )
 
     next_tournament = _next_tournament(tournaments) if this_season else None
     card = build_scorecard(
         member, viewer_id, sheet, tournaments, picks, results, usage, ledger,
-        enrollment.penalty_paid, live=event, live_lines=lines,
+        enrollment.penalty_paid, league.penalty_per_incident, live=event, live_lines=lines,
         next_tournament=next_tournament,
     )
     return render_template('golf/member_scorecard.html',
@@ -529,10 +676,11 @@ def member_scorecard(user_id):
     )
 
 
-@golf_bp.route('/stats')
+@golf_bp.route('/<league>/stats')
 def record_room():
-    """The Record Room: the season's race, its lines, and the golfers' ledgers."""
+    """The Record Room: the league's season race, its lines, and the golfers' ledgers."""
     season_year = _selected_season()
+    league = g.golf_league
     seasons = sorted(
         set(db.session.scalars(select(GolfTournament.season_year).distinct()))
         | {current_app.config['SEASON_YEAR']},
@@ -542,9 +690,9 @@ def record_room():
         abort(404)
     viewer_id = current_user.id if current_user.is_authenticated else None
 
-    enrollments = season_enrollments(season_year)
+    enrollments = season_enrollments(season_year, league.id)
     names = _room_names(enrollments)
-    race = season_race(season_year, names)
+    race = season_race(season_year, league.id, names)
     room = {e.user_id: e.user for e in enrollments}
     progress = season_progress(season_year)
 
@@ -571,9 +719,9 @@ def record_room():
         race=race,
         chart=race_chart_geometry(race, viewer_id=viewer_id if viewer_id in names else None),
         viewer_id=viewer_id,
-        lines=superlatives(season_year, names),
-        form=field_form(season_year),
-        burn=burn_list(season_year),
+        lines=superlatives(season_year, league.id, names),
+        form=field_form(season_year, league.id),
+        burn=burn_list(season_year, league.id),
         search_key=search_key,
     )
 
@@ -582,13 +730,15 @@ def record_room():
 # Authenticated Routes
 # ============================================================================
 
-@golf_bp.route('/pick/<int:tournament_id>', methods=['GET', 'POST'])
+@golf_bp.route('/<league>/pick/<int:tournament_id>', methods=['GET', 'POST'])
 @login_required
 @enrollment_required('golf')
+@golf_league_member_required
 def make_pick(tournament_id):
-    """Spend a Golfer: the week's primary and backup."""
+    """Spend a Golfer: the week's primary and backup on the league's sheet."""
     tournament = db.get_or_404(GolfTournament, tournament_id)
     season_year = current_app.config['SEASON_YEAR']
+    league = g.golf_league
     lock = format_lock(tournament.pick_deadline)
 
     # The week turns over at the lock (DESIGN.md §9): past it the pick is
@@ -599,7 +749,8 @@ def make_pick(tournament_id):
 
     field_open = tournament.has_sufficient_field()
     existing_pick = db.session.scalar(
-        select(GolfPick).filter_by(user_id=current_user.id, tournament_id=tournament_id)
+        select(GolfPick).filter_by(user_id=current_user.id, league_id=league.id,
+                                   tournament_id=tournament_id)
     )
 
     if request.method == 'POST':
@@ -621,6 +772,7 @@ def make_pick(tournament_id):
             else:
                 pick = GolfPick(
                     user_id=current_user.id,
+                    league_id=league.id,
                     tournament_id=tournament_id,
                     primary_player_id=primary_id,
                     backup_player_id=backup_id,
@@ -654,7 +806,7 @@ def make_pick(tournament_id):
         for usage in db.session.scalars(
             select(GolfSeasonPlayerUsage)
             .options(joinedload(GolfSeasonPlayerUsage.player))
-            .filter_by(user_id=current_user.id, season_year=season_year)
+            .filter_by(user_id=current_user.id, league_id=league.id, season_year=season_year)
         )
     }
 
@@ -675,8 +827,8 @@ def make_pick(tournament_id):
             players,
             used,
             ytd,
-            remaining_pct_map(season_year, [player.id for player in players]),
-            spent_weeks(current_user.id, season_year),
+            remaining_pct_map(season_year, league.id, [player.id for player in players]),
+            spent_weeks(current_user.id, league.id, season_year),
             [top[player_id] for player_id in top_ids],
         )
 
@@ -689,9 +841,10 @@ def make_pick(tournament_id):
     )
 
 
-@golf_bp.route('/my-picks')
+@golf_bp.route('/<league>/my-picks')
 @login_required
 @enrollment_required('golf')
+@golf_league_member_required
 def my_picks():
     """The old pick-history address: the page is the member's scorecard now."""
     return redirect(url_for('golf.member_scorecard', user_id=current_user.id))
@@ -701,13 +854,15 @@ def my_picks():
 # Admin Routes
 # ============================================================================
 
-def _penalty_counts(season_year):
-    """{user_id: flagged picks} this season, one grouped query (ADR-034)."""
+def _penalty_counts(season_year, league_id):
+    """{user_id: flagged picks} on a league's sheet this season, one grouped
+    query (ADR-034)."""
     return dict(
         db.session.query(GolfPick.user_id, func.count(GolfPick.id))
         .join(GolfTournament, GolfPick.tournament_id == GolfTournament.id)
         .filter(
             GolfPick.penalty_triggered.is_(True),
+            GolfPick.league_id == league_id,
             GolfTournament.season_year == season_year,
         )
         .group_by(GolfPick.user_id)
@@ -715,22 +870,24 @@ def _penalty_counts(season_year):
     )
 
 
-def _penalty_summary(enrollments, season_year):
-    """owed / paid / outstanding per enrollee, from the derived count."""
-    counts = _penalty_counts(season_year)
+def _penalty_summary(enrollments, season_year, league):
+    """owed / paid / outstanding per enrollee, from the derived count at the
+    league's rate."""
+    counts = _penalty_counts(season_year, league.id)
     summary = {}
     for e in enrollments:
-        owed = counts.get(e.user_id, 0) * PENALTY_PER_INCIDENT
+        owed = counts.get(e.user_id, 0) * league.penalty_per_incident
         paid = e.penalty_paid or 0
         summary[e.user_id] = {'owed': owed, 'paid': paid, 'outstanding': max(0, owed - paid)}
     return summary
 
 
-@golf_bp.route('/admin/')
+@golf_bp.route('/<league>/admin/')
 @golf_admin_required
 def admin_dashboard():
-    """Golf admin overview."""
+    """Golf admin overview for the league."""
     season_year = current_app.config['SEASON_YEAR']
+    league = g.golf_league
 
     tournaments = GolfTournament.query.filter_by(season_year=season_year).all()
     upcoming_count = sum(1 for t in tournaments if t.status == 'upcoming')
@@ -738,11 +895,11 @@ def admin_dashboard():
     complete_count = sum(1 for t in tournaments if t.status == 'complete')
     pending_finalization = [t for t in tournaments if t.status == 'complete' and not t.results_finalized]
 
-    enrollments = season_enrollments(season_year)
+    enrollments = season_enrollments(season_year, league.id)
     total_enrolled = len(enrollments)
     total_paid = sum(1 for e in enrollments if e.has_paid)
     banked_count = sum(1 for t in tournaments if t.results_finalized)
-    penalties = _penalty_summary(enrollments, season_year)
+    penalties = _penalty_summary(enrollments, season_year, league)
 
     now = get_current_time()
     return render_template('golf/admin/dashboard.html',
@@ -762,8 +919,9 @@ def admin_dashboard():
     )
 
 
-@golf_bp.route('/admin/tournaments')
+@golf_bp.route('/<league>/admin/tournaments')
 @golf_admin_required
+@golf_platform_admin_required
 def admin_tournaments():
     """Tournament management page."""
     season_year = current_app.config['SEASON_YEAR']
@@ -787,14 +945,14 @@ def admin_tournaments():
     )
 
 
-@golf_bp.route('/admin/users')
+@golf_bp.route('/<league>/admin/users')
 @golf_admin_required
 def admin_users():
-    """Golf user management page."""
+    """Golf user management page: the league's roster."""
     season_year = current_app.config['SEASON_YEAR']
 
-    # This season's enrollees, the roster: never every platform user.
-    enrollments = sorted(season_enrollments(season_year),
+    # This league's season enrollees, the roster: never every platform user.
+    enrollments = sorted(season_enrollments(season_year, g.golf_league.id),
                          key=lambda e: e.user.get_display_name().casefold())
 
     return render_template('golf/admin/users.html',
@@ -803,22 +961,23 @@ def admin_users():
     )
 
 
-@golf_bp.route('/admin/payments')
+@golf_bp.route('/<league>/admin/payments')
 @golf_admin_required
 def admin_payments():
-    """Payment tracking page."""
+    """Payment tracking page: the league's tab, at the league's fee."""
     season_year = current_app.config['SEASON_YEAR']
+    league = g.golf_league
 
-    enrollments = sorted(season_enrollments(season_year),
+    enrollments = sorted(season_enrollments(season_year, league.id),
                          key=lambda e: e.user.get_display_name().casefold())
 
     total_paid = sum(1 for e in enrollments if e.has_paid)
     total_unpaid = sum(1 for e in enrollments if not e.has_paid)
-    total_collected = total_paid * current_app.config['ENTRY_FEE']
+    total_collected = total_paid * league.entry_fee
 
     # Major cut/DQ side pot (ADR-034): owed/paid/outstanding per enrollment
     # from one grouped query, then the pot totals.
-    penalty_summary = _penalty_summary(enrollments, season_year)
+    penalty_summary = _penalty_summary(enrollments, season_year, league)
     total_penalty_pot = sum(s['owed'] for s in penalty_summary.values())
     total_penalty_collected = sum(s['paid'] for s in penalty_summary.values())
 
@@ -830,22 +989,19 @@ def admin_payments():
         penalty_summary=penalty_summary,
         total_penalty_pot=total_penalty_pot,
         total_penalty_collected=total_penalty_collected,
-        penalty_per_incident=PENALTY_PER_INCIDENT,
+        penalty_per_incident=league.penalty_per_incident,
     )
 
 
-@golf_bp.route('/admin/update-payment/<int:user_id>', methods=['POST'])
+@golf_bp.route('/<league>/admin/update-payment/<int:user_id>', methods=['POST'])
 @golf_admin_required
 def admin_update_payment(user_id):
-    """Toggle golf payment status (AJAX)."""
-    season_year = current_app.config['SEASON_YEAR']
-    enrollment = GolfEnrollment.query.filter_by(
-        user_id=user_id, season_year=season_year
-    ).first()
+    """Toggle golf payment status (AJAX) on the member's line in this league."""
+    enrollment = get_enrollment(user_id, g.golf_league)
     if not enrollment:
         return jsonify({
             'success': False,
-            'error': 'User is not enrolled in Golf Pick \'Em.',
+            'error': f'That member has no line on the {g.golf_league.name}.',
         }), 400
 
     data = request.get_json() or {}
@@ -881,11 +1037,12 @@ def admin_update_payment(user_id):
     })
 
 
-@golf_bp.route('/admin/override-pick', methods=['GET', 'POST'])
+@golf_bp.route('/<league>/admin/override-pick', methods=['GET', 'POST'])
 @golf_admin_required
 def admin_override_pick():
-    """Admin pick override page."""
+    """Admin pick override page: picks on the league's sheet."""
     season_year = current_app.config['SEASON_YEAR']
+    league = g.golf_league
 
     tournaments = (
         GolfTournament.query
@@ -895,9 +1052,9 @@ def admin_override_pick():
         .all()
     )
 
-    # The member select is this season's enrollees: an override can only be
+    # The member select is this league's season enrollees: an override can only be
     # written for a member with a line (validated again on POST).
-    users = sorted((e.user for e in season_enrollments(season_year)),
+    users = sorted((e.user for e in season_enrollments(season_year, league.id)),
                    key=lambda u: u.get_display_name().casefold())
 
     selected_tournament = None
@@ -932,12 +1089,9 @@ def admin_override_pick():
                 flash('Tournament is not eligible for admin overrides.', 'error')
                 return redirect(url_for('golf.admin_override_pick'))
 
-            existing_pick = GolfPick.query.filter_by(
-                user_id=user_id, tournament_id=tournament_id
-            ).first()
-            enrollment = GolfEnrollment.query.filter_by(
-                user_id=user_id, season_year=season_year
-            ).first()
+            existing_pick = db.session.scalar(select(GolfPick).filter_by(
+                user_id=user_id, league_id=league.id, tournament_id=tournament_id))
+            enrollment = get_enrollment(user_id, league)
 
             # Server-side eligibility validation (audit §2 HIGH): never trust the
             # disabled-option UI. Check field membership + season usage BEFORE
@@ -967,8 +1121,8 @@ def admin_override_pick():
                 # Never create enrollment rows from admin paths — admins add
                 # users via Platform Admin → Enrollments first.
                 errors.append(
-                    "User must be enrolled in The Pay Sheet before an admin "
-                    'override can be applied. Add them via Admin → Enrollments first.'
+                    f'That member has no line on the {g.golf_league.name}, so there is '
+                    'nothing to override. They join it at /golf/join.'
                 )
 
             if errors:
@@ -1019,6 +1173,7 @@ def admin_override_pick():
                 else:
                     pick = GolfPick(
                         user_id=user_id,
+                        league_id=league.id,
                         tournament_id=tournament_id,
                         primary_player_id=primary_id,
                         backup_player_id=backup_id,
@@ -1079,15 +1234,12 @@ def admin_override_pick():
     if user_id:
         selected_user = db.session.get(User, user_id)
         if selected_user:
-            enrollment = GolfEnrollment.query.filter_by(
-                user_id=user_id, season_year=season_year
-            ).first()
+            enrollment = get_enrollment(user_id, league)
             used_player_ids = enrollment.get_used_player_ids() if enrollment else []
 
             if tournament_id:
-                existing_pick = GolfPick.query.filter_by(
-                    user_id=user_id, tournament_id=tournament_id
-                ).first()
+                existing_pick = db.session.scalar(select(GolfPick).filter_by(
+                    user_id=user_id, league_id=league.id, tournament_id=tournament_id))
                 # The pick's own players aren't "used" for its own edit — drop
                 # them so the form doesn't render them disabled (audit §2).
                 if existing_pick:
@@ -1107,14 +1259,16 @@ def admin_override_pick():
             joinedload(GolfPick.backup_player),
         )
         .join(GolfTournament, GolfPick.tournament_id == GolfTournament.id)
-        .filter(GolfPick.admin_override.is_(True), GolfTournament.season_year == season_year)
+        .filter(GolfPick.admin_override.is_(True), GolfPick.league_id == league.id,
+                GolfTournament.season_year == season_year)
         .order_by(GolfPick.updated_at.desc())
         .limit(10)
     ).all()
     override_count = db.session.scalar(
         select(func.count(GolfPick.id))
         .join(GolfTournament, GolfPick.tournament_id == GolfTournament.id)
-        .filter(GolfPick.admin_override.is_(True), GolfTournament.season_year == season_year)
+        .filter(GolfPick.admin_override.is_(True), GolfPick.league_id == league.id,
+                GolfTournament.season_year == season_year)
     )
 
     return render_template('golf/admin/override_pick.html',
@@ -1132,10 +1286,11 @@ def admin_override_pick():
     )
 
 
-@golf_bp.route('/admin/process-results/<int:tournament_id>', methods=['POST'])
+@golf_bp.route('/<league>/admin/process-results/<int:tournament_id>', methods=['POST'])
 @golf_admin_required
+@golf_platform_admin_required
 def admin_process_results(tournament_id):
-    """Manually process results for a completed tournament."""
+    """Manually process results for a completed tournament (every league's picks)."""
     from games.golf.services.sync import SlashGolfAPI, TournamentSync
 
     tournament = db.get_or_404(GolfTournament, tournament_id)

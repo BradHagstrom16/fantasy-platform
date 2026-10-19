@@ -12,6 +12,7 @@ Like the Docket's seam and unlike Survivor's, the builder takes any year: the
 created a real User for every 2026 member, so every row is linked and there
 is no link map.
 """
+from games.golf.services.leagues import house_league
 from games.golf.services.reads import season_enrollments, season_tournaments
 from games.golf.services.sheet import competition_ranks
 from models.records import FinishDraft, SeasonNotClosed
@@ -29,7 +30,8 @@ def season_finishes(season_year: int) -> list[FinishDraft]:
             f'events not yet banked ({names})')
 
     lines = sorted(
-        season_enrollments(season_year),
+        # The house league's board for now; the record learns the league (C1).
+        season_enrollments(season_year, house_league().id),
         key=lambda e: (-(e.total_points or 0), e.user.get_display_name().casefold()),
     )
     ranks = competition_ranks([e.total_points or 0 for e in lines])

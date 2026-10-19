@@ -59,8 +59,8 @@ def _make_user(username='golfer'):
     return u
 
 
-def _make_enrollment(user, season_year=SEASON):
-    e = GolfEnrollment(user_id=user.id, season_year=season_year, total_points=0)
+def _make_enrollment(user, season_year=SEASON, *, league_id):
+    e = GolfEnrollment(user_id=user.id, league_id=league_id, season_year=season_year, total_points=0)
     db.session.add(e)
     db.session.commit()
     return e
@@ -193,17 +193,17 @@ def test_get_upcoming_tournaments_window_scoped_to_current_season(app):
     assert 'Last Yr' not in names
 
 
-def test_get_used_player_ids_returns_current_season_only(app):
+def test_get_used_player_ids_returns_current_season_only(app, golf_leagues):
     """Enrollment usage is season-scoped — a prior season's locked golfer must
     not count against this season's pool."""
     user = _make_user()
-    enrollment = _make_enrollment(user, SEASON)
+    enrollment = _make_enrollment(user, SEASON, league_id=golf_leagues['handicap'].id)
     this_yr = _make_player('p-this')
     last_yr = _make_player('p-last')
     db.session.add(GolfSeasonPlayerUsage(
-        user_id=user.id, player_id=this_yr.id, season_year=SEASON))
+        user_id=user.id, league_id=golf_leagues['handicap'].id, player_id=this_yr.id, season_year=SEASON))
     db.session.add(GolfSeasonPlayerUsage(
-        user_id=user.id, player_id=last_yr.id, season_year=SEASON - 1))
+        user_id=user.id, league_id=golf_leagues['handicap'].id, player_id=last_yr.id, season_year=SEASON - 1))
     db.session.commit()
 
     assert enrollment.get_used_player_ids() == [this_yr.id]
@@ -232,12 +232,13 @@ def test_reminder_lookup_ignores_prior_season(app):
     assert deadline is not None
 
 
-def test_golf_subnav_label_reads_the_configured_season(app):
+def test_golf_subnav_label_reads_the_configured_season(app, golf_leagues):
     """The subnav label must follow SEASON_YEAR, not a literal year — a
-    hardcoded '2026' would read wrong the day the 2027 season is configured."""
+    hardcoded '2026' would read wrong the day the 2027 season is configured.
+    It names the page's league beside the season (ADR-075)."""
     app.config['SEASON_YEAR'] = 2031
-    html = app.test_client().get('/golf/').get_data(as_text=True)
-    assert 'Golf One &amp; Done · 2031' in html
+    html = app.test_client().get('/golf/handicap/').get_data(as_text=True)
+    assert 'Handicap Pay Sheet · 2031' in html
     assert '2026' not in html.split('subnav-label-sub')[1][:40]
 
 
@@ -246,12 +247,12 @@ def test_golf_subnav_label_reads_the_configured_season(app):
 @patch('games.golf.services.reminders.get_field_count', return_value=50)
 @patch('games.golf.services.reminders.is_field_ready', return_value=True)
 @patch('games.golf.services.reminders.send_platform_email', return_value=True)
-def test_reminder_dedup_skips_already_sent_tier(mock_send, _ready, _count, app):
+def test_reminder_dedup_skips_already_sent_tier(mock_send, _ready, _count, app, golf_leagues):
     """A second hourly run inside the same reminder window must not re-send the
     tier — the dedup records last_reminder_type after a successful send."""
     _configure_email(app)
     tournament = _make_reminder_tournament(hours_to_deadline=24)
-    _make_enrollment(_make_user())
+    _make_enrollment(_make_user(), league_id=golf_leagues['handicap'].id)
 
     run_reminder_check()
 
@@ -266,11 +267,11 @@ def test_reminder_dedup_skips_already_sent_tier(mock_send, _ready, _count, app):
 @patch('games.golf.services.reminders.get_field_count', return_value=50)
 @patch('games.golf.services.reminders.is_field_ready', return_value=True)
 @patch('games.golf.services.reminders.send_platform_email', return_value=False)
-def test_reminder_not_recorded_when_send_fails(mock_send, _ready, _count, app):
+def test_reminder_not_recorded_when_send_fails(mock_send, _ready, _count, app, golf_leagues):
     """If every send fails, the tier must NOT be recorded — the next run retries."""
     _configure_email(app)
     tournament = _make_reminder_tournament(hours_to_deadline=24)
-    _make_enrollment(_make_user())
+    _make_enrollment(_make_user(), league_id=golf_leagues['handicap'].id)
 
     run_reminder_check()
 
@@ -281,12 +282,12 @@ def test_reminder_not_recorded_when_send_fails(mock_send, _ready, _count, app):
 @patch('games.golf.services.reminders.get_field_count', return_value=50)
 @patch('games.golf.services.reminders.is_field_ready', return_value=True)
 @patch('games.golf.services.reminders.send_platform_email', return_value=True)
-def test_reminder_skips_earlier_tier_after_later_sent(mock_send, _ready, _count, app):
+def test_reminder_skips_earlier_tier_after_later_sent(mock_send, _ready, _count, app, golf_leagues):
     """Once the 12h tier is recorded, a later run that lands in the 24h window
     (an earlier tier) is skipped — skip current-OR-later."""
     _configure_email(app)
     _make_reminder_tournament(hours_to_deadline=24, last_reminder_type='12h')
-    _make_enrollment(_make_user())
+    _make_enrollment(_make_user(), league_id=golf_leagues['handicap'].id)
 
     run_reminder_check()
 

@@ -6,6 +6,17 @@ and season configuration.
 """
 from datetime import UTC, datetime
 
+# The Pay Sheet's leagues (ADR-075): (slug, name, ordinal, entry fee).
+# Ordinal 1 is the house league. Production's rows were written by migration
+# 32cd68a3e8ea from its own literals, so a league added here reaches prod only
+# with a new migration; services/leagues.py::seed_leagues builds these rows
+# (penalty models.PENALTY_PER_INCIDENT) for a create_all database, the tests.
+# After the seed `flask golf league set` changes a league's name, fee or penalty.
+LEAGUE_SEED = (
+    ('handicap', 'Handicap Pay Sheet', 1, 25),
+    ('pollyanna', 'Pollyanna Pay Sheet', 2, 25),
+)
+
 # Tournaments to EXCLUDE from the league
 # (opposite-field events, playoffs finale, special events)
 EXCLUDED_TOURNAMENTS = {

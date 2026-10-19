@@ -182,3 +182,10 @@ def app(monkeypatch):
 def client(app):
     """Test client bound to the canonical app fixture."""
     return app.test_client()
+
+
+@pytest.fixture()
+def golf_leagues(app):
+    """The Pay Sheet's seeded leagues (ADR-075), keyed by slug."""
+    from games.golf.services.leagues import seed_leagues
+    return {league.slug: league for league in seed_leagues()}

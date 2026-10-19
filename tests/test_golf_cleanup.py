@@ -67,8 +67,8 @@ def _make_user(username='golfer', is_admin=False, display_name=None, avatar=None
     return u
 
 
-def _make_enrollment(user, season_year=SEASON):
-    e = GolfEnrollment(user_id=user.id, season_year=season_year, total_points=0)
+def _make_enrollment(user, season_year=SEASON, *, league_id):
+    e = GolfEnrollment(user_id=user.id, league_id=league_id, season_year=season_year, total_points=0)
     db.session.add(e)
     db.session.commit()
     return e
@@ -111,9 +111,9 @@ def _add_to_field(tournament, player):
     return fe
 
 
-def _mark_used(user, player, season_year=SEASON):
+def _mark_used(user, player, season_year=SEASON, *, league_id):
     usage = GolfSeasonPlayerUsage(
-        user_id=user.id, player_id=player.id, season_year=season_year
+        user_id=user.id, league_id=league_id, player_id=player.id, season_year=season_year
     )
     db.session.add(usage)
     db.session.commit()
@@ -135,9 +135,10 @@ def _make_result(tournament, player, status='complete', rounds_completed=4,
     return r
 
 
-def _make_pick(user, tournament, primary, backup, **kwargs):
+def _make_pick(user, tournament, primary, backup, *, league_id, **kwargs):
     pick = GolfPick(
         user_id=user.id,
+        league_id=league_id,
         tournament_id=tournament.id,
         primary_player_id=primary.id,
         backup_player_id=backup.id,
@@ -229,7 +230,7 @@ def test_update_status_from_time_leaves_complete_untouched(app):
 # Test backfill — pick availability validation (audit §2 / §8)
 # ============================================================================
 
-def test_validate_availability_rejects_used_player(app):
+def test_validate_availability_rejects_used_player(app, golf_leagues):
     """A primary/backup already used this season is rejected."""
     user = _make_user()
     t = _make_tournament(status='upcoming')
@@ -237,9 +238,9 @@ def test_validate_availability_rejects_used_player(app):
     backup = _make_player('U2', 'Fresh', 'Backup')
     _add_to_field(t, primary)
     _add_to_field(t, backup)
-    _mark_used(user, primary)  # primary already burned this season
+    _mark_used(user, primary, league_id=golf_leagues['handicap'].id)  # primary already burned this season
 
-    pick = GolfPick(user_id=user.id, tournament_id=t.id,
+    pick = GolfPick(user_id=user.id, league_id=golf_leagues['handicap'].id, tournament_id=t.id,
                     primary_player_id=primary.id, backup_player_id=backup.id)
     errors = pick.validate_availability(SEASON)
 
@@ -247,7 +248,7 @@ def test_validate_availability_rejects_used_player(app):
     assert errors == ['Your primary has already been spent this season. Choose another golfer.']
 
 
-def test_validate_availability_rejects_non_field_player(app):
+def test_validate_availability_rejects_non_field_player(app, golf_leagues):
     """A primary/backup outside the tournament field is rejected."""
     user = _make_user()
     t = _make_tournament(status='upcoming')
@@ -255,7 +256,7 @@ def test_validate_availability_rejects_non_field_player(app):
     off_field = _make_player('F2', 'Off', 'Field')
     _add_to_field(t, in_field)  # only the primary is in the field
 
-    pick = GolfPick(user_id=user.id, tournament_id=t.id,
+    pick = GolfPick(user_id=user.id, league_id=golf_leagues['handicap'].id, tournament_id=t.id,
                     primary_player_id=in_field.id, backup_player_id=off_field.id)
     errors = pick.validate_availability(SEASON)
 
@@ -267,7 +268,7 @@ def test_validate_availability_rejects_non_field_player(app):
 # Test backfill — season aggregate carries the major multiplier (audit §8)
 # ============================================================================
 
-def test_calculate_total_points_major_multiplier(app):
+def test_calculate_total_points_major_multiplier(app, golf_leagues):
     """A completed major contributes earnings x1.5 to the enrollment total.
 
     resolve_pick() stores the multiplied value in points_earned; the season
@@ -275,13 +276,13 @@ def test_calculate_total_points_major_multiplier(app):
     no dropped multiplier).
     """
     user = _make_user()
-    enrollment = _make_enrollment(user)
+    enrollment = _make_enrollment(user, league_id=golf_leagues['handicap'].id)
     t = _make_tournament(name='Masters', is_major=True, status='complete')
     p1 = _make_player('M1', 'Major', 'Primary')
     p2 = _make_player('M2', 'Major', 'Backup')
     _make_result(t, p1, earnings=100_000)
     _make_result(t, p2, earnings=50_000)
-    pick = _make_pick(user, t, p1, p2)
+    pick = _make_pick(user, t, p1, p2, league_id=golf_leagues['handicap'].id)
 
     assert pick.resolve_pick() is True
     assert pick.points_earned == 150_000  # 100_000 * 1.5 (resolve-time)
@@ -295,25 +296,26 @@ def test_calculate_total_points_major_multiplier(app):
 # N+1 eager-loading (audit §5) — query count invariant to row count
 # ============================================================================
 
-def test_index_standings_avoids_per_user_query(app, client):
+def test_index_standings_avoids_per_user_query(app, client, golf_leagues):
     """index() eager-loads enrollment.user, so the standings query count does
     not grow with the number of enrollees (no N+1)."""
+    league_id = golf_leagues['handicap'].id  # read before db.session.remove() detaches the league
     # Warm the before_request status-refresh throttle so both measured requests
     # skip it identically.
-    assert client.get('/golf/').status_code == 200
+    assert client.get('/golf/handicap/').status_code == 200
 
     for i in range(2):
-        _make_enrollment(_make_user(f'g{i}', display_name=f'Golfer{i}'))
+        _make_enrollment(_make_user(f'g{i}', display_name=f'Golfer{i}'), league_id=league_id)
     db.session.remove()
     with _count_sql() as c2:
-        assert client.get('/golf/').status_code == 200
+        assert client.get('/golf/handicap/').status_code == 200
     n2 = c2['n']
 
     for i in range(2, 5):
-        _make_enrollment(_make_user(f'g{i}', display_name=f'Golfer{i}'))
+        _make_enrollment(_make_user(f'g{i}', display_name=f'Golfer{i}'), league_id=league_id)
     db.session.remove()
     with _count_sql() as c5:
-        assert client.get('/golf/').status_code == 200
+        assert client.get('/golf/handicap/').status_code == 200
     n5 = c5['n']
 
     assert n5 == n2, (
@@ -322,15 +324,16 @@ def test_index_standings_avoids_per_user_query(app, client):
     )
 
 
-def test_tournament_detail_avoids_per_pick_query(app, client):
+def test_tournament_detail_avoids_per_pick_query(app, client, golf_leagues):
     """tournament_detail() eager-loads pick user/primary/backup/active, so the
     query count does not grow with the number of picks (no N+1)."""
+    league_id = golf_leagues['handicap'].id  # read before db.session.remove() detaches the league
     t = _make_tournament(name='Detail Open', status='complete', results_finalized=True)
     # Capture ids before any db.session.remove() detaches these instances.
     tid = t.id
     pids = [_make_player(f'D{i}', 'Pick', f'Player{i}').id for i in range(10)]
 
-    def _add_pick(idx):
+    def _add_pick(idx, *, league_id):
         # Re-fetch fresh, session-bound instances (a prior remove() detached them).
         tour = db.session.get(GolfTournament, tid)
         primary = db.session.get(GolfPlayer, pids[2 * idx])
@@ -339,23 +342,23 @@ def test_tournament_detail_avoids_per_pick_query(app, client):
         _make_result(tour, primary, earnings=100_000, final_position='1')
         _make_result(tour, backup, earnings=0, final_position='40')
         _make_pick(user, tour, primary, backup, active_player_id=primary.id,
-                   points_earned=100_000, primary_used=True)
+                   points_earned=100_000, primary_used=True, league_id=league_id)
 
     # Warm the status-refresh throttle.
-    assert client.get(f'/golf/tournament/{tid}').status_code == 200
+    assert client.get(f'/golf/handicap/tournament/{tid}').status_code == 200
 
-    _add_pick(0)
-    _add_pick(1)
+    _add_pick(0, league_id=league_id)
+    _add_pick(1, league_id=league_id)
     db.session.remove()
     with _count_sql() as c2:
-        assert client.get(f'/golf/tournament/{tid}').status_code == 200
+        assert client.get(f'/golf/handicap/tournament/{tid}').status_code == 200
     n2 = c2['n']
 
-    _add_pick(2)
-    _add_pick(3)
+    _add_pick(2, league_id=league_id)
+    _add_pick(3, league_id=league_id)
     db.session.remove()
     with _count_sql() as c4:
-        assert client.get(f'/golf/tournament/{tid}').status_code == 200
+        assert client.get(f'/golf/handicap/tournament/{tid}').status_code == 200
     n4 = c4['n']
 
     assert n4 == n2, (

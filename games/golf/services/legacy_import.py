@@ -25,6 +25,11 @@ Shape of a run (``run_import``):
    never commits, and never calls ``process_tournament_picks`` (which does).
 5. Dry-run rolls everything back; a real run commits only when the oracle is
    clean (or ``--force``).
+
+Every enrollment, pick and usage row lands in one league (ADR-075), named by
+slug (``--league``, default the house league ``handicap``); the oracle reads
+that league's rows only. An unknown slug is a ``ValueError`` before anything
+is read.
 """
 import hashlib
 import sqlite3
@@ -46,6 +51,7 @@ from games.golf.models import (
     GolfTournamentField,
     GolfTournamentResult,
 )
+from games.golf.services.leagues import league_by_slug
 from models.user import User
 from utils.identifier import normalize_identifier
 
@@ -141,6 +147,7 @@ class Diff:
 
 @dataclass
 class ParityReport:
+    league: str                       # "<name> (<slug>)", the league re-scored
     diffs: list
     picks_checked: int = 0
     enrollments_checked: int = 0
@@ -155,7 +162,7 @@ class ParityReport:
 
     def render(self):
         lines = [
-            'Parity oracle (resolve_pick re-run inside a rolled-back SAVEPOINT):',
+            f'Parity oracle for {self.league} (resolve_pick re-run inside a rolled-back SAVEPOINT):',
             f'  picks re-scored: {self.picks_checked} (admin overrides: {self.overrides_checked})',
             f'  picks unresolved in the source too: {self.unresolved_expected}'
             ' (a primary with no result row — resolve_pick logs an ERROR for each and returns'
@@ -175,6 +182,7 @@ class ImportReport:
     sha256: str
     alembic_head: str | None
     season: int
+    league: str                       # "<name> (<slug>)", where the rows land
     before: dict
     plan: MatchPlan
     counts: dict = field(default_factory=dict)
@@ -184,7 +192,7 @@ class ImportReport:
 
     def render(self):
         lines = [
-            f'Legacy Golf Pick \'Em import — season {self.season}',
+            f'Legacy Golf Pick \'Em import — season {self.season} into the {self.league}',
             f'  source: {self.path}',
             f'  sha256: {self.sha256}',
             f'  legacy alembic head: {self.alembic_head or "(none)"}',
@@ -432,9 +440,22 @@ def _missing(diffs, kind, key):
     diffs.append(Diff(kind, key, '<row>', 'present', 'missing'))
 
 
-def import_season(snapshot, users, season, check_only=False):
-    """Upsert every table (flush only). With ``check_only`` nothing is written
-    and every column mismatch / missing row becomes a Diff instead."""
+def league_for(slug):
+    """The league a slug names; an unknown slug is a loud error."""
+    league = league_by_slug(slug)
+    if league is None:
+        raise ValueError(f"no golf league {slug!r} (see flask golf league list)")
+    return league
+
+
+def _league_label(league):
+    return f'{league.name} ({league.slug})'
+
+
+def import_season(snapshot, users, season, *, league, check_only=False):
+    """Upsert every table (flush only) into ``league`` (a GolfLeague) for the
+    member rows. With ``check_only`` nothing is written and every column
+    mismatch / missing row becomes a Diff instead."""
     counts, diffs = {}, []
 
     # players — keyed on api_player_id
@@ -543,14 +564,15 @@ def import_season(snapshot, users, season, check_only=False):
         if u is None:
             continue
         key = user.username
-        obj = db.session.scalar(select(GolfEnrollment).filter_by(user_id=user.id, season_year=season))
+        obj = db.session.scalar(select(GolfEnrollment).filter_by(
+            user_id=user.id, league_id=league.id, season_year=season))
         desired = {'total_points': u['total_points'] or 0, 'has_paid': _as_bool(u['has_paid']),
                        'penalty_paid': u['penalty_paid'] or 0, 'created_at': _parse_dt(u['created_at'])}
         if obj is None:
             if check_only:
                 _missing(diffs, 'golf_enrollment', key)
                 continue
-            db.session.add(GolfEnrollment(user_id=user.id, season_year=season, **desired))
+            db.session.add(GolfEnrollment(user_id=user.id, league_id=league.id, season_year=season, **desired))
             _bump(counts, 'golf_enrollment', True, False)
         else:
             _bump(counts, 'golf_enrollment', False,
@@ -563,13 +585,15 @@ def import_season(snapshot, users, season, check_only=False):
             continue
         key = f'{user.username} / {p.api_player_id}'
         obj = db.session.scalar(
-            select(GolfSeasonPlayerUsage).filter_by(user_id=user.id, player_id=p.id, season_year=season))
+            select(GolfSeasonPlayerUsage).filter_by(
+                user_id=user.id, league_id=league.id, player_id=p.id, season_year=season))
         desired = {'created_at': _parse_dt(s['created_at'])}
         if obj is None:
             if check_only:
                 _missing(diffs, 'golf_season_player_usage', key)
                 continue
-            db.session.add(GolfSeasonPlayerUsage(user_id=user.id, player_id=p.id, season_year=season, **desired))
+            db.session.add(GolfSeasonPlayerUsage(
+                user_id=user.id, league_id=league.id, player_id=p.id, season_year=season, **desired))
             _bump(counts, 'golf_season_player_usage', True, False)
         else:
             _bump(counts, 'golf_season_player_usage', False,
@@ -581,7 +605,8 @@ def import_season(snapshot, users, season, check_only=False):
         if user is None or t is None:
             continue
         key = f'{user.username} / {t.name}'
-        obj = db.session.scalar(select(GolfPick).filter_by(user_id=user.id, tournament_id=t.id))
+        obj = db.session.scalar(select(GolfPick).filter_by(
+            user_id=user.id, league_id=league.id, tournament_id=t.id))
         primary = players.get(pk['primary_player_id'])
         backup = players.get(pk['backup_player_id'])
         if primary is None or backup is None:
@@ -603,7 +628,7 @@ def import_season(snapshot, users, season, check_only=False):
             if check_only:
                 _missing(diffs, 'golf_pick', key)
                 continue
-            db.session.add(GolfPick(user_id=user.id, tournament_id=t.id, **desired))
+            db.session.add(GolfPick(user_id=user.id, league_id=league.id, tournament_id=t.id, **desired))
             _bump(counts, 'golf_pick', True, False)
         else:
             _bump(counts, 'golf_pick', False,
@@ -618,16 +643,18 @@ def import_season(snapshot, users, season, check_only=False):
 
 # ── the parity oracle ─────────────────────────────────────────────────────
 
-def verify_scoring(season, legacy_path=None):
-    """Re-score the season with the platform resolver and diff against what is stored.
+def verify_scoring(season, league='handicap', legacy_path=None):
+    """Re-score one league's season with the platform resolver and diff against what is stored.
 
     Runs ``GolfPick.resolve_pick()`` + ``GolfEnrollment.calculate_total_points()``
     inside a SAVEPOINT that is rolled back unconditionally, so nothing the
     resolver writes survives — and nothing here can send mail (the recap lives
     in ``process_tournament_picks``, which is never called). With
     ``legacy_path`` the file's columns are also compared against the stored
-    rows (layer 1) before the scoring re-run (layer 2).
+    rows (layer 1) before the scoring re-run (layer 2). Only ``league``'s
+    enrollments, picks and usage are read.
     """
+    league_row = league_for(league)
     diffs = []
     fidelity = False
     if legacy_path:
@@ -641,17 +668,18 @@ def verify_scoring(season, legacy_path=None):
         for u in snapshot.users:
             if u['id'] not in resolved:
                 diffs.append(Diff('user', u['username'], '<account>', 'present', 'unresolved'))
-        _, fidelity_diffs = import_season(snapshot, resolved, season, check_only=True)
+        _, fidelity_diffs = import_season(snapshot, resolved, season, league=league_row, check_only=True)
         diffs.extend(fidelity_diffs)
         fidelity = True
 
     picks = db.session.scalars(
         select(GolfPick).join(GolfTournament, GolfPick.tournament_id == GolfTournament.id)
-        .where(GolfTournament.season_year == season)
+        .where(GolfTournament.season_year == season, GolfPick.league_id == league_row.id)
         .order_by(GolfTournament.week_number, GolfPick.id)
     ).all()
     enrollments = db.session.scalars(
-        select(GolfEnrollment).filter_by(season_year=season).order_by(GolfEnrollment.id)).all()
+        select(GolfEnrollment).filter_by(season_year=season, league_id=league_row.id)
+        .order_by(GolfEnrollment.id)).all()
     expected_picks = {
         p.id: (p.active_player_id, p.points_earned, _as_bool(p.primary_used),
                _as_bool(p.backup_used), _as_bool(p.penalty_triggered))
@@ -660,7 +688,8 @@ def verify_scoring(season, legacy_path=None):
     expected_totals = {e.id: (e.total_points or 0) for e in enrollments}
     expected_usage = {
         (u.user_id, u.player_id)
-        for u in db.session.scalars(select(GolfSeasonPlayerUsage).filter_by(season_year=season)).all()
+        for u in db.session.scalars(
+            select(GolfSeasonPlayerUsage).filter_by(season_year=season, league_id=league_row.id)).all()
     }
     labels = {p.id: f'{p.user.username} wk{p.tournament.week_number} {p.tournament.name}' for p in picks}
     overrides = sum(1 for p in picks if p.admin_override)
@@ -691,7 +720,7 @@ def verify_scoring(season, legacy_path=None):
         nested.rollback()
         db.session.expire_all()
 
-    return ParityReport(diffs=diffs, picks_checked=len(picks), enrollments_checked=len(enrollments),
+    return ParityReport(league=_league_label(league_row), diffs=diffs, picks_checked=len(picks), enrollments_checked=len(enrollments),
                         overrides_checked=overrides,
                         unresolved_expected=sum(1 for v in expected_picks.values() if v[0] is None),
                         usage_ok=usage_ok, fidelity_checked=fidelity)
@@ -708,13 +737,15 @@ def _platform_counts():
     }
 
 
-def run_import(path, season=2026, *, dry_run=False, links=None, renames=None,
-               verify=True, force=False):
-    """The whole import as one transaction; see the module docstring."""
+def run_import(path, season=2026, *, league='handicap', dry_run=False, links=None,
+               renames=None, verify=True, force=False):
+    """The whole import as one transaction into ``league`` (a slug); see the
+    module docstring."""
+    league_row = league_for(league)
     with closing(open_legacy(path)) as conn:
         snapshot = load_snapshot(conn, season, path)
     report = ImportReport(path=str(path), sha256=snapshot.sha256, alembic_head=snapshot.alembic_head,
-                          season=season, before=_platform_counts(), plan=MatchPlan(), dry_run=dry_run)
+                          season=season, league=_league_label(league_row), before=_platform_counts(), plan=MatchPlan(), dry_run=dry_run)
     report.plan = match_users(snapshot.users, links=links, renames=renames)
     report.plan.blocking = snapshot.problems() + report.plan.blocking
     if report.plan.blocking:
@@ -724,9 +755,9 @@ def run_import(path, season=2026, *, dry_run=False, links=None, renames=None,
 
     try:
         users = apply_users(report.plan)
-        report.counts, _ = import_season(snapshot, users, season)
+        report.counts, _ = import_season(snapshot, users, season, league=league_row)
         if verify:
-            report.parity = verify_scoring(season)
+            report.parity = verify_scoring(season, league=league)
         if dry_run:
             db.session.rollback()
             report.outcome = 'dry-run'

@@ -37,8 +37,8 @@ def _make_user(username='golfer'):
     return u
 
 
-def _make_enrollment(user):
-    e = GolfEnrollment(user_id=user.id, season_year=SEASON, total_points=0)
+def _make_enrollment(user, *, league_id):
+    e = GolfEnrollment(user_id=user.id, league_id=league_id, season_year=SEASON, total_points=0)
     db.session.add(e)
     db.session.commit()
     return e
@@ -84,9 +84,10 @@ def _make_result(tournament, player, status='complete', rounds_completed=4, earn
     return r
 
 
-def _make_pick(user, tournament, primary, backup, **kwargs):
+def _make_pick(user, tournament, primary, backup, *, league_id, **kwargs):
     pick = GolfPick(
         user_id=user.id,
+        league_id=league_id,
         tournament_id=tournament.id,
         primary_player_id=primary.id,
         backup_player_id=backup.id,
@@ -97,8 +98,8 @@ def _make_pick(user, tournament, primary, backup, **kwargs):
     return pick
 
 
-def _add_usage(user, player):
-    u = GolfSeasonPlayerUsage(user_id=user.id, player_id=player.id, season_year=SEASON)
+def _add_usage(user, player, *, league_id):
+    u = GolfSeasonPlayerUsage(user_id=user.id, league_id=league_id, player_id=player.id, season_year=SEASON)
     db.session.add(u)
     db.session.commit()
 
@@ -116,14 +117,14 @@ def _sync():
 
 # --- WD branching regression locks -----------------------------------------
 
-def test_resolve_pick_primary_finishes(app):
+def test_resolve_pick_primary_finishes(app, golf_leagues):
     user = _make_user()
     t = _make_tournament()
     p1 = _make_player('P1', 'Primary', 'One')
     p2 = _make_player('P2', 'Backup', 'Two')
     _make_result(t, p1, status='complete', rounds_completed=4, earnings=100_000)
     _make_result(t, p2, status='complete', rounds_completed=4, earnings=50_000)
-    pick = _make_pick(user, t, p1, p2)
+    pick = _make_pick(user, t, p1, p2, league_id=golf_leagues['handicap'].id)
 
     assert pick.resolve_pick() is True
     assert pick.active_player_id == p1.id
@@ -132,14 +133,14 @@ def test_resolve_pick_primary_finishes(app):
     assert pick.backup_used is False
 
 
-def test_resolve_pick_primary_wd_before_r2_backup_finishes(app):
+def test_resolve_pick_primary_wd_before_r2_backup_finishes(app, golf_leagues):
     user = _make_user()
     t = _make_tournament()
     p1 = _make_player('P1', 'Primary', 'One')
     p2 = _make_player('P2', 'Backup', 'Two')
     _make_result(t, p1, status='wd', rounds_completed=1, earnings=0)
     _make_result(t, p2, status='complete', rounds_completed=4, earnings=80_000)
-    pick = _make_pick(user, t, p1, p2)
+    pick = _make_pick(user, t, p1, p2, league_id=golf_leagues['handicap'].id)
 
     assert pick.resolve_pick() is True
     assert pick.active_player_id == p2.id
@@ -148,14 +149,14 @@ def test_resolve_pick_primary_wd_before_r2_backup_finishes(app):
     assert pick.backup_used is True
 
 
-def test_resolve_pick_primary_wd_after_r2(app):
+def test_resolve_pick_primary_wd_after_r2(app, golf_leagues):
     user = _make_user()
     t = _make_tournament()
     p1 = _make_player('P1', 'Primary', 'One')
     p2 = _make_player('P2', 'Backup', 'Two')
     _make_result(t, p1, status='wd', rounds_completed=2, earnings=0)
     _make_result(t, p2, status='complete', rounds_completed=4, earnings=80_000)
-    pick = _make_pick(user, t, p1, p2)
+    pick = _make_pick(user, t, p1, p2, league_id=golf_leagues['handicap'].id)
 
     assert pick.resolve_pick() is True
     assert pick.active_player_id == p1.id  # primary counts (post-R2 WD)
@@ -164,14 +165,14 @@ def test_resolve_pick_primary_wd_after_r2(app):
     assert pick.backup_used is False
 
 
-def test_resolve_pick_both_wd_before_r2(app):
+def test_resolve_pick_both_wd_before_r2(app, golf_leagues):
     user = _make_user()
     t = _make_tournament()
     p1 = _make_player('P1', 'Primary', 'One')
     p2 = _make_player('P2', 'Backup', 'Two')
     _make_result(t, p1, status='wd', rounds_completed=1, earnings=0)
     _make_result(t, p2, status='wd', rounds_completed=0, earnings=0)
-    pick = _make_pick(user, t, p1, p2)
+    pick = _make_pick(user, t, p1, p2, league_id=golf_leagues['handicap'].id)
 
     assert pick.resolve_pick() is True
     assert pick.active_player_id == p1.id
@@ -182,7 +183,7 @@ def test_resolve_pick_both_wd_before_r2(app):
 
 # --- Zurich full-payout ruling (ADR-033) + major multiplier ----------------
 
-def test_calculate_total_points_team_event_rule(app):
+def test_calculate_total_points_team_event_rule(app, golf_leagues):
     """ADR-033: a Zurich team-event pick earns the FULL team payout, not halved."""
     user = _make_user()
     t = _make_tournament(name='Zurich Classic', is_team_event=True)
@@ -190,14 +191,14 @@ def test_calculate_total_points_team_event_rule(app):
     p2 = _make_player('P2', 'Backup', 'Two')
     _make_result(t, p1, status='complete', rounds_completed=4, earnings=100_000)
     _make_result(t, p2, status='complete', rounds_completed=4, earnings=50_000)
-    pick = _make_pick(user, t, p1, p2)
+    pick = _make_pick(user, t, p1, p2, league_id=golf_leagues['handicap'].id)
 
     assert pick.resolve_pick() is True
     assert pick.active_player_id == p1.id
     assert pick.points_earned == 100_000  # FULL payout, not 50_000
 
 
-def test_resolve_pick_major_applies_multiplier(app):
+def test_resolve_pick_major_applies_multiplier(app, golf_leagues):
     """Majors earn x1.5; team halving is gone, so only the multiplier applies."""
     user = _make_user()
     t = _make_tournament(name='Masters', is_major=True)
@@ -205,7 +206,7 @@ def test_resolve_pick_major_applies_multiplier(app):
     p2 = _make_player('P2', 'Backup', 'Two')
     _make_result(t, p1, status='complete', rounds_completed=4, earnings=100_000)
     _make_result(t, p2, status='complete', rounds_completed=4, earnings=50_000)
-    pick = _make_pick(user, t, p1, p2)
+    pick = _make_pick(user, t, p1, p2, league_id=golf_leagues['handicap'].id)
 
     assert pick.resolve_pick() is True
     assert pick.points_earned == 150_000  # 100_000 * 1.5
@@ -213,19 +214,19 @@ def test_resolve_pick_major_applies_multiplier(app):
 
 # --- live early-WD backup activation ---------------------------------------
 
-def test_is_backup_activated_true_when_primary_wd_early_live(app):
+def test_is_backup_activated_true_when_primary_wd_early_live(app, golf_leagues):
     user = _make_user()
     t = _make_tournament(name='Live Open', status='active')
     p1 = _make_player('P1', 'Primary', 'One')
     p2 = _make_player('P2', 'Backup', 'Two')
     _make_result(t, p1, status='wd', rounds_completed=1, earnings=0)
     _make_result(t, p2, status='complete', rounds_completed=2, earnings=40_000)
-    pick = _make_pick(user, t, p1, p2)
+    pick = _make_pick(user, t, p1, p2, league_id=golf_leagues['handicap'].id)
 
     assert pick.is_backup_activated() is True
 
 
-def test_is_backup_activated_false_when_both_wd_early_live(app):
+def test_is_backup_activated_false_when_both_wd_early_live(app, golf_leagues):
     """Both players WD before R2 during live play: the primary stays active (0),
     the backup is NOT activated — mirrors resolve_pick's 'both WD before R2' rule."""
     user = _make_user()
@@ -234,13 +235,13 @@ def test_is_backup_activated_false_when_both_wd_early_live(app):
     p2 = _make_player('P2', 'Backup', 'Two')
     _make_result(t, p1, status='wd', rounds_completed=1, earnings=0)
     _make_result(t, p2, status='wd', rounds_completed=0, earnings=0)
-    pick = _make_pick(user, t, p1, p2)
+    pick = _make_pick(user, t, p1, p2, league_id=golf_leagues['handicap'].id)
 
     assert pick.is_backup_activated() is False
     assert pick.display_active_player_id == p1.id
 
 
-def test_resolve_pick_usage_insert_idempotent(app):
+def test_resolve_pick_usage_insert_idempotent(app, golf_leagues):
     """Re-resolving the same pick must not create a duplicate season-usage row."""
     user = _make_user()
     t = _make_tournament()
@@ -248,7 +249,7 @@ def test_resolve_pick_usage_insert_idempotent(app):
     p2 = _make_player('P2', 'Backup', 'Two')
     _make_result(t, p1, status='complete', rounds_completed=4, earnings=100_000)
     _make_result(t, p2, status='complete', rounds_completed=4, earnings=50_000)
-    pick = _make_pick(user, t, p1, p2)
+    pick = _make_pick(user, t, p1, p2, league_id=golf_leagues['handicap'].id)
 
     assert pick.resolve_pick() is True
     db.session.commit()
@@ -261,7 +262,7 @@ def test_resolve_pick_usage_insert_idempotent(app):
         user_id=user.id, player_id=p1.id, season_year=SEASON).count() == 1
 
 
-def test_get_current_earnings_reflects_activated_backup_live(app):
+def test_get_current_earnings_reflects_activated_backup_live(app, golf_leagues):
     """During an active tournament, a pre-R2 primary WD surfaces the backup's earnings."""
     user = _make_user()
     t = _make_tournament(name='Live Open', status='active')
@@ -269,12 +270,12 @@ def test_get_current_earnings_reflects_activated_backup_live(app):
     p2 = _make_player('P2', 'Backup', 'Two')
     _make_result(t, p1, status='wd', rounds_completed=1, earnings=0)
     _make_result(t, p2, status='complete', rounds_completed=2, earnings=40_000)
-    pick = _make_pick(user, t, p1, p2)
+    pick = _make_pick(user, t, p1, p2, league_id=golf_leagues['handicap'].id)
 
     assert pick.get_current_earnings() == 40_000  # backup's, not the dead primary's 0
 
 
-def test_get_current_earnings_major_applies_multiplier_once(app):
+def test_get_current_earnings_major_applies_multiplier_once(app, golf_leagues):
     """Active major: the x1.5 must be applied exactly once.
 
     sync_live_leaderboard() stores the already-multiplied projection in
@@ -288,18 +289,18 @@ def test_get_current_earnings_major_applies_multiplier_once(app):
     # result.earnings already carries the major multiplier, as the live sync writes it.
     _make_result(t, p1, status='active', rounds_completed=2, earnings=3_000_000)
     _make_result(t, p2, status='active', rounds_completed=2, earnings=0)
-    pick = _make_pick(user, t, p1, p2)
+    pick = _make_pick(user, t, p1, p2, league_id=golf_leagues['handicap'].id)
 
     assert pick.get_current_earnings() == 3_000_000  # not 4_500_000 (double-applied)
 
 
 # --- transactional reprocessing --------------------------------------------
 
-def test_reprocess_removes_stale_primary_backup_usage(app):
+def test_reprocess_removes_stale_primary_backup_usage(app, golf_leagues):
     """Reprocess clears usage for primary+backup+old-active, not just old-active,
     and does not touch other users' usage rows."""
     user = _make_user('u1')
-    _make_enrollment(user)
+    _make_enrollment(user, league_id=golf_leagues['handicap'].id)
     other = _make_user('u2')
     t = _make_tournament()
     p1 = _make_player('P1', 'Primary', 'One')
@@ -309,10 +310,10 @@ def test_reprocess_removes_stale_primary_backup_usage(app):
     _make_result(t, p2, status='complete', rounds_completed=4, earnings=50_000)
     # Pick already resolved to the primary, but a STALE backup-usage row lingers.
     _make_pick(user, t, p1, p2, active_player_id=p1.id, points_earned=100_000,
-               primary_used=True)
-    _add_usage(user, p1)
-    _add_usage(user, p2)  # stale — backup should not be "used" when primary counts
-    _add_usage(other, p3)  # unrelated, must survive
+               primary_used=True, league_id=golf_leagues['handicap'].id)
+    _add_usage(user, p1, league_id=golf_leagues['handicap'].id)
+    _add_usage(user, p2, league_id=golf_leagues['handicap'].id)  # stale — backup should not be "used" when primary counts
+    _add_usage(other, p3, league_id=golf_leagues['handicap'].id)  # unrelated, must survive
     t.recap_email_sent = True  # skip the recap-email branch
     db.session.commit()
 
@@ -323,13 +324,13 @@ def test_reprocess_removes_stale_primary_backup_usage(app):
     assert _usage_player_ids(other) == {p3.id}      # untouched
 
 
-def test_reprocess_failed_pick_preserves_prior_resolution(app):
+def test_reprocess_failed_pick_preserves_prior_resolution(app, golf_leagues):
     """A pick that fails to re-resolve must keep its prior points + usage (no partial
     clear), and must not corrupt a sibling pick's total."""
     u1 = _make_user('good')
-    e1 = _make_enrollment(u1)
+    e1 = _make_enrollment(u1, league_id=golf_leagues['handicap'].id)
     u2 = _make_user('bad')
-    _make_enrollment(u2)
+    _make_enrollment(u2, league_id=golf_leagues['handicap'].id)
     t = _make_tournament()
     p1 = _make_player('P1', 'GoodPrimary', 'One')
     p2 = _make_player('P2', 'GoodBackup', 'Two')
@@ -338,11 +339,11 @@ def test_reprocess_failed_pick_preserves_prior_resolution(app):
     # Good pick has fresh results.
     _make_result(t, p1, status='complete', rounds_completed=4, earnings=100_000)
     _make_result(t, p2, status='complete', rounds_completed=4, earnings=50_000)
-    _make_pick(u1, t, p1, p2)
+    _make_pick(u1, t, p1, p2, league_id=golf_leagues['handicap'].id)
     # Bad pick: NO result for its primary -> resolve_pick() returns False.
     bad_pick = _make_pick(u2, t, p3, p4, active_player_id=p3.id, points_earned=77_000,
-                          primary_used=True)
-    _add_usage(u2, p3)  # prior resolution's usage
+                          primary_used=True, league_id=golf_leagues['handicap'].id)
+    _add_usage(u2, p3, league_id=golf_leagues['handicap'].id)  # prior resolution's usage
     t.recap_email_sent = True
     db.session.commit()
     bad_pick_id = bad_pick.id

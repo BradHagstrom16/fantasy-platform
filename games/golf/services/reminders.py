@@ -3,7 +3,10 @@ The Pay Sheet — Tournament Reminder & Notification Module
 ===========================================================
 
 Handles three types of member emails, all Club Letters (ADR-058:
-utils/email_layout owns the markup; this module supplies words and facts):
+utils/email_layout owns the markup; this module supplies words and facts).
+Each goes out per league (ADR-075): every pass loops ``leagues()``, mails
+that league's roster with links into that league's pages, and names the
+league in the headline. A member of both leagues gets one letter per line.
 
 1. "Picks Are Open" - Sent when field is synced (called from services/sync.py)
 2. Deadline Reminders - Sent at 24h, 12h, 1h before deadline
@@ -28,6 +31,7 @@ import logging
 from datetime import datetime, timedelta
 
 from flask import current_app
+from sqlalchemy import select
 
 from extensions import db
 from games.golf.models import (
@@ -37,7 +41,9 @@ from games.golf.models import (
     GolfTournamentField,
     GolfTournamentResult,
 )
-from games.golf.utils import GOLF_LEAGUE_TZ, format_score_to_par
+from games.golf.services.leagues import leagues
+from games.golf.services.reads import season_enrollments, tournament_picks
+from games.golf.utils import GOLF_LEAGUE_TZ, format_score_to_par, the_event
 from utils.email import send_platform_email
 from utils.email_layout import (
     Letter,
@@ -93,6 +99,17 @@ def _admin_alert_recipient() -> str:
     return config.get('ADMIN_EMAIL', '') or config.get('EMAIL_ADDRESS', '')
 
 
+def _report_league(letter, league, sent, roster):
+    """Print one league's count; warn when a league with a roster got nothing.
+
+    The tournament's latch is shared by every league (D2), so a league whose
+    every send failed is not retried: the warning is how it gets noticed.
+    """
+    print(f"  {league.name}: {sent}/{roster} sent")
+    if roster and not sent:
+        logger.warning("%s: no letter reached the %s (%s on the roster)", letter, league.name, roster)
+
+
 def _deadline_short(deadline) -> str:
     """'Thursday, Jun 4 · 7:00 AM CT' for a golf pick deadline.
 
@@ -130,7 +147,7 @@ def is_field_ready(tournament_id, minimum=MIN_FIELD_SIZE):
 # PICKS OPEN NOTIFICATION (Called from sync.py after field sync)
 # =============================================================================
 
-def _picks_open_letter(*, tournament_name, deadline_short, purse, pick_url,
+def _picks_open_letter(*, league, tournament_name, deadline_short, purse, pick_url,
                        season_total, golfers_used, season_year):
     """The field-is-set note as a Club Letter (a broadcast: no greeting).
 
@@ -140,7 +157,7 @@ def _picks_open_letter(*, tournament_name, deadline_short, purse, pick_url,
     """
     return Letter(
         subject=f'Picks are open: Golf, {tournament_name}',
-        headline=f"The Pay Sheet, {tournament_name}: picks are open",
+        headline=f'{league.name}, {the_event(tournament_name)}: picks are open',
         game_slug='golf',
         season=season_year,
         preheader=f'Deadline {deadline_short}.',
@@ -157,14 +174,14 @@ def _picks_open_letter(*, tournament_name, deadline_short, purse, pick_url,
 
 def send_picks_open_email(tournament_id_or_obj) -> int:
     """
-    Send "Picks Are Open" notification to all users.
+    Send "Picks Are Open" to every league's roster, one letter per line.
     Called from services/sync.py after successful field sync.
 
     Args:
         tournament_id_or_obj: GolfTournament ID (int) or GolfTournament object
 
     Returns:
-        Number of emails successfully sent
+        Number of emails successfully sent, across every league
     """
     # Accept either tournament object or ID to avoid session issues
     if isinstance(tournament_id_or_obj, int):
@@ -192,35 +209,45 @@ def send_picks_open_email(tournament_id_or_obj) -> int:
     print(f"  Tournament: {tournament.name}")
 
     deadline_short = _deadline_short(tournament.pick_deadline)
-    pick_url = f"{site_url}/golf/pick/{tournament.id}"
     season_year = tournament.season_year
     tournament_name = tournament.name
     purse = tournament.purse or 0
-
-    # Enrollment-scoped (audit §6): mail only current-season golf enrollees, never
-    # every platform user (World Cup / CFB-only accounts must not get golf mail).
-    enrollments = GolfEnrollment.query.filter_by(season_year=season_year).all()
     success_count = 0
+    roster_count = 0
 
-    for enrollment in enrollments:
-        user = enrollment.user
-        if not user or not user.email:
-            continue
+    for league in leagues():
+        # A plain string, never url_for: a timer has no request context.
+        pick_url = f"{site_url}/golf/{league.slug}/pick/{tournament.id}"
+        # Enrollment-scoped (audit §6): mail only this league's current-season
+        # enrollees, never every platform user (World Cup / CFB-only accounts
+        # must not get golf mail).
+        enrollments = season_enrollments(season_year, league.id)
+        roster_count += len(enrollments)
+        league_sent = 0
 
-        letter = _picks_open_letter(
-            tournament_name=tournament_name,
-            deadline_short=deadline_short,
-            purse=purse,
-            pick_url=pick_url,
-            season_total=enrollment.total_points or 0,
-            golfers_used=len(enrollment.get_used_player_ids()),
-            season_year=season_year,
-        )
-        plain, html = render_letter(letter)
-        if send_platform_email(user.email, letter.subject, plain, html):
-            success_count += 1
+        for enrollment in enrollments:
+            user = enrollment.user
+            if not user or not user.email:
+                continue
 
-    print(f"\nPicks Open Summary: {success_count}/{len(enrollments)} emails sent")
+            letter = _picks_open_letter(
+                league=league,
+                tournament_name=tournament_name,
+                deadline_short=deadline_short,
+                purse=purse,
+                pick_url=pick_url,
+                season_total=enrollment.total_points or 0,
+                golfers_used=len(enrollment.get_used_player_ids()),
+                season_year=season_year,
+            )
+            plain, html = render_letter(letter)
+            if send_platform_email(user.email, letter.subject, plain, html):
+                league_sent += 1
+
+        _report_league(f'Picks open, {tournament_name}', league, league_sent, len(enrollments))
+        success_count += league_sent
+
+    print(f"\nPicks Open Summary: {success_count}/{roster_count} emails sent")
     return success_count
 
 
@@ -228,7 +255,7 @@ def send_picks_open_email(tournament_id_or_obj) -> int:
 # DEADLINE REMINDER EMAILS
 # =============================================================================
 
-def _reminder_letter(*, tournament_name, deadline_short, time_remaining,
+def _reminder_letter(*, league, tournament_name, deadline_short, time_remaining,
                      purse, golfers_used, pick_url, window, season_year):
     """The 24h / 12h / 1h reminder as a Club Letter (a broadcast: no greeting).
 
@@ -239,18 +266,18 @@ def _reminder_letter(*, tournament_name, deadline_short, time_remaining,
         subject = f'FINAL, 1 hour left: Golf, {tournament_name}'
         # The final window is T-1h +/- TOLERANCE_MINUTES, so the body says
         # the time actually left, never a flat "one hour" (CFB's rule too).
-        headline = (f"The Pay Sheet, {tournament_name}: final call, "
-                    f"about {time_remaining} left")
+        headline = (f'{league.name}, {the_event(tournament_name)}: final call, '
+                    f'about {time_remaining} left')
         lede = [f'Your pick for {tournament_name} is not in and the deadline '
                 f'is about {time_remaining} away.']
     elif window['type'] == 'reminder':
         subject = f'Pick due in 12 hours: Golf, {tournament_name}'
-        headline = f"The Pay Sheet, {tournament_name}: your pick is due in 12 hours"
+        headline = f'{league.name}, {the_event(tournament_name)}: your pick is due in 12 hours'
         lede = [f'About {time_remaining} left. One more reminder comes at '
                 f'one hour.']
     else:
         subject = f'Pick due in 24 hours: Golf, {tournament_name}'
-        headline = f"The Pay Sheet, {tournament_name}: your pick is due in 24 hours"
+        headline = f'{league.name}, {the_event(tournament_name)}: your pick is due in 24 hours'
         lede = [f'About {time_remaining} left. More reminders come at 12 '
                 f'hours and at one hour.']
     return Letter(
@@ -354,7 +381,7 @@ Corrupt Commish Club · The Pay Sheet Automated Alert System
 # RESULTS RECAP EMAIL (Called from sync.py after earnings finalization)
 # =============================================================================
 
-def _recap_letter(*, display_name, tournament_name, golfer_name, position,
+def _recap_letter(*, league, display_name, tournament_name, golfer_name, position,
                   score, earnings, backup_activated, rank_display,
                   season_total, top_3, user_id, results_url, season_year):
     """The tournament recap as a Club Letter (personal: greets by name).
@@ -397,7 +424,7 @@ def _recap_letter(*, display_name, tournament_name, golfer_name, position,
 
     return Letter(
         subject=f'Results: Golf, {tournament_name}',
-        headline=f"The Pay Sheet, {tournament_name}: results are in",
+        headline=f'{league.name}, {the_event(tournament_name)}: results are in',
         game_slug='golf',
         season=season_year,
         preheader=f'{tournament_name}: your week, settled.',
@@ -405,20 +432,20 @@ def _recap_letter(*, display_name, tournament_name, golfer_name, position,
         lede=['Here is how your week went.'],
         facts=facts,
         extras=extras,
-        cta=('Open the sheet', results_url),
+        cta=('Open the board', results_url),
     )
 
 
 def send_results_recap_email(tournament_id: int) -> int:
     """
-    Send personalized results recap to all league members.
-    Called after process_tournament_picks() finalizes earnings.
+    Send a personalized results recap to every league's roster, one letter
+    per line. Called after process_tournament_picks() finalizes earnings.
 
     Args:
         tournament_id: ID of the finalized tournament
 
     Returns:
-        Number of emails successfully sent
+        Number of emails successfully sent, across every league
     """
     print("\nSending Results Recap emails...")
 
@@ -432,11 +459,31 @@ def send_results_recap_email(tournament_id: int) -> int:
 
     print(f"  Tournament: {tournament.name}")
 
+    success_count = 0
+    roster_count = 0
+    for league in leagues():
+        sent, roster = _send_league_recap(tournament, league, site_url)
+        _report_league(f'Results recap, {tournament.name}', league, sent, roster)
+        success_count += sent
+        roster_count += roster
+
+    print(f"\nResults Recap Summary: {success_count}/{roster_count} emails sent")
+    return success_count
+
+
+def _send_league_recap(tournament, league, site_url) -> tuple[int, int]:
+    """One league's recaps: its picks, its top 3, its standings, its board.
+
+    Returns (letters sent, roster size).
+    """
+    tournament_id = tournament.id
     season_year = tournament.season_year
     tournament_name = tournament.name
+    # A plain string, never url_for: a timer has no request context.
+    results_url = f"{site_url}/golf/{league.slug}/tournament/{tournament_id}"
 
-    # ---- Gather all picks for this tournament ----
-    all_picks = GolfPick.query.filter_by(tournament_id=tournament_id).all()
+    # ---- Gather this league's picks for this tournament ----
+    all_picks = tournament_picks(tournament_id, league.id)
     pick_by_user: dict[int, GolfPick] = {pick.user_id: pick for pick in all_picks}
 
     # ---- Build weekly results for top-3 and per-user display ----
@@ -470,11 +517,11 @@ def send_results_recap_email(tournament_id: int) -> int:
     weekly_results.sort(key=lambda x: x['earnings'], reverse=True)
     top_3 = weekly_results[:3]
 
-    # ---- Calculate standings with tied ranks ----
-    enrollments = GolfEnrollment.query.filter_by(
-        season_year=season_year
-    ).order_by(db.func.coalesce(GolfEnrollment.total_points, 0).desc(),
-               GolfEnrollment.user_id).all()
+    # ---- Calculate this league's standings with tied ranks ----
+    enrollments = sorted(
+        season_enrollments(season_year, league.id),
+        key=lambda e: (-(e.total_points or 0), e.user_id),
+    )
     total_users = len(enrollments)
 
     standings: dict[int, dict] = {}
@@ -494,8 +541,8 @@ def send_results_recap_email(tournament_id: int) -> int:
         prev_rank = rank
 
     # ---- Send personalized recap to each enrolled member (audit §6) ----
-    # Enrollment-scoped: reuse the season enrollments built for standings so a
-    # non-golf platform account never receives a golf recap.
+    # Enrollment-scoped: reuse the league's season enrollments built for
+    # standings so a non-golf platform account never receives a golf recap.
     success_count = 0
 
     for enrollment in enrollments:
@@ -539,6 +586,7 @@ def send_results_recap_email(tournament_id: int) -> int:
             score = None
 
         letter = _recap_letter(
+            league=league,
             display_name=user.get_display_name(),
             tournament_name=tournament_name,
             golfer_name=golfer_name,
@@ -550,15 +598,14 @@ def send_results_recap_email(tournament_id: int) -> int:
             season_total=season_total,
             top_3=top_3,
             user_id=user.id,
-            results_url=f"{site_url}/golf/",
+            results_url=results_url,
             season_year=season_year,
         )
         plain, html = render_letter(letter)
         if send_platform_email(user.email, letter.subject, plain, html):
             success_count += 1
 
-    print(f"\nResults Recap Summary: {success_count}/{len(enrollments)} emails sent")
-    return success_count
+    return success_count, total_users
 
 
 # =============================================================================
@@ -620,20 +667,22 @@ def get_upcoming_tournament_for_reminders():
     return tournament, deadline
 
 
-def get_users_without_picks(tournament_id, season_year):
+def get_users_without_picks(tournament_id, season_year, league_id):
     """
-    Enrolled users (current season) who haven't picked for this tournament.
+    A league's enrolled users (current season) who haven't picked for this
+    tournament on that league's sheet.
 
     Scoped to GolfEnrollment (audit §6) so non-golf platform accounts never
     receive golf reminder mail; mirrors CFB get_users_without_picks(week, season).
+    A pick on the other league's sheet does not count (ADR-075).
 
     Returns:
         List of User objects (still attached to session)
     """
-    picked_user_ids = {
-        p.user_id for p in GolfPick.query.filter_by(tournament_id=tournament_id)
-    }
-    enrollments = GolfEnrollment.query.filter_by(season_year=season_year).all()
+    picked_user_ids = set(db.session.scalars(
+        select(GolfPick.user_id).filter_by(tournament_id=tournament_id, league_id=league_id)
+    ))
+    enrollments = season_enrollments(season_year, league_id)
     return [
         e.user for e in enrollments
         if e.user and e.user.email and e.user_id not in picked_user_ids
@@ -742,14 +791,19 @@ def run_reminder_check():
               f"(last sent: {tournament.last_reminder_type}). Skipping.")
         return
 
-    # Get users who need reminders (returns ORM objects attached to this context)
-    users_without_picks = get_users_without_picks(tournament.id, tournament.season_year)
+    # Who still owes a pick, league by league: a member of both leagues is on
+    # two rosters and owes each sheet its own pick (ADR-075).
+    waiting = [
+        (league, get_users_without_picks(tournament.id, tournament.season_year, league.id))
+        for league in leagues()
+    ]
+    waiting_count = sum(len(users) for _, users in waiting)
 
-    if not users_without_picks:
+    if not waiting_count:
         print(f"\nAll users have made their picks for {tournament.name}!")
         return
 
-    print(f"\nUsers without picks: {len(users_without_picks)}")
+    print(f"\nUsers without picks: {waiting_count}")
 
     # Extract tournament data we need for emails (primitives, not ORM references)
     tournament_name = tournament.name
@@ -758,33 +812,39 @@ def run_reminder_check():
     tournament_season_year = tournament.season_year
     deadline_short = _deadline_short(deadline)
     time_remaining = format_time_remaining(deadline)
-    pick_url = f"{site_url}/golf/pick/{tournament_id}"
 
     # Send reminders
     success_count = 0
-    for user in users_without_picks:
-        user_email = user.email
+    for league, users_without_picks in waiting:
+        # A plain string, never url_for: a timer has no request context.
+        pick_url = f"{site_url}/golf/{league.slug}/pick/{tournament_id}"
+        league_sent = 0
+        for user in users_without_picks:
+            # Golf-specific stats from this league's line
+            enrollment = db.session.scalars(select(GolfEnrollment).filter_by(
+                user_id=user.id,
+                league_id=league.id,
+                season_year=tournament_season_year,
+            )).one()
 
-        # Golf-specific stats from enrollment
-        enrollment = GolfEnrollment.query.filter_by(
-            user_id=user.id,
-            season_year=tournament_season_year
-        ).first()
-        golfers_used = len(enrollment.get_used_player_ids()) if enrollment else 0
+            letter = _reminder_letter(
+                league=league,
+                tournament_name=tournament_name,
+                deadline_short=deadline_short,
+                time_remaining=time_remaining,
+                purse=tournament_purse,
+                golfers_used=len(enrollment.get_used_player_ids()),
+                pick_url=pick_url,
+                window=window,
+                season_year=tournament_season_year,
+            )
+            plain, html = render_letter(letter)
+            if send_platform_email(user.email, letter.subject, plain, html):
+                league_sent += 1
 
-        letter = _reminder_letter(
-            tournament_name=tournament_name,
-            deadline_short=deadline_short,
-            time_remaining=time_remaining,
-            purse=tournament_purse,
-            golfers_used=golfers_used,
-            pick_url=pick_url,
-            window=window,
-            season_year=tournament_season_year,
-        )
-        plain, html = render_letter(letter)
-        if send_platform_email(user_email, letter.subject, plain, html):
-            success_count += 1
+        _report_league(f'{current_tier} reminder, {tournament_name}', league,
+                       league_sent, len(users_without_picks))
+        success_count += league_sent
 
     # Record the tier once ANY send succeeds (standalone parity), so a total
     # failure leaves the tournament un-marked and the next run retries this tier.
@@ -794,6 +854,9 @@ def run_reminder_check():
     # exists to prevent (audit §6). A transiently-failed recipient still receives
     # the next tier (24h→12h→1h); true per-recipient delivery tracking (the fully
     # correct fix) is a deferred enhancement, matching the recap-email trade-off.
+    # gstack-shortcut(dec-6e3392bc): per-tournament latch, upgrade when a duplicate letter lands
+    # One tier flag for the tournament, written after the loop over every
+    # league once any send succeeded; a league that got none is warned above.
     if success_count > 0:
         tournament.last_reminder_type = current_tier
         db.session.commit()
@@ -803,5 +866,5 @@ def run_reminder_check():
 
     print()
     print("-" * 60)
-    print(f"Summary: {success_count}/{len(users_without_picks)} reminders sent")
+    print(f"Summary: {success_count}/{waiting_count} reminders sent")
     print("=" * 60)
