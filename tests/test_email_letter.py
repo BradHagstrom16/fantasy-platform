@@ -442,7 +442,7 @@ def _docket_letters(app):
     return out
 
 
-def _golf_letters(app):
+def _golf_letters(app, *, league_id):
     from games.golf.services.reminders import (
         _reminder_letter as golf_reminder_letter,
     )
@@ -467,9 +467,9 @@ def _golf_letters(app):
     app.config['EMAIL_ADDRESS'] = 'commish@test.com'
     app.config['EMAIL_PASSWORD'] = 'x'
     member = _make_user('golfmember', display_name='Fairway Fred')
-    _make_enrollment(member)
+    _make_enrollment(member, league_id=league_id)
     ghost = _make_user('golfghost', display_name='Cart Path Carl')
-    _make_enrollment(ghost)
+    _make_enrollment(ghost, league_id=league_id)
 
     open_t = _make_tournament(name='The Memorial', status='upcoming')
     open_t.pick_deadline = GOLF_DEADLINE
@@ -506,7 +506,7 @@ def _golf_letters(app):
     _add_to_field(done_t, p1)
     _add_to_field(done_t, p2)
     _make_result(done_t, p1, earnings=1_500_000, final_position='1')
-    pick = _make_pick(member, done_t, p1, p2)
+    pick = _make_pick(member, done_t, p1, p2, league_id=league_id)
     pick.active_player_id = p1.id
     pick.points_earned = 1_500_000
     db.session.commit()
@@ -520,14 +520,14 @@ def _golf_letters(app):
 
 
 @pytest.fixture()
-def letters(app):
+def letters(app, golf_leagues):
     """name -> {'subject', 'plain', 'html'} for every in-scope letter."""
     app.config['SITE_URL'] = SITE
     out = {}
     out.update(_platform_letters(app))
     out.update(_cfb_letters(app))
     out.update(_docket_letters(app))
-    out.update(_golf_letters(app))
+    out.update(_golf_letters(app, league_id=golf_leagues['handicap'].id))
     assert set(out) == set(GAME_OF), sorted(set(GAME_OF) ^ set(out))
     return out
 

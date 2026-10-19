@@ -6,6 +6,14 @@ and season configuration.
 """
 from datetime import UTC, datetime
 
+# The Pay Sheet's leagues (ADR-075): (slug, name, ordinal). Ordinal 1 is the
+# house league. Seeded by services/leagues.py::seed_leagues and the migration
+# that created golf_league; fee and penalty come from config at seed time.
+LEAGUE_SEED = (
+    ('handicap', 'Handicap Pay Sheet', 1),
+    ('pollyanna', 'Pollyanna Pay Sheet', 2),
+)
+
 # Tournaments to EXCLUDE from the league
 # (opposite-field events, playoffs finale, special events)
 EXCLUDED_TOURNAMENTS = {

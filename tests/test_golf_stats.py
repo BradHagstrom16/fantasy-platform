@@ -50,9 +50,9 @@ def _user(username):
     return user
 
 
-def _member(season, username):
+def _member(season, username, *, league_id):
     user = _user(username)
-    db.session.add(GolfEnrollment(user_id=user.id, season_year=season))
+    db.session.add(GolfEnrollment(user_id=user.id, league_id=league_id, season_year=season))
     db.session.commit()
     return user
 
@@ -77,9 +77,9 @@ def _tournament(season, name, week, finalized=True):
     return t
 
 
-def _burn(user, player, season):
+def _burn(user, player, season, *, league_id):
     db.session.add(GolfSeasonPlayerUsage(
-        user_id=user.id, player_id=player.id, season_year=season,
+        user_id=user.id, league_id=league_id, player_id=player.id, season_year=season,
     ))
     db.session.commit()
 
@@ -111,12 +111,12 @@ def _count_sql():
 # remaining_pct_map
 # ============================================================================
 
-def test_remaining_pct_is_the_complement_of_the_burn_share(app, season):
-    members = [_member(season, f'm{i}') for i in range(4)]
+def test_remaining_pct_is_the_complement_of_the_burn_share(app, season, golf_leagues):
+    members = [_member(season, f'm{i}', league_id=golf_leagues['handicap'].id) for i in range(4)]
     scott, rory, spare = _golfer('Scheffler'), _golfer('McIlroy'), _golfer('Spare')
-    _burn(members[0], scott, season)
-    _burn(members[1], scott, season)
-    _burn(members[2], rory, season)
+    _burn(members[0], scott, season, league_id=golf_leagues['handicap'].id)
+    _burn(members[1], scott, season, league_id=golf_leagues['handicap'].id)
+    _burn(members[2], rory, season, league_id=golf_leagues['handicap'].id)
 
     pct = remaining_pct_map(season, [scott.id, rory.id, spare.id])
     assert pct[scott.id] == 50      # 100 - 50
@@ -124,40 +124,40 @@ def test_remaining_pct_is_the_complement_of_the_burn_share(app, season):
     assert pct[spare.id] == 100     # nobody has spent him
 
 
-def test_remaining_pct_is_none_before_the_first_burn(app, season):
+def test_remaining_pct_is_none_before_the_first_burn(app, season, golf_leagues):
     """None, not a map of 100s: the pick page draws no hatch without a signal."""
-    _member(season, 'solo')
+    _member(season, 'solo', league_id=golf_leagues['handicap'].id)
     player = _golfer('Fresh')
     assert remaining_pct_map(season, [player.id]) is None
 
 
-def test_remaining_pct_is_the_complement_of_the_rounded_share(app, season):
+def test_remaining_pct_is_the_complement_of_the_rounded_share(app, season, golf_leagues):
     """7 members, 2 burns: 29% burned, so 71% remain and the two sum to 100."""
-    members = [_member(season, f'm{i}') for i in range(7)]
+    members = [_member(season, f'm{i}', league_id=golf_leagues['handicap'].id) for i in range(7)]
     scott = _golfer('Scheffler')
-    _burn(members[0], scott, season)
-    _burn(members[1], scott, season)
+    _burn(members[0], scott, season, league_id=golf_leagues['handicap'].id)
+    _burn(members[1], scott, season, league_id=golf_leagues['handicap'].id)
 
     assert remaining_pct_map(season, [scott.id])[scott.id] == 71
 
 
-def test_remaining_pct_counts_the_seasons_enrollees_only(app, season):
+def test_remaining_pct_counts_the_seasons_enrollees_only(app, season, golf_leagues):
     """The room is the sheet's roster: a platform user with no line neither
     dilutes the share nor adds a burn to it."""
-    members = [_member(season, f'm{i}') for i in range(2)]
+    members = [_member(season, f'm{i}', league_id=golf_leagues['handicap'].id) for i in range(2)]
     outsider = _user('no_line')
     scott = _golfer('Scheffler')
-    _burn(members[0], scott, season)
-    _burn(outsider, scott, season)
+    _burn(members[0], scott, season, league_id=golf_leagues['handicap'].id)
+    _burn(outsider, scott, season, league_id=golf_leagues['handicap'].id)
 
     assert remaining_pct_map(season, [scott.id])[scott.id] == 50   # 1 of 2, not 2 of 3
 
 
-def test_remaining_pct_ignores_another_seasons_usage(app, season):
-    member = _member(season, 'returning')
-    db.session.add(GolfEnrollment(user_id=member.id, season_year=season - 1))
+def test_remaining_pct_ignores_another_seasons_usage(app, season, golf_leagues):
+    member = _member(season, 'returning', league_id=golf_leagues['handicap'].id)
+    db.session.add(GolfEnrollment(user_id=member.id, league_id=golf_leagues['handicap'].id, season_year=season - 1))
     scott = _golfer('Scheffler')
-    _burn(member, scott, season - 1)
+    _burn(member, scott, season - 1, league_id=golf_leagues['handicap'].id)
 
     assert remaining_pct_map(season, [scott.id]) is None
 
@@ -182,14 +182,14 @@ def test_ytd_earnings_sums_the_seasons_banked_tournaments(app, season):
 # spent_weeks
 # ============================================================================
 
-def test_spent_weeks_names_the_week_the_golfer_counted(app, season):
+def test_spent_weeks_names_the_week_the_golfer_counted(app, season, golf_leagues):
     """The golfer who counted is the one spent: here the backup, the primary
     having withdrawn early and gone back to the pool."""
-    member = _member(season, 'viewer')
+    member = _member(season, 'viewer', league_id=golf_leagues['handicap'].id)
     primary, backup = _golfer('Withdrew'), _golfer('Counted')
     masters = _tournament(season, 'Masters Tournament', 13)
     db.session.add(GolfPick(
-        user_id=member.id, tournament_id=masters.id,
+        user_id=member.id, league_id=golf_leagues['handicap'].id, tournament_id=masters.id,
         primary_player_id=primary.id, backup_player_id=backup.id,
         active_player_id=backup.id, points_earned=120_000, backup_used=True,
     ))
@@ -200,16 +200,16 @@ def test_spent_weeks_names_the_week_the_golfer_counted(app, season):
     }
 
 
-def test_spent_weeks_names_the_first_week_a_golfer_counted_twice(app, season):
+def test_spent_weeks_names_the_first_week_a_golfer_counted_twice(app, season, golf_leagues):
     """An override can leave one golfer counting in two weeks (clear_resolution
     keeps his usage while another resolved pick names him): the week he was
     spent is the first, whatever order the rows were written in."""
-    member = _member(season, 'viewer')
+    member = _member(season, 'viewer', league_id=golf_leagues['handicap'].id)
     twice, other = _golfer('Twice'), _golfer('Other')
     later = _tournament(season, 'Later Week', 14)
     first = _tournament(season, 'First Week', 9)
     db.session.add_all([
-        GolfPick(user_id=member.id, tournament_id=week.id,
+        GolfPick(user_id=member.id, league_id=golf_leagues['handicap'].id, tournament_id=week.id,
                  primary_player_id=twice.id, backup_player_id=other.id,
                  active_player_id=twice.id, points_earned=10)
         for week in (later, first)
@@ -219,22 +219,22 @@ def test_spent_weeks_names_the_first_week_a_golfer_counted_twice(app, season):
     assert spent_weeks(member.id, season) == {twice.id: SpentWeek(9, 'First Week')}
 
 
-def test_spent_weeks_skips_unresolved_picks_other_members_and_seasons(app, season):
-    member, other = _member(season, 'viewer'), _member(season, 'other')
+def test_spent_weeks_skips_unresolved_picks_other_members_and_seasons(app, season, golf_leagues):
+    member, other = _member(season, 'viewer', league_id=golf_leagues['handicap'].id), _member(season, 'other', league_id=golf_leagues['handicap'].id)
     a, b, c, d = (_golfer(name) for name in ('Alpha', 'Bravo', 'Charlie', 'Delta'))
     open_week = _tournament(season, 'Open Week', 14, finalized=False)
     banked = _tournament(season, 'Banked Week', 12)
     last_year = _tournament(season - 1, 'Last Year', 5)
     db.session.add_all([
         # Still open: nobody has counted yet.
-        GolfPick(user_id=member.id, tournament_id=open_week.id,
+        GolfPick(user_id=member.id, league_id=golf_leagues['handicap'].id, tournament_id=open_week.id,
                  primary_player_id=a.id, backup_player_id=b.id),
         # Another member's week.
-        GolfPick(user_id=other.id, tournament_id=banked.id,
+        GolfPick(user_id=other.id, league_id=golf_leagues['handicap'].id, tournament_id=banked.id,
                  primary_player_id=c.id, backup_player_id=d.id,
                  active_player_id=c.id, points_earned=10),
         # The viewer's own, a season ago.
-        GolfPick(user_id=member.id, tournament_id=last_year.id,
+        GolfPick(user_id=member.id, league_id=golf_leagues['handicap'].id, tournament_id=last_year.id,
                  primary_player_id=c.id, backup_player_id=d.id,
                  active_player_id=c.id, points_earned=10),
     ])
@@ -278,9 +278,9 @@ def _result(tournament, player, status='complete', position='1', earnings=0):
     db.session.commit()
 
 
-def _pick(user, tournament, primary, backup, **kwargs):
+def _pick(user, tournament, primary, backup, *, league_id, **kwargs):
     pick = GolfPick(
-        user_id=user.id, tournament_id=tournament.id,
+        user_id=user.id, league_id=league_id, tournament_id=tournament.id,
         primary_player_id=primary.id, backup_player_id=backup.id, **kwargs,
     )
     db.session.add(pick)
@@ -296,14 +296,14 @@ def _names(season):
 
 
 @pytest.fixture()
-def room(app, season):
+def room(app, season, golf_leagues):
     """Three members over four banked events, one of them a major.
 
     Alice rides Scheffler every week; Bob's McIlroy misses the cut at the
     Masters (0, a penalty); Carol's backup counts at the Genesis. Aberg earns
     well and is never spent. Usage rows are what ``resolve_pick`` writes.
     """
-    alice, bob, carol = (_member(season, name) for name in ('Alice', 'Bob', 'Carol'))
+    alice, bob, carol = (_member(season, name, league_id=golf_leagues['handicap'].id) for name in ('Alice', 'Bob', 'Carol'))
     scott = _player('Scottie', 'Scheffler')
     rory = _player('Rory', 'McIlroy')
     xander = _player('Xander', 'Schauffele')
@@ -335,20 +335,20 @@ def room(app, season):
             _result(tournament, player, status, position, earnings)
 
     for tournament, points in zip(events, (2_000_000, 1_200_000, 6_000_000, 600_000), strict=True):
-        _pick(alice, tournament, scott, backup, active_player_id=scott.id, points_earned=points)
-    _pick(bob, t1, rory, backup, active_player_id=rory.id, points_earned=400_000)
-    _pick(bob, t2, rory, backup, active_player_id=rory.id, points_earned=3_600_000)
+        _pick(alice, tournament, scott, backup, active_player_id=scott.id, points_earned=points, league_id=golf_leagues['handicap'].id)
+    _pick(bob, t1, rory, backup, active_player_id=rory.id, points_earned=400_000, league_id=golf_leagues['handicap'].id)
+    _pick(bob, t2, rory, backup, active_player_id=rory.id, points_earned=3_600_000, league_id=golf_leagues['handicap'].id)
     _pick(bob, t3, rory, xander, active_player_id=rory.id, points_earned=0,
-          penalty_triggered=True)
-    _pick(bob, t4, rory, backup, active_player_id=rory.id, points_earned=1_000_000)
-    _pick(carol, t1, xander, backup, active_player_id=xander.id, points_earned=200_000)
+          penalty_triggered=True, league_id=golf_leagues['handicap'].id)
+    _pick(bob, t4, rory, backup, active_player_id=rory.id, points_earned=1_000_000, league_id=golf_leagues['handicap'].id)
+    _pick(carol, t1, xander, backup, active_player_id=xander.id, points_earned=200_000, league_id=golf_leagues['handicap'].id)
     _pick(carol, t2, xander, backup, active_player_id=backup.id, points_earned=25_000,
-          backup_used=True)
-    _pick(carol, t3, xander, backup, active_player_id=xander.id, points_earned=300_000)
-    _pick(carol, t4, xander, backup, active_player_id=xander.id, points_earned=120_000)
+          backup_used=True, league_id=golf_leagues['handicap'].id)
+    _pick(carol, t3, xander, backup, active_player_id=xander.id, points_earned=300_000, league_id=golf_leagues['handicap'].id)
+    _pick(carol, t4, xander, backup, active_player_id=xander.id, points_earned=120_000, league_id=golf_leagues['handicap'].id)
 
     for user, player in ((alice, scott), (bob, rory), (carol, xander), (carol, backup)):
-        _burn(user, player, season)
+        _burn(user, player, season, league_id=golf_leagues['handicap'].id)
 
     return {
         'users': {'alice': alice, 'bob': bob, 'carol': carol},
@@ -394,19 +394,19 @@ def test_season_race_runs_each_members_banked_total(app, season, room):
     assert race['max_value'] == 9_800_000
 
 
-def test_season_race_of_an_empty_season(app, season):
-    _member(season, 'Solo')
+def test_season_race_of_an_empty_season(app, season, golf_leagues):
+    _member(season, 'Solo', league_id=golf_leagues['handicap'].id)
     assert stats.season_race(season, _names(season)) == {
         'tournaments': [], 'series': [], 'max_value': 0, 'count': 0}
 
 
-def test_season_race_draws_every_member_of_the_room_and_nobody_else(app, season, room):
+def test_season_race_draws_every_member_of_the_room_and_nobody_else(app, season, room, golf_leagues):
     """A member with no picks runs flat along the floor; a pick by someone
     with no line this season is not the room's."""
-    _member(season, 'Dave')
+    _member(season, 'Dave', league_id=golf_leagues['handicap'].id)
     outsider = _user('no_line')
     _pick(outsider, room['events'][0], room['players']['aberg'], room['players']['backup'],
-          active_player_id=room['players']['aberg'].id, points_earned=50_000_000)
+          active_player_id=room['players']['aberg'].id, points_earned=50_000_000, league_id=golf_leagues['handicap'].id)
 
     race = stats.season_race(season, _names(season))
     by_name = {s['name']: s for s in race['series']}
@@ -415,25 +415,25 @@ def test_season_race_draws_every_member_of_the_room_and_nobody_else(app, season,
     assert race['max_value'] == 9_800_000
 
 
-def test_season_race_counts_banked_tournaments_of_this_season_only(app, season, room):
+def test_season_race_counts_banked_tournaments_of_this_season_only(app, season, room, golf_leagues):
     alice, scott, backup = room['users']['alice'], room['players']['scott'], room['players']['backup']
     settling = _event(season, 'Settling', datetime(2026, 6, 1), finalized=False)
     last_year = _event(season - 1, 'Last Year', datetime(2025, 6, 1))
-    _pick(alice, settling, backup, scott, active_player_id=backup.id, points_earned=7_000_000)
-    _pick(alice, last_year, backup, scott, active_player_id=backup.id, points_earned=7_000_000)
+    _pick(alice, settling, backup, scott, active_player_id=backup.id, points_earned=7_000_000, league_id=golf_leagues['handicap'].id)
+    _pick(alice, last_year, backup, scott, active_player_id=backup.id, points_earned=7_000_000, league_id=golf_leagues['handicap'].id)
 
     race = stats.season_race(season, _names(season))
     assert race['count'] == 4
     assert race['series'][0]['final'] == 9_800_000
 
 
-def test_season_race_ranks_in_competition_rank(app, season):
+def test_season_race_ranks_in_competition_rank(app, season, golf_leagues):
     """Ties share and the next rank gaps (1, 1, 3), in name order within a tie."""
-    members = [_member(season, name) for name in ('Zed', 'Amy', 'Low')]
+    members = [_member(season, name, league_id=golf_leagues['handicap'].id) for name in ('Zed', 'Amy', 'Low')]
     golfer, other = _golfer('Golfer'), _golfer('Other')
     opener = _event(season, 'Opener', datetime(2026, 1, 8))
     for member, points in zip(members, (500, 500, 100), strict=True):
-        _pick(member, opener, golfer, other, active_player_id=golfer.id, points_earned=points)
+        _pick(member, opener, golfer, other, active_player_id=golfer.id, points_earned=points, league_id=golf_leagues['handicap'].id)
 
     series = stats.season_race(season, _names(season))['series']
     assert [(s['name'], s['rank'], s['rank_label']) for s in series] == [
@@ -465,35 +465,35 @@ def test_superlatives_name_the_seasons_five_lines(app, season, room):
         'Bob', 'McIlroy', 'The Masters', 20_000_000)
 
 
-def test_superlatives_of_an_empty_season(app, season):
-    _member(season, 'Solo')
+def test_superlatives_of_an_empty_season(app, season, golf_leagues):
+    _member(season, 'Solo', league_id=golf_leagues['handicap'].id)
     assert stats.superlatives(season, _names(season)) == stats.Superlatives(
         None, None, None, None, None)
 
 
-def test_superlatives_name_the_golfer_who_counted(app, season):
+def test_superlatives_name_the_golfer_who_counted(app, season, golf_leagues):
     """The backup counted (the primary withdrew early): the line names him."""
-    member = _member(season, 'Carol')
+    member = _member(season, 'Carol', league_id=golf_leagues['handicap'].id)
     primary, backup = _golfer('Withdrew'), _golfer('Counted')
     opener = _event(season, 'Opener', datetime(2026, 1, 8))
     _pick(member, opener, primary, backup, active_player_id=backup.id,
-          points_earned=900_000, backup_used=True)
+          points_earned=900_000, backup_used=True, league_id=golf_leagues['handicap'].id)
 
     assert stats.superlatives(season, _names(season)).pick_of_season.golfer.last_name == 'Counted'
 
 
-def test_superlative_ties_go_to_the_name(app, season):
+def test_superlative_ties_go_to_the_name(app, season, golf_leagues):
     """Two members with one missed cut and one backup week each: the count
     alone cannot choose, so the name does, whatever order the rows came in."""
-    zed, amy = _member(season, 'Zed'), _member(season, 'Amy')
+    zed, amy = _member(season, 'Zed', league_id=golf_leagues['handicap'].id), _member(season, 'Amy', league_id=golf_leagues['handicap'].id)
     cut_a, cut_b, spare = _golfer('CutA'), _golfer('CutB'), _golfer('Spare')
     opener = _event(season, 'Opener', datetime(2026, 1, 8))
     _result(opener, cut_a, status='cut', position='CUT')
     _result(opener, cut_b, status='dq', position='DQ')
     _pick(zed, opener, spare, cut_a, active_player_id=cut_a.id, points_earned=0,
-          backup_used=True)
+          backup_used=True, league_id=golf_leagues['handicap'].id)
     _pick(amy, opener, spare, cut_b, active_player_id=cut_b.id, points_earned=0,
-          backup_used=True)
+          backup_used=True, league_id=golf_leagues['handicap'].id)
 
     sup = stats.superlatives(season, _names(season))
     assert sup.most_cuts.member == 'Amy'
@@ -502,14 +502,14 @@ def test_superlative_ties_go_to_the_name(app, season):
     assert sup.coldest_pick.member == 'Zed'            # equal purses: the first pick written
 
 
-def test_most_consistent_prefers_the_member_who_needed_fewer_weeks(app, season):
-    steady, busy = _member(season, 'Steady'), _member(season, 'Busy')
+def test_most_consistent_prefers_the_member_who_needed_fewer_weeks(app, season, golf_leagues):
+    steady, busy = _member(season, 'Steady', league_id=golf_leagues['handicap'].id), _member(season, 'Busy', league_id=golf_leagues['handicap'].id)
     golfer, other = _golfer('Golfer'), _golfer('Other')
     first = _event(season, 'First', datetime(2026, 1, 8))
     second = _event(season, 'Second', datetime(2026, 1, 15))
-    _pick(steady, first, golfer, other, active_player_id=golfer.id, points_earned=10)
-    _pick(busy, first, golfer, other, active_player_id=golfer.id, points_earned=10)
-    _pick(busy, second, golfer, other, active_player_id=golfer.id, points_earned=0)
+    _pick(steady, first, golfer, other, active_player_id=golfer.id, points_earned=10, league_id=golf_leagues['handicap'].id)
+    _pick(busy, first, golfer, other, active_player_id=golfer.id, points_earned=10, league_id=golf_leagues['handicap'].id)
+    _pick(busy, second, golfer, other, active_player_id=golfer.id, points_earned=0, league_id=golf_leagues['handicap'].id)
 
     assert stats.superlatives(season, _names(season)).most_consistent == stats.CountLine(
         'Steady', 1, 1)
@@ -548,15 +548,15 @@ def test_still_on_the_board_is_the_top_money_nobody_has_spent(app, season, room)
     assert stats.field_form(season).still_on_board[0].prize == 3_900_000
 
 
-def test_a_backup_who_never_counted_is_still_on_the_board(app, season):
+def test_a_backup_who_never_counted_is_still_on_the_board(app, season, golf_leagues):
     """Naming a golfer spends nobody: only the golfer who counted is spent."""
-    member = _member(season, 'Viewer')
+    member = _member(season, 'Viewer', league_id=golf_leagues['handicap'].id)
     counted, named = _golfer('Counted'), _golfer('Named')
     opener = _event(season, 'Opener', datetime(2026, 1, 8))
     _result(opener, counted, earnings=500_000)
     _result(opener, named, position='2', earnings=300_000)
-    _pick(member, opener, counted, named, active_player_id=counted.id, points_earned=500_000)
-    _burn(member, counted, season)
+    _pick(member, opener, counted, named, active_player_id=counted.id, points_earned=500_000, league_id=golf_leagues['handicap'].id)
+    _burn(member, counted, season, league_id=golf_leagues['handicap'].id)
 
     assert [row.player.last_name for row in stats.field_form(season).still_on_board] == ['Named']
 
@@ -568,17 +568,17 @@ def test_field_form_of_an_empty_season(app, season):
 # --- burn_list --------------------------------------------------------------
 
 @pytest.fixture()
-def league(app, season):
+def league(app, season, golf_leagues):
     """Four members: Alice and Bob spent Scheffler, Carol spent McIlroy, Dave nobody."""
-    alice, bob, carol, dave = (_member(season, name) for name in ('alice', 'bob', 'carol', 'dave'))
+    alice, bob, carol, dave = (_member(season, name, league_id=golf_leagues['handicap'].id) for name in ('alice', 'bob', 'carol', 'dave'))
     scott, rory, backup = _player('Scottie', 'Scheffler'), _player('Rory', 'McIlroy'), _player('Backup', 'Guy')
     t1 = _event(season, 'Sony Open', datetime(2026, 1, 8))
     t2 = _event(season, 'Genesis', datetime(2026, 2, 12))
-    _pick(alice, t1, scott, backup, active_player_id=scott.id, points_earned=2_000_000)
-    _pick(bob, t2, scott, backup, active_player_id=scott.id, points_earned=1_200_000)
-    _pick(carol, t1, rory, backup, active_player_id=rory.id, points_earned=400_000)
+    _pick(alice, t1, scott, backup, active_player_id=scott.id, points_earned=2_000_000, league_id=golf_leagues['handicap'].id)
+    _pick(bob, t2, scott, backup, active_player_id=scott.id, points_earned=1_200_000, league_id=golf_leagues['handicap'].id)
+    _pick(carol, t1, rory, backup, active_player_id=rory.id, points_earned=400_000, league_id=golf_leagues['handicap'].id)
     for user, player in ((alice, scott), (bob, scott), (carol, rory)):
-        _burn(user, player, season)
+        _burn(user, player, season, league_id=golf_leagues['handicap'].id)
     return {'users': {'alice': alice, 'bob': bob, 'carol': carol, 'dave': dave},
             'players': {'scott': scott, 'rory': rory, 'backup': backup},
             'events': [t1, t2]}
@@ -600,14 +600,14 @@ def test_burn_list_runs_most_burned_first(app, season, league):
     assert _burned(season) == ['Scottie Scheffler', 'Rory McIlroy']
 
 
-def test_burn_list_tie_breaks_by_return(app, season, league):
+def test_burn_list_tie_breaks_by_return(app, season, league, golf_leagues):
     thomas = _player('Justin', 'Thomas')
     for name in ('carol', 'dave'):
-        _burn(league['users'][name], thomas, season)
+        _burn(league['users'][name], thomas, season, league_id=golf_leagues['handicap'].id)
     assert _burned(season) == ['Scottie Scheffler', 'Justin Thomas', 'Rory McIlroy']
 
 
-def test_burn_list_tie_breaks_by_last_name_then_full_name(app, season, league):
+def test_burn_list_tie_breaks_by_last_name_then_full_name(app, season, league, golf_leagues):
     """Equal share and return: last name, then the full name. The golfers are
     created in reverse order so insertion order cannot pass by accident."""
     t1, t2 = league['events']
@@ -618,70 +618,70 @@ def test_burn_list_tie_breaks_by_last_name_then_full_name(app, season, league):
         ('dave', t1, zed), ('alice', t2, aaron), ('bob', t1, zeta), ('carol', t2, alpha),
     ):
         _pick(league['users'][user], tournament, player, backup,
-              active_player_id=player.id, points_earned=500_000)
-        _burn(league['users'][user], player, season)
+              active_player_id=player.id, points_earned=500_000, league_id=golf_leagues['handicap'].id)
+        _burn(league['users'][user], player, season, league_id=golf_leagues['handicap'].id)
 
     assert _burned(season) == [
         'Scottie Scheffler', 'Aaron Alpha', 'Aaron Smith', 'Zed Smith', 'Zed Zeta', 'Rory McIlroy']
 
 
-def test_burn_list_share_is_of_the_seasons_enrollees(app, season, league):
+def test_burn_list_share_is_of_the_seasons_enrollees(app, season, league, golf_leagues):
     """A member with a line and no picks still dilutes the share; a platform
     user with no line does not, and their usage is not the room's."""
     outsider = _user('no_line')
-    _burn(outsider, league['players']['rory'], season)
+    _burn(outsider, league['players']['rory'], season, league_id=golf_leagues['handicap'].id)
     assert stats.burn_list(season)[0].pct_burned == 50      # 2 of 4
-    _member(season, 'lurker')
+    _member(season, 'lurker', league_id=golf_leagues['handicap'].id)
     assert stats.burn_list(season)[0].pct_burned == 40      # 2 of 5
     assert stats.burn_list(season)[1].times_used == 1       # McIlroy: Carol only
 
 
-def test_burn_list_share_rounds_to_the_nearest_whole(app, season, league):
+def test_burn_list_share_rounds_to_the_nearest_whole(app, season, league, golf_leagues):
     for i in range(3):
-        _member(season, f'extra{i}')
+        _member(season, f'extra{i}', league_id=golf_leagues['handicap'].id)
     assert stats.burn_list(season)[0].pct_burned == 29      # 2 of 7
 
 
-def test_burn_list_rounds_half_to_even(app, season):
+def test_burn_list_rounds_half_to_even(app, season, golf_leagues):
     """1 of 8 is 12 and 3 of 8 is 38: Python's rounding, not int(x + 0.5)."""
-    members = [_member(season, f'm{i}') for i in range(8)]
+    members = [_member(season, f'm{i}', league_id=golf_leagues['handicap'].id) for i in range(8)]
     low, high = _player('Lone', 'Burn'), _player('Trio', 'Burn')
-    _burn(members[0], low, season)
+    _burn(members[0], low, season, league_id=golf_leagues['handicap'].id)
     for member in members[1:4]:
-        _burn(member, high, season)
+        _burn(member, high, season, league_id=golf_leagues['handicap'].id)
     by_name = {row.player.first_name: row.pct_burned for row in stats.burn_list(season)}
     assert by_name == {'Lone': 12, 'Trio': 38}
 
 
-def test_burn_list_burned_by_all_leaves_none(app, season):
-    members = [_member(season, f'm{i}') for i in range(3)]
+def test_burn_list_burned_by_all_leaves_none(app, season, golf_leagues):
+    members = [_member(season, f'm{i}', league_id=golf_leagues['handicap'].id) for i in range(3)]
     chalk = _golfer('Chalk')
     for member in members:
-        _burn(member, chalk, season)
+        _burn(member, chalk, season, league_id=golf_leagues['handicap'].id)
     assert stats.burn_list(season)[0].pct_burned == 100
     assert remaining_pct_map(season, [chalk.id])[chalk.id] == 0
 
 
-def test_burn_list_keeps_a_share_that_rounds_to_nothing(app, season):
+def test_burn_list_keeps_a_share_that_rounds_to_nothing(app, season, golf_leagues):
     """1 burn in a room of 201 rounds to 0% and the row still shows."""
-    picker = _member(season, 'picker')
+    picker = _member(season, 'picker', league_id=golf_leagues['handicap'].id)
     fillers = [User(username=f'filler{n}', email=f'filler{n}@test.com', password_hash='x')
                for n in range(200)]
     db.session.add_all(fillers)
     db.session.flush()
-    db.session.add_all([GolfEnrollment(user_id=u.id, season_year=season) for u in fillers])
+    db.session.add_all([GolfEnrollment(user_id=u.id, league_id=golf_leagues['handicap'].id, season_year=season) for u in fillers])
     db.session.commit()
-    _burn(picker, _golfer('DeepCut'), season)
+    _burn(picker, _golfer('DeepCut'), season, league_id=golf_leagues['handicap'].id)
 
     rows = stats.burn_list(season)
     assert [(row.times_used, row.pct_burned) for row in rows] == [(1, 0)]
 
 
-def test_burn_list_ignores_other_seasons(app, season, league):
+def test_burn_list_ignores_other_seasons(app, season, league, golf_leagues):
     dave = league['users']['dave']
-    db.session.add(GolfEnrollment(user_id=dave.id, season_year=season - 1))
+    db.session.add(GolfEnrollment(user_id=dave.id, league_id=golf_leagues['handicap'].id, season_year=season - 1))
     db.session.commit()
-    _burn(dave, _player('Last', 'Year'), season - 1)
+    _burn(dave, _player('Last', 'Year'), season - 1, league_id=golf_leagues['handicap'].id)
     assert 'Last Year' not in _burned(season)
 
 
@@ -689,23 +689,23 @@ def test_burn_list_of_an_empty_season(app, season):
     assert stats.burn_list(season) == []
 
 
-def test_burn_list_ignores_a_pick_in_flight(app, season, league):
+def test_burn_list_ignores_a_pick_in_flight(app, season, league, golf_leagues):
     """A live week burns nobody: no usage row until the results are final."""
     live = _event(season, 'Live Event', datetime(2026, 6, 1), finalized=False)
-    _pick(league['users']['carol'], live, league['players']['backup'], league['players']['scott'])
+    _pick(league['users']['carol'], live, league['players']['backup'], league['players']['scott'], league_id=golf_leagues['handicap'].id)
     assert 'Backup Guy' not in _burned(season)
 
 
-def test_burn_list_usage_with_no_pick_returns_nothing(app, season, league):
+def test_burn_list_usage_with_no_pick_returns_nothing(app, season, league, golf_leagues):
     """A usage row entered by hand still lists, with $0 beside it."""
-    _burn(league['users']['dave'], _player('Ghost', 'Entry'), season)
+    _burn(league['users']['dave'], _player('Ghost', 'Entry'), season, league_id=golf_leagues['handicap'].id)
     ghost = next(row for row in stats.burn_list(season) if row.player.last_name == 'Entry')
     assert (ghost.total_return, ghost.pct_burned) == (0, 25)
 
 
-def test_burned_and_remaining_always_sum_to_100(app, season, league):
+def test_burned_and_remaining_always_sum_to_100(app, season, league, golf_leagues):
     for i in range(3):
-        _member(season, f'extra{i}')
+        _member(season, f'extra{i}', league_id=golf_leagues['handicap'].id)
     rows = stats.burn_list(season)
     remaining = remaining_pct_map(season, [row.player.id for row in rows])
     assert all(row.pct_burned + remaining[row.player.id] == 100 for row in rows)
@@ -713,7 +713,7 @@ def test_burned_and_remaining_always_sum_to_100(app, season, league):
 
 # --- override_tally ---------------------------------------------------------
 
-def test_override_tally_groups_sorts_and_scopes(app, season, league):
+def test_override_tally_groups_sorts_and_scopes(app, season, league, golf_leagues):
     """Most overrides first, then name; only the weeks handed in, only this
     season, only the room; a member with none is absent."""
     users, players = league['users'], league['players']
@@ -726,10 +726,10 @@ def test_override_tally_groups_sorts_and_scopes(app, season, league):
     for pick in GolfPick.query.filter(GolfPick.user_id.in_([users['alice'].id, users['carol'].id])):
         pick.admin_override = True                       # alice t1, carol t1
     db.session.commit()
-    _pick(users['carol'], t2, scott, backup, admin_override=True)
-    _pick(users['bob'], open_week, scott, backup, admin_override=True)       # not handed in
-    _pick(users['dave'], last_year, scott, backup, admin_override=True)      # another season
-    _pick(outsider, t1, scott, backup, admin_override=True)                  # not the room
+    _pick(users['carol'], t2, scott, backup, admin_override=True, league_id=golf_leagues['handicap'].id)
+    _pick(users['bob'], open_week, scott, backup, admin_override=True, league_id=golf_leagues['handicap'].id)       # not handed in
+    _pick(users['dave'], last_year, scott, backup, admin_override=True, league_id=golf_leagues['handicap'].id)      # another season
+    _pick(outsider, t1, scott, backup, admin_override=True, league_id=golf_leagues['handicap'].id)                  # not the room
 
     tally = stats.override_tally(season, [t1.id, t2.id, last_year.id], _names(season))
     assert tally == [

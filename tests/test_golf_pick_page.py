@@ -65,12 +65,12 @@ def tuesday(monkeypatch):
 
 # --- seed helpers (run inside the fixture's app context) --------------------
 
-def _member(season, username='viewer'):
+def _member(season, username='viewer', *, league_id):
     user = User(username=username, email=f'{username}@test.com', display_name=username)
     user.set_password('pw')
     db.session.add(user)
     db.session.flush()
-    db.session.add(GolfEnrollment(user_id=user.id, season_year=season))
+    db.session.add(GolfEnrollment(user_id=user.id, league_id=league_id, season_year=season))
     db.session.commit()
     return user
 
@@ -113,15 +113,15 @@ def _enter(tournament, player):
     db.session.commit()
 
 
-def _spend(user, player, season, tournament=None):
+def _spend(user, player, season, tournament=None, *, league_id):
     """A golfer the member has spent; with a tournament, the pick that names the week."""
     db.session.add(GolfSeasonPlayerUsage(
-        user_id=user.id, player_id=player.id, season_year=season,
+        user_id=user.id, league_id=league_id, player_id=player.id, season_year=season,
     ))
     if tournament is not None:
         spare = _golfer('Spare', f'For{player.id}')
         db.session.add(GolfPick(
-            user_id=user.id, tournament_id=tournament.id,
+            user_id=user.id, league_id=league_id, tournament_id=tournament.id,
             primary_player_id=player.id, backup_player_id=spare.id,
             active_player_id=player.id, points_earned=100_000, primary_used=True,
         ))
@@ -267,10 +267,10 @@ def test_still_on_the_board_is_the_top_unspent_money():
 # The page
 # ============================================================================
 
-def test_pick_page_answers_before_the_list(app, client, season, tuesday):
+def test_pick_page_answers_before_the_list(app, client, season, tuesday, golf_leagues):
     t = _tournament(season, is_major=True)
     _field(t)
-    _login(client, _member(season))
+    _login(client, _member(season, league_id=golf_leagues['handicap'].id))
 
     resp = client.get(f'/golf/pick/{t.id}')
     assert resp.status_code == 200
@@ -287,11 +287,11 @@ def test_pick_page_answers_before_the_list(app, client, season, tuesday):
     assert 'A missed cut or a DQ costs $15 to the pot.' in body
 
 
-def test_pick_page_keeps_the_selects_and_loads_no_library(app, client, season, tuesday):
+def test_pick_page_keeps_the_selects_and_loads_no_library(app, client, season, tuesday, golf_leagues):
     """§7.15: the ids and field names are the form's truth, with or without the script."""
     t = _tournament(season)
     _field(t)
-    _login(client, _member(season))
+    _login(client, _member(season, league_id=golf_leagues['handicap'].id))
 
     body = client.get(f'/golf/pick/{t.id}').get_data(as_text=True)
     assert 'id="primary_player_id" name="primary_player_id" required' in body
@@ -304,10 +304,10 @@ def test_pick_page_keeps_the_selects_and_loads_no_library(app, client, season, t
         assert gone not in source, f'make_pick.html still carries {gone!r}'
 
 
-def test_pick_page_draws_no_hatch_or_money_before_the_season_has_any(app, client, season, tuesday):
+def test_pick_page_draws_no_hatch_or_money_before_the_season_has_any(app, client, season, tuesday, golf_leagues):
     t = _tournament(season)
     _field(t)
-    _login(client, _member(season))
+    _login(client, _member(season, league_id=golf_leagues['handicap'].id))
 
     body = client.get(f'/golf/pick/{t.id}').get_data(as_text=True)
     assert 'golf-burn-bar' not in body and 'still have him' not in body
@@ -315,15 +315,15 @@ def test_pick_page_draws_no_hatch_or_money_before_the_season_has_any(app, client
     assert 'Used golfers (' not in body and 'Still on the board' not in body
 
 
-def test_a_spent_golfer_is_struck_not_hidden(app, client, season, tuesday):
-    me = _member(season)
+def test_a_spent_golfer_is_struck_not_hidden(app, client, season, tuesday, golf_leagues):
+    me = _member(season, league_id=golf_leagues['handicap'].id)
     valero = _tournament(season, name='Valero Texas Open', week=12, start=datetime(2026, 4, 2),
                          end=datetime(2026, 4, 5), lock=datetime(2026, 4, 2, 7, 30),
                          finalized=True)
     t = _tournament(season)
     players = _field(t)
     spent, open_one = players[0], players[1]
-    _spend(me, spent, season, tournament=valero)
+    _spend(me, spent, season, tournament=valero, league_id=golf_leagues['handicap'].id)
     _login(client, me)
 
     body = client.get(f'/golf/pick/{t.id}').get_data(as_text=True)
@@ -357,8 +357,8 @@ def test_a_spent_golfer_is_struck_not_hidden(app, client, season, tuesday):
                      r'<span class="visually-hidden">, </span>Valero Texas Open</span>', spent_list)
 
 
-def test_field_rows_carry_the_money_in_money_order(app, client, season, tuesday):
-    me = _member(season)
+def test_field_rows_carry_the_money_in_money_order(app, client, season, tuesday, golf_leagues):
+    me = _member(season, league_id=golf_leagues['handicap'].id)
     sony = _tournament(season, name='Sony Open', week=1, start=datetime(2026, 1, 15),
                        end=datetime(2026, 1, 18), lock=datetime(2026, 1, 15, 11), finalized=True)
     t = _tournament(season)
@@ -387,11 +387,11 @@ def test_field_rows_carry_the_money_in_money_order(app, client, season, tuesday)
     assert '$4,000,000' in still
 
 
-def test_pick_page_shows_a_saved_pick(app, client, season, tuesday):
-    me = _member(season)
+def test_pick_page_shows_a_saved_pick(app, client, season, tuesday, golf_leagues):
+    me = _member(season, league_id=golf_leagues['handicap'].id)
     t = _tournament(season)
     players = _field(t)
-    db.session.add(GolfPick(user_id=me.id, tournament_id=t.id,
+    db.session.add(GolfPick(user_id=me.id, league_id=golf_leagues['handicap'].id, tournament_id=t.id,
                             primary_player_id=players[3].id, backup_player_id=players[7].id))
     db.session.commit()
     _login(client, me)
@@ -414,11 +414,11 @@ def _note(body, hook):
     return bool(match.group(1)), re.sub(r'<[^>]+>', '', match.group(2))
 
 
-def test_the_pick_note_says_whether_the_pick_is_saved(app, client, season, tuesday):
+def test_the_pick_note_says_whether_the_pick_is_saved(app, client, season, tuesday, golf_leagues):
     """A chosen slot and a saved one are drawn alike, so the line under Lock it
     in says which (DESIGN.md §7.24). Without the script the server's state
     shows; the script then shows the one note that fits."""
-    me = _member(season)
+    me = _member(season, league_id=golf_leagues['handicap'].id)
     t = _tournament(season)
     players = _field(t)
     _login(client, me)
@@ -431,7 +431,7 @@ def test_the_pick_note_says_whether_the_pick_is_saved(app, client, season, tuesd
     assert _note(body, 'data-note-saved')[0] is True
 
     # A saved pick: it is in, and a change names the pick that stands until then.
-    db.session.add(GolfPick(user_id=me.id, tournament_id=t.id,
+    db.session.add(GolfPick(user_id=me.id, league_id=golf_leagues['handicap'].id, tournament_id=t.id,
                             primary_player_id=players[3].id, backup_player_id=players[7].id))
     db.session.commit()
     body = client.get(f'/golf/pick/{t.id}').get_data(as_text=True)
@@ -448,13 +448,14 @@ def test_the_pick_note_says_whether_the_pick_is_saved(app, client, season, tuesd
     assert "if (noteChange) noteChange.hidden = !(both && dirty);" in source
 
 
-def test_pick_page_query_count_does_not_grow_with_the_field(app, client, season, tuesday):
-    me = _member(season)
+def test_pick_page_query_count_does_not_grow_with_the_field(app, client, season, tuesday, golf_leagues):
+    league_id = golf_leagues['handicap'].id  # read before db.session.remove() detaches the league
+    me = _member(season, league_id=league_id)
     sony = _tournament(season, name='Sony Open', week=1, start=datetime(2026, 1, 15),
                        end=datetime(2026, 1, 18), lock=datetime(2026, 1, 15, 11), finalized=True)
     t = _tournament(season)
     players = _field(t)
-    _spend(me, players[0], season, tournament=sony)
+    _spend(me, players[0], season, tournament=sony, league_id=league_id)
     _earn(sony, players[1], 500_000)
     # Ids, before db.session.remove() detaches the rows they came from.
     tid, sony_id, me_id = t.id, sony.id, me.id
@@ -467,7 +468,7 @@ def test_pick_page_query_count_does_not_grow_with_the_field(app, client, season,
         assert client.get(f'/golf/pick/{tid}').status_code == 200
 
     more = _field(db.session.get(GolfTournament, tid), size=30, start=50)
-    _spend(db.session.get(User, me_id), more[0], season)
+    _spend(db.session.get(User, me_id), more[0], season, league_id=league_id)
     _earn(db.session.get(GolfTournament, sony_id), more[1], 250_000)
     db.session.remove()
     with _count_sql() as large:
@@ -483,8 +484,8 @@ def test_pick_page_query_count_does_not_grow_with_the_field(app, client, season,
 # Before the field, and past the lock
 # ============================================================================
 
-def test_unpublished_field_renders_the_empty_state_and_takes_no_pick(app, client, season, tuesday):
-    me = _member(season)
+def test_unpublished_field_renders_the_empty_state_and_takes_no_pick(app, client, season, tuesday, golf_leagues):
+    me = _member(season, league_id=golf_leagues['handicap'].id)
     t = _tournament(season)
     players = _field(t, size=10)                          # short of a field
     _login(client, me)
@@ -505,11 +506,11 @@ def test_unpublished_field_renders_the_empty_state_and_takes_no_pick(app, client
     assert GolfPick.query.count() == 0
 
 
-def test_past_the_lock_the_page_turns_over_to_the_board(app, client, season, monkeypatch):
+def test_past_the_lock_the_page_turns_over_to_the_board(app, client, season, monkeypatch, golf_leagues):
     """The lock closes the pick, whatever the status says (still 'upcoming' here)."""
     set_status(monkeypatch, 'golf', 'open')
     monkeypatch.setenv('GOLF_FAKE_NOW', SUNDAY_430_PM_CT)
-    me = _member(season)
+    me = _member(season, league_id=golf_leagues['handicap'].id)
     t = _tournament(season)
     players = _field(t)
     _login(client, me)
@@ -532,8 +533,8 @@ def test_past_the_lock_the_page_turns_over_to_the_board(app, client, season, mon
 # Lock it in
 # ============================================================================
 
-def test_lock_it_in_saves_the_pick_and_lands_on_the_sheet(app, client, season, tuesday):
-    me = _member(season)
+def test_lock_it_in_saves_the_pick_and_lands_on_the_sheet(app, client, season, tuesday, golf_leagues):
+    me = _member(season, league_id=golf_leagues['handicap'].id)
     t = _tournament(season)
     players = _field(t)
     _login(client, me)
@@ -553,11 +554,11 @@ def test_lock_it_in_saves_the_pick_and_lands_on_the_sheet(app, client, season, t
             'as your backup. You can change it until Thu Apr 9 · 7:40 AM CT.') in sheet
 
 
-def test_lock_it_in_changes_a_saved_pick_in_place(app, client, season, tuesday):
-    me = _member(season)
+def test_lock_it_in_changes_a_saved_pick_in_place(app, client, season, tuesday, golf_leagues):
+    me = _member(season, league_id=golf_leagues['handicap'].id)
     t = _tournament(season)
     players = _field(t)
-    db.session.add(GolfPick(user_id=me.id, tournament_id=t.id,
+    db.session.add(GolfPick(user_id=me.id, league_id=golf_leagues['handicap'].id, tournament_id=t.id,
                             primary_player_id=players[3].id, backup_player_id=players[7].id))
     db.session.commit()
     _login(client, me)
@@ -577,11 +578,11 @@ def test_lock_it_in_changes_a_saved_pick_in_place(app, client, season, tuesday):
     ('spent', 'Your primary has already been spent this season. Choose another golfer.'),
     ('outside', 'Your backup is not in this field. Choose a golfer from the field.'),
 ])
-def test_a_refused_pick_writes_nothing_and_says_why(app, client, season, tuesday, which, message):
-    me = _member(season)
+def test_a_refused_pick_writes_nothing_and_says_why(app, client, season, tuesday, which, message, golf_leagues):
+    me = _member(season, league_id=golf_leagues['handicap'].id)
     t = _tournament(season)
     players = _field(t)
-    _spend(me, players[0], season)
+    _spend(me, players[0], season, league_id=golf_leagues['handicap'].id)
     outsider = _golfer('Not', 'Entered')
     _login(client, me)
 
@@ -598,12 +599,12 @@ def test_a_refused_pick_writes_nothing_and_says_why(app, client, season, tuesday
     assert GolfPick.query.filter_by(tournament_id=t.id).count() == 0
 
 
-def test_a_refused_change_keeps_the_saved_pick(app, client, season, tuesday):
-    me = _member(season)
+def test_a_refused_change_keeps_the_saved_pick(app, client, season, tuesday, golf_leagues):
+    me = _member(season, league_id=golf_leagues['handicap'].id)
     t = _tournament(season)
     players = _field(t)
-    _spend(me, players[0], season)
-    db.session.add(GolfPick(user_id=me.id, tournament_id=t.id,
+    _spend(me, players[0], season, league_id=golf_leagues['handicap'].id)
+    db.session.add(GolfPick(user_id=me.id, league_id=golf_leagues['handicap'].id, tournament_id=t.id,
                             primary_player_id=players[3].id, backup_player_id=players[7].id))
     db.session.commit()
     _login(client, me)

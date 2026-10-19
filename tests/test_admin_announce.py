@@ -47,9 +47,9 @@ def _enroll_cfb(user_id, eliminated=False, season=2026):
     return e
 
 
-def _enroll_golf(user_id, season=2026):
+def _enroll_golf(user_id, season=2026, *, league_id):
     """Enroll a user in The Pay Sheet for the given season."""
-    e = GolfEnrollment(user_id=user_id, season_year=season)
+    e = GolfEnrollment(user_id=user_id, league_id=league_id, season_year=season)
     db.session.add(e)
     db.session.commit()
     return e
@@ -163,14 +163,14 @@ def test_resolve_cfb_active_excludes_eliminated_and_other_seasons(app):
         ]
 
 
-def test_resolve_golf_active_equals_all(app):
+def test_resolve_golf_active_equals_all(app, golf_leagues):
     """Golf has no inactive concept: active == enrolled, empty table is fine."""
     with app.app_context():
         from core.admin.announce import resolve_recipients
         assert resolve_recipients(['golf'], active_only=True) == []
 
         u = _make_user_inline('golfer')
-        _enroll_golf(u.id)
+        _enroll_golf(u.id, league_id=golf_leagues['handicap'].id)
         active = resolve_recipients(['golf'], active_only=True)
         everyone = resolve_recipients(['golf'], active_only=False)
         assert active == everyone

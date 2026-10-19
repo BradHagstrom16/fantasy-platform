@@ -24,6 +24,7 @@ from models.records import SeasonFinish
 
 # The Pay Sheet models
 from games.golf.models import (
+    GolfLeague,
     GolfEnrollment,
     GolfPlayer,
     GolfTournament,
@@ -71,6 +72,7 @@ __all__ = [
     'PushSubscription',
     'SyncRun',
     'SeasonFinish',
+    'GolfLeague',
     'GolfEnrollment',
     'GolfPlayer',
     'GolfTournament',

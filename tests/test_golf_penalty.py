@@ -39,8 +39,8 @@ def _make_user(username='golfer', is_admin=False):
     return u
 
 
-def _make_enrollment(user, season_year=SEASON):
-    e = GolfEnrollment(user_id=user.id, season_year=season_year, total_points=0)
+def _make_enrollment(user, season_year=SEASON, *, league_id):
+    e = GolfEnrollment(user_id=user.id, league_id=league_id, season_year=season_year, total_points=0)
     db.session.add(e)
     db.session.commit()
     return e
@@ -89,9 +89,10 @@ def _make_result(tournament, player, status='complete', rounds_completed=4,
     return r
 
 
-def _make_pick(user, tournament, primary, backup, **kwargs):
+def _make_pick(user, tournament, primary, backup, *, league_id, **kwargs):
     pick = GolfPick(
         user_id=user.id,
+        league_id=league_id,
         tournament_id=tournament.id,
         primary_player_id=primary.id,
         backup_player_id=backup.id,
@@ -120,17 +121,17 @@ def test_penalty_per_incident_is_15():
     assert PENALTY_PER_INCIDENT == 15
 
 
-def test_pick_penalty_triggered_defaults_false(app):
+def test_pick_penalty_triggered_defaults_false(app, golf_leagues):
     u = _make_user()
     t = _make_tournament(is_major=True)
     p1, p2 = _players()
-    pick = _make_pick(u, t, p1, p2)
+    pick = _make_pick(u, t, p1, p2, league_id=golf_leagues['handicap'].id)
     assert pick.penalty_triggered is False
 
 
-def test_enrollment_penalty_paid_defaults_zero(app):
+def test_enrollment_penalty_paid_defaults_zero(app, golf_leagues):
     u = _make_user()
-    e = _make_enrollment(u)
+    e = _make_enrollment(u, league_id=golf_leagues['handicap'].id)
     assert e.penalty_paid == 0
 
 
@@ -138,114 +139,114 @@ def test_enrollment_penalty_paid_defaults_zero(app):
 # resolve_pick() penalty flagging
 # ============================================================================
 
-def test_resolve_pick_major_cut_penalty(app):
+def test_resolve_pick_major_cut_penalty(app, golf_leagues):
     """Active pick at a major that finishes CUT triggers the penalty."""
     u = _make_user()
-    _make_enrollment(u)
+    _make_enrollment(u, league_id=golf_leagues['handicap'].id)
     t = _make_tournament(is_major=True)
     primary, backup = _players()
     _make_result(t, primary, status='cut', rounds_completed=2, earnings=0, final_position='CUT')
     _make_result(t, backup, status='complete', rounds_completed=4, earnings=500_000)
-    pick = _make_pick(u, t, primary, backup)
+    pick = _make_pick(u, t, primary, backup, league_id=golf_leagues['handicap'].id)
 
     assert pick.resolve_pick() is True
     assert pick.penalty_triggered is True
 
 
-def test_resolve_pick_major_dq_penalty(app):
+def test_resolve_pick_major_dq_penalty(app, golf_leagues):
     """Active pick at a major that is DQ'd triggers the penalty."""
     u = _make_user()
-    _make_enrollment(u)
+    _make_enrollment(u, league_id=golf_leagues['handicap'].id)
     t = _make_tournament(is_major=True)
     primary, backup = _players()
     _make_result(t, primary, status='dq', rounds_completed=3, earnings=0, final_position='DQ')
     _make_result(t, backup, status='complete', rounds_completed=4, earnings=500_000)
-    pick = _make_pick(u, t, primary, backup)
+    pick = _make_pick(u, t, primary, backup, league_id=golf_leagues['handicap'].id)
 
     assert pick.resolve_pick() is True
     assert pick.penalty_triggered is True
 
 
-def test_resolve_pick_major_made_cut_no_penalty(app):
+def test_resolve_pick_major_made_cut_no_penalty(app, golf_leagues):
     u = _make_user()
-    _make_enrollment(u)
+    _make_enrollment(u, league_id=golf_leagues['handicap'].id)
     t = _make_tournament(is_major=True)
     primary, backup = _players()
     _make_result(t, primary, status='complete', rounds_completed=4, earnings=1_000_000)
     _make_result(t, backup, status='complete', rounds_completed=4, earnings=500_000)
-    pick = _make_pick(u, t, primary, backup)
+    pick = _make_pick(u, t, primary, backup, league_id=golf_leagues['handicap'].id)
 
     assert pick.resolve_pick() is True
     assert pick.penalty_triggered is False
 
 
-def test_resolve_pick_non_major_cut_no_penalty(app):
+def test_resolve_pick_non_major_cut_no_penalty(app, golf_leagues):
     """A cut at a NON-major must not trigger the penalty."""
     u = _make_user()
-    _make_enrollment(u)
+    _make_enrollment(u, league_id=golf_leagues['handicap'].id)
     t = _make_tournament(is_major=False)
     primary, backup = _players()
     _make_result(t, primary, status='cut', rounds_completed=2, earnings=0, final_position='CUT')
     _make_result(t, backup, status='complete', rounds_completed=4, earnings=500_000)
-    pick = _make_pick(u, t, primary, backup)
+    pick = _make_pick(u, t, primary, backup, league_id=golf_leagues['handicap'].id)
 
     assert pick.resolve_pick() is True
     assert pick.penalty_triggered is False
 
 
-def test_resolve_pick_penalty_follows_activated_backup(app):
+def test_resolve_pick_penalty_follows_activated_backup(app, golf_leagues):
     """Primary WD before R2 → the activated backup's cut drives the penalty."""
     u = _make_user()
-    _make_enrollment(u)
+    _make_enrollment(u, league_id=golf_leagues['handicap'].id)
     t = _make_tournament(is_major=True)
     primary, backup = _players()
     # Primary WD early (backup activates); backup is CUT → penalty on the backup.
     _make_result(t, primary, status='wd', rounds_completed=1, earnings=0, final_position='WD')
     _make_result(t, backup, status='cut', rounds_completed=2, earnings=0, final_position='CUT')
-    pick = _make_pick(u, t, primary, backup)
+    pick = _make_pick(u, t, primary, backup, league_id=golf_leagues['handicap'].id)
 
     assert pick.resolve_pick() is True
     assert pick.active_player_id == backup.id
     assert pick.penalty_triggered is True
 
 
-def test_resolve_pick_both_wd_before_r2_no_penalty(app):
+def test_resolve_pick_both_wd_before_r2_no_penalty(app, golf_leagues):
     """Both WD before R2 keeps primary active for 0 pts — status 'wd', not cut/dq."""
     u = _make_user()
-    _make_enrollment(u)
+    _make_enrollment(u, league_id=golf_leagues['handicap'].id)
     t = _make_tournament(is_major=True)
     primary, backup = _players()
     _make_result(t, primary, status='wd', rounds_completed=1, earnings=0, final_position='WD')
     _make_result(t, backup, status='wd', rounds_completed=1, earnings=0, final_position='WD')
-    pick = _make_pick(u, t, primary, backup)
+    pick = _make_pick(u, t, primary, backup, league_id=golf_leagues['handicap'].id)
 
     assert pick.resolve_pick() is True
     assert pick.active_player_id == primary.id
     assert pick.penalty_triggered is False
 
 
-def test_resolve_pick_failure_resets_penalty_triggered(app):
+def test_resolve_pick_failure_resets_penalty_triggered(app, golf_leagues):
     """A failed resolution (missing result) must clear a stale live penalty flag."""
     u = _make_user()
-    _make_enrollment(u)
+    _make_enrollment(u, league_id=golf_leagues['handicap'].id)
     t = _make_tournament(is_major=True)
     primary, backup = _players()
     # No result rows for either player → the missing-primary early return fires.
-    pick = _make_pick(u, t, primary, backup, penalty_triggered=True)
+    pick = _make_pick(u, t, primary, backup, penalty_triggered=True, league_id=golf_leagues['handicap'].id)
 
     assert pick.resolve_pick() is False
     assert pick.penalty_triggered is False
 
 
-def test_resolve_pick_re_derives_penalty_false_on_reresolve(app):
+def test_resolve_pick_re_derives_penalty_false_on_reresolve(app, golf_leagues):
     """No separate clear: a corrected result flips penalty_triggered back to False."""
     u = _make_user()
-    _make_enrollment(u)
+    _make_enrollment(u, league_id=golf_leagues['handicap'].id)
     t = _make_tournament(is_major=True)
     primary, backup = _players()
     r_primary = _make_result(t, primary, status='cut', rounds_completed=2, earnings=0, final_position='CUT')
     _make_result(t, backup, status='complete', rounds_completed=4, earnings=500_000)
-    pick = _make_pick(u, t, primary, backup)
+    pick = _make_pick(u, t, primary, backup, league_id=golf_leagues['handicap'].id)
 
     pick.resolve_pick()
     assert pick.penalty_triggered is True
@@ -264,27 +265,27 @@ def test_resolve_pick_re_derives_penalty_false_on_reresolve(app):
 # refresh_live_penalty()
 # ============================================================================
 
-def test_refresh_live_penalty_flags_active_major_cut(app):
+def test_refresh_live_penalty_flags_active_major_cut(app, golf_leagues):
     u = _make_user()
-    _make_enrollment(u)
+    _make_enrollment(u, league_id=golf_leagues['handicap'].id)
     t = _make_tournament(is_major=True, status='active')
     primary, backup = _players()
     _make_result(t, primary, status='cut', rounds_completed=2, earnings=0, final_position='CUT')
     _make_result(t, backup, status='active', rounds_completed=2, earnings=0)
-    pick = _make_pick(u, t, primary, backup)
+    pick = _make_pick(u, t, primary, backup, league_id=golf_leagues['handicap'].id)
 
     pick.refresh_live_penalty()
     assert pick.penalty_triggered is True
 
 
-def test_refresh_live_penalty_clears_when_status_recovers(app):
+def test_refresh_live_penalty_clears_when_status_recovers(app, golf_leagues):
     u = _make_user()
-    _make_enrollment(u)
+    _make_enrollment(u, league_id=golf_leagues['handicap'].id)
     t = _make_tournament(is_major=True, status='active')
     primary, backup = _players()
     r_primary = _make_result(t, primary, status='cut', rounds_completed=2, earnings=0, final_position='CUT')
     _make_result(t, backup, status='active', rounds_completed=2, earnings=0)
-    pick = _make_pick(u, t, primary, backup)
+    pick = _make_pick(u, t, primary, backup, league_id=golf_leagues['handicap'].id)
 
     pick.refresh_live_penalty()
     assert pick.penalty_triggered is True
@@ -295,57 +296,57 @@ def test_refresh_live_penalty_clears_when_status_recovers(app):
     assert pick.penalty_triggered is False
 
 
-def test_refresh_live_penalty_non_major_always_false(app):
+def test_refresh_live_penalty_non_major_always_false(app, golf_leagues):
     u = _make_user()
-    _make_enrollment(u)
+    _make_enrollment(u, league_id=golf_leagues['handicap'].id)
     t = _make_tournament(is_major=False, status='active')
     primary, backup = _players()
     _make_result(t, primary, status='cut', rounds_completed=2, earnings=0, final_position='CUT')
     _make_result(t, backup, status='active', rounds_completed=2, earnings=0)
-    pick = _make_pick(u, t, primary, backup, penalty_triggered=True)
+    pick = _make_pick(u, t, primary, backup, penalty_triggered=True, league_id=golf_leagues['handicap'].id)
 
     pick.refresh_live_penalty()
     assert pick.penalty_triggered is False
 
 
-def test_refresh_live_penalty_uses_activated_backup(app):
+def test_refresh_live_penalty_uses_activated_backup(app, golf_leagues):
     """Live: primary WD before R2 → the activated backup's cut flags the penalty."""
     u = _make_user()
-    _make_enrollment(u)
+    _make_enrollment(u, league_id=golf_leagues['handicap'].id)
     t = _make_tournament(is_major=True, status='active')
     primary, backup = _players()
     _make_result(t, primary, status='wd', rounds_completed=1, earnings=0, final_position='WD')
     _make_result(t, backup, status='cut', rounds_completed=2, earnings=0, final_position='CUT')
-    pick = _make_pick(u, t, primary, backup)
+    pick = _make_pick(u, t, primary, backup, league_id=golf_leagues['handicap'].id)
 
     pick.refresh_live_penalty()
     assert pick.penalty_triggered is True
 
 
-def test_is_backup_activated_complete_unresolved_early_primary_wd(app):
+def test_is_backup_activated_complete_unresolved_early_primary_wd(app, golf_leagues):
     """A complete-but-unresolved major (active_player_id unset) still activates the
     backup when the primary withdrew early — the CLI refresh window."""
     u = _make_user()
-    _make_enrollment(u)
+    _make_enrollment(u, league_id=golf_leagues['handicap'].id)
     t = _make_tournament(is_major=True, status='complete', results_finalized=False)
     primary, backup = _players()
     _make_result(t, primary, status='wd', rounds_completed=1, earnings=0, final_position='WD')
     _make_result(t, backup, status='complete', rounds_completed=4, earnings=400_000)
-    pick = _make_pick(u, t, primary, backup)  # active_player_id unset
+    pick = _make_pick(u, t, primary, backup, league_id=golf_leagues['handicap'].id)  # active_player_id unset
 
     assert pick.is_backup_activated() is True
 
 
-def test_refresh_live_penalty_complete_unresolved_uses_backup(app):
+def test_refresh_live_penalty_complete_unresolved_uses_backup(app, golf_leagues):
     """CLI refresh on a complete-but-unresolved major must read the activated
     backup's cut, not the withdrawn primary — no side-pot skew."""
     u = _make_user()
-    _make_enrollment(u)
+    _make_enrollment(u, league_id=golf_leagues['handicap'].id)
     t = _make_tournament(is_major=True, status='complete', results_finalized=False)
     primary, backup = _players()
     _make_result(t, primary, status='wd', rounds_completed=1, earnings=0, final_position='WD')
     _make_result(t, backup, status='cut', rounds_completed=2, earnings=0, final_position='CUT')
-    pick = _make_pick(u, t, primary, backup)
+    pick = _make_pick(u, t, primary, backup, league_id=golf_leagues['handicap'].id)
 
     pick.refresh_live_penalty()
     assert pick.penalty_triggered is True
@@ -355,58 +356,58 @@ def test_refresh_live_penalty_complete_unresolved_uses_backup(app):
 # penalty_owed / penalty_outstanding
 # ============================================================================
 
-def test_penalty_owed_counts_flagged_picks(app):
+def test_penalty_owed_counts_flagged_picks(app, golf_leagues):
     u = _make_user()
-    e = _make_enrollment(u)
+    e = _make_enrollment(u, league_id=golf_leagues['handicap'].id)
     p1, p2 = _players()
     for i in range(3):
         t = _make_tournament(name=f'Major {i}', is_major=True)
-        _make_pick(u, t, p1, p2, penalty_triggered=True)
+        _make_pick(u, t, p1, p2, penalty_triggered=True, league_id=golf_leagues['handicap'].id)
     assert e.penalty_owed() == 3 * PENALTY_PER_INCIDENT  # 45
 
 
-def test_penalty_owed_ignores_unflagged_picks(app):
+def test_penalty_owed_ignores_unflagged_picks(app, golf_leagues):
     u = _make_user()
-    e = _make_enrollment(u)
+    e = _make_enrollment(u, league_id=golf_leagues['handicap'].id)
     p1, p2 = _players()
     t1 = _make_tournament(name='Major A', is_major=True)
-    _make_pick(u, t1, p1, p2, penalty_triggered=True)
+    _make_pick(u, t1, p1, p2, penalty_triggered=True, league_id=golf_leagues['handicap'].id)
     t2 = _make_tournament(name='Major B', is_major=True)
-    _make_pick(u, t2, p1, p2, penalty_triggered=False)
+    _make_pick(u, t2, p1, p2, penalty_triggered=False, league_id=golf_leagues['handicap'].id)
     assert e.penalty_owed() == 15
 
 
-def test_penalty_owed_is_season_scoped(app):
+def test_penalty_owed_is_season_scoped(app, golf_leagues):
     u = _make_user()
-    e = _make_enrollment(u, season_year=2026)
+    e = _make_enrollment(u, season_year=2026, league_id=golf_leagues['handicap'].id)
     p1, p2 = _players()
     t_this = _make_tournament(name='This Year Major', is_major=True, season_year=2026)
-    _make_pick(u, t_this, p1, p2, penalty_triggered=True)
+    _make_pick(u, t_this, p1, p2, penalty_triggered=True, league_id=golf_leagues['handicap'].id)
     t_prior = _make_tournament(name='Prior Year Major', is_major=True, season_year=2025)
-    _make_pick(u, t_prior, p1, p2, penalty_triggered=True)
+    _make_pick(u, t_prior, p1, p2, penalty_triggered=True, league_id=golf_leagues['handicap'].id)
     # Only the 2026 flagged pick counts for the 2026 enrollment.
     assert e.penalty_owed() == 15
 
 
-def test_penalty_outstanding_subtracts_paid(app):
+def test_penalty_outstanding_subtracts_paid(app, golf_leagues):
     u = _make_user()
-    e = _make_enrollment(u)
+    e = _make_enrollment(u, league_id=golf_leagues['handicap'].id)
     p1, p2 = _players()
     for i in range(2):
         t = _make_tournament(name=f'Major {i}', is_major=True)
-        _make_pick(u, t, p1, p2, penalty_triggered=True)
+        _make_pick(u, t, p1, p2, penalty_triggered=True, league_id=golf_leagues['handicap'].id)
     e.penalty_paid = 15
     db.session.commit()
     assert e.penalty_owed() == 30
     assert e.penalty_outstanding() == 15
 
 
-def test_penalty_outstanding_clamps_at_zero(app):
+def test_penalty_outstanding_clamps_at_zero(app, golf_leagues):
     u = _make_user()
-    e = _make_enrollment(u)
+    e = _make_enrollment(u, league_id=golf_leagues['handicap'].id)
     p1, p2 = _players()
     t = _make_tournament(name='Major', is_major=True)
-    _make_pick(u, t, p1, p2, penalty_triggered=True)
+    _make_pick(u, t, p1, p2, penalty_triggered=True, league_id=golf_leagues['handicap'].id)
     e.penalty_paid = 50
     db.session.commit()
     assert e.penalty_owed() == 15
@@ -417,44 +418,44 @@ def test_penalty_outstanding_clamps_at_zero(app):
 # show_penalty_badge gating
 # ============================================================================
 
-def test_show_penalty_badge_active_major(app):
+def test_show_penalty_badge_active_major(app, golf_leagues):
     u = _make_user()
     t = _make_tournament(is_major=True, status='active', results_finalized=False)
     p1, p2 = _players()
-    pick = _make_pick(u, t, p1, p2, penalty_triggered=True)
+    pick = _make_pick(u, t, p1, p2, penalty_triggered=True, league_id=golf_leagues['handicap'].id)
     assert pick.show_penalty_badge is True
 
 
-def test_show_penalty_badge_finalized_major(app):
+def test_show_penalty_badge_finalized_major(app, golf_leagues):
     u = _make_user()
     t = _make_tournament(is_major=True, status='complete', results_finalized=True)
     p1, p2 = _players()
-    pick = _make_pick(u, t, p1, p2, penalty_triggered=True)
+    pick = _make_pick(u, t, p1, p2, penalty_triggered=True, league_id=golf_leagues['handicap'].id)
     assert pick.show_penalty_badge is True
 
 
-def test_show_penalty_badge_hidden_complete_not_finalized(app):
+def test_show_penalty_badge_hidden_complete_not_finalized(app, golf_leagues):
     """Complete-but-not-yet-finalized limbo must not show a premature badge."""
     u = _make_user()
     t = _make_tournament(is_major=True, status='complete', results_finalized=False)
     p1, p2 = _players()
-    pick = _make_pick(u, t, p1, p2, penalty_triggered=True)
+    pick = _make_pick(u, t, p1, p2, penalty_triggered=True, league_id=golf_leagues['handicap'].id)
     assert pick.show_penalty_badge is False
 
 
-def test_show_penalty_badge_hidden_non_major(app):
+def test_show_penalty_badge_hidden_non_major(app, golf_leagues):
     u = _make_user()
     t = _make_tournament(is_major=False, status='complete', results_finalized=True)
     p1, p2 = _players()
-    pick = _make_pick(u, t, p1, p2, penalty_triggered=True)
+    pick = _make_pick(u, t, p1, p2, penalty_triggered=True, league_id=golf_leagues['handicap'].id)
     assert pick.show_penalty_badge is False
 
 
-def test_show_penalty_badge_hidden_when_not_triggered(app):
+def test_show_penalty_badge_hidden_when_not_triggered(app, golf_leagues):
     u = _make_user()
     t = _make_tournament(is_major=True, status='complete', results_finalized=True)
     p1, p2 = _players()
-    pick = _make_pick(u, t, p1, p2, penalty_triggered=False)
+    pick = _make_pick(u, t, p1, p2, penalty_triggered=False, league_id=golf_leagues['handicap'].id)
     assert pick.show_penalty_badge is False
 
 
@@ -462,9 +463,9 @@ def test_show_penalty_badge_hidden_when_not_triggered(app):
 # process_tournament_picks end-to-end flags the penalty
 # ============================================================================
 
-def test_process_tournament_picks_flags_penalty(app):
+def test_process_tournament_picks_flags_penalty(app, golf_leagues):
     u = _make_user()
-    _make_enrollment(u)
+    _make_enrollment(u, league_id=golf_leagues['handicap'].id)
     # recap pre-marked so the results-recap email path is skipped in the test.
     t = _make_tournament(is_major=True, status='complete')
     t.recap_email_sent = True
@@ -472,7 +473,7 @@ def test_process_tournament_picks_flags_penalty(app):
     primary, backup = _players()
     _make_result(t, primary, status='cut', rounds_completed=2, earnings=0, final_position='CUT')
     _make_result(t, backup, status='complete', rounds_completed=4, earnings=500_000)
-    pick = _make_pick(u, t, primary, backup)
+    pick = _make_pick(u, t, primary, backup, league_id=golf_leagues['handicap'].id)
 
     sync = TournamentSync(SlashGolfAPI('key'))
     sync.process_tournament_picks(t)
@@ -512,18 +513,18 @@ def test_sync_live_leaderboard_penalty_refresh_failure_does_not_mask_sync(app, m
     assert r is not None and r.earnings > 0
 
 
-def test_process_tournament_picks_clears_stale_penalty_on_skipped_pick(app):
+def test_process_tournament_picks_clears_stale_penalty_on_skipped_pick(app, golf_leagues):
     """A pick that fails to resolve (missing result) is rolled back by its
     savepoint; its stale live penalty flag must still be cleared before commit so
     the admin pot doesn't count an unresolved pick."""
     u = _make_user()
-    _make_enrollment(u)
+    _make_enrollment(u, league_id=golf_leagues['handicap'].id)
     t = _make_tournament(is_major=True, status='complete')
     t.recap_email_sent = True
     db.session.commit()
     primary, backup = _players()
     # No result rows → resolve_pick returns False → this pick is skipped.
-    pick = _make_pick(u, t, primary, backup, penalty_triggered=True)
+    pick = _make_pick(u, t, primary, backup, penalty_triggered=True, league_id=golf_leagues['handicap'].id)
 
     sync = TournamentSync(SlashGolfAPI('key'))
     sync.process_tournament_picks(t)
@@ -536,14 +537,14 @@ def test_process_tournament_picks_clears_stale_penalty_on_skipped_pick(app):
 # refresh-live-penalties CLI
 # ============================================================================
 
-def test_refresh_live_penalties_cli_flags_active_majors(app):
+def test_refresh_live_penalties_cli_flags_active_majors(app, golf_leagues):
     u = _make_user()
-    _make_enrollment(u)
+    _make_enrollment(u, league_id=golf_leagues['handicap'].id)
     t = _make_tournament(is_major=True, status='active')
     primary, backup = _players()
     _make_result(t, primary, status='cut', rounds_completed=2, earnings=0, final_position='CUT')
     _make_result(t, backup, status='active', rounds_completed=2, earnings=0)
-    pick = _make_pick(u, t, primary, backup)
+    pick = _make_pick(u, t, primary, backup, league_id=golf_leagues['handicap'].id)
     pick_id = pick.id
 
     runner = app.test_cli_runner()
@@ -558,11 +559,11 @@ def test_refresh_live_penalties_cli_flags_active_majors(app):
 # Admin payments AJAX + page
 # ============================================================================
 
-def test_admin_update_payment_sets_penalty_paid(app, client, monkeypatch):
+def test_admin_update_payment_sets_penalty_paid(app, client, monkeypatch, golf_leagues):
     _set_status(monkeypatch, 'golf', 'open')
     admin = _make_user('gadmin', is_admin=True)
     member = _make_user('member')
-    _make_enrollment(member)
+    _make_enrollment(member, league_id=golf_leagues['handicap'].id)
     _login(client, admin)
 
     resp = client.post(f'/golf/admin/update-payment/{member.id}',
@@ -576,11 +577,11 @@ def test_admin_update_payment_sets_penalty_paid(app, client, monkeypatch):
         assert e.penalty_paid == 30
 
 
-def test_admin_update_payment_clamps_negative_penalty(app, client, monkeypatch):
+def test_admin_update_payment_clamps_negative_penalty(app, client, monkeypatch, golf_leagues):
     _set_status(monkeypatch, 'golf', 'open')
     admin = _make_user('gadmin', is_admin=True)
     member = _make_user('member')
-    _make_enrollment(member)
+    _make_enrollment(member, league_id=golf_leagues['handicap'].id)
     _login(client, admin)
 
     resp = client.post(f'/golf/admin/update-payment/{member.id}',
@@ -589,11 +590,11 @@ def test_admin_update_payment_clamps_negative_penalty(app, client, monkeypatch):
     assert resp.get_json()['penalty_paid'] == 0
 
 
-def test_admin_update_payment_rejects_non_integer_penalty(app, client, monkeypatch):
+def test_admin_update_payment_rejects_non_integer_penalty(app, client, monkeypatch, golf_leagues):
     _set_status(monkeypatch, 'golf', 'open')
     admin = _make_user('gadmin', is_admin=True)
     member = _make_user('member')
-    _make_enrollment(member)
+    _make_enrollment(member, league_id=golf_leagues['handicap'].id)
     _login(client, admin)
 
     resp = client.post(f'/golf/admin/update-payment/{member.id}',
@@ -601,12 +602,12 @@ def test_admin_update_payment_rejects_non_integer_penalty(app, client, monkeypat
     assert resp.status_code == 400
 
 
-def test_admin_update_payment_rejects_fractional_penalty(app, client, monkeypatch):
+def test_admin_update_payment_rejects_fractional_penalty(app, client, monkeypatch, golf_leagues):
     """A JSON float must be rejected, not silently truncated to an int."""
     _set_status(monkeypatch, 'golf', 'open')
     admin = _make_user('gadmin', is_admin=True)
     member = _make_user('member')
-    _make_enrollment(member)
+    _make_enrollment(member, league_id=golf_leagues['handicap'].id)
     _login(client, admin)
 
     resp = client.post(f'/golf/admin/update-payment/{member.id}',
@@ -617,12 +618,12 @@ def test_admin_update_payment_rejects_fractional_penalty(app, client, monkeypatc
         assert e.penalty_paid == 0  # unchanged, NOT truncated to 12
 
 
-def test_admin_update_payment_penalty_only_preserves_has_paid(app, client, monkeypatch):
+def test_admin_update_payment_penalty_only_preserves_has_paid(app, client, monkeypatch, golf_leagues):
     """A penalty-only update must not reset the entry-fee paid flag."""
     _set_status(monkeypatch, 'golf', 'open')
     admin = _make_user('gadmin', is_admin=True)
     member = _make_user('member')
-    e = _make_enrollment(member)
+    e = _make_enrollment(member, league_id=golf_leagues['handicap'].id)
     e.has_paid = True
     db.session.commit()
     _login(client, admin)
@@ -636,15 +637,15 @@ def test_admin_update_payment_penalty_only_preserves_has_paid(app, client, monke
         assert refreshed.penalty_paid == 15
 
 
-def test_admin_payments_page_shows_penalty_pot(app, client, monkeypatch):
+def test_admin_payments_page_shows_penalty_pot(app, client, monkeypatch, golf_leagues):
     _set_status(monkeypatch, 'golf', 'open')
     admin = _make_user('gadmin', is_admin=True)
     member = _make_user('member')
-    _make_enrollment(member)
+    _make_enrollment(member, league_id=golf_leagues['handicap'].id)
     p1, p2 = _players()
     for i in range(2):
         t = _make_tournament(name=f'Major {i}', is_major=True, status='complete', results_finalized=True)
-        _make_pick(member, t, p1, p2, penalty_triggered=True)
+        _make_pick(member, t, p1, p2, penalty_triggered=True, league_id=golf_leagues['handicap'].id)
     _login(client, admin)
 
     resp = client.get('/golf/admin/payments')
@@ -659,14 +660,14 @@ def test_admin_payments_page_shows_penalty_pot(app, client, monkeypatch):
 # Player-facing badge/prize-pool rendering
 # ============================================================================
 
-def test_index_prize_pool_includes_penalty_pot(app, client, monkeypatch):
+def test_index_prize_pool_includes_penalty_pot(app, client, monkeypatch, golf_leagues):
     _set_status(monkeypatch, 'golf', 'open')
     member = _make_user('member')
-    _make_enrollment(member)
+    _make_enrollment(member, league_id=golf_leagues['handicap'].id)
     p1, p2 = _players()
     for i in range(2):
         t = _make_tournament(name=f'Major {i}', is_major=True, status='complete', results_finalized=True)
-        _make_pick(member, t, p1, p2, penalty_triggered=True)
+        _make_pick(member, t, p1, p2, penalty_triggered=True, league_id=golf_leagues['handicap'].id)
 
     resp = client.get('/golf/')
     assert resp.status_code == 200
@@ -675,15 +676,15 @@ def test_index_prize_pool_includes_penalty_pot(app, client, monkeypatch):
     assert '$30' in body  # penalty pot = 2 x $15
 
 
-def test_tournament_detail_shows_penalty_badge_for_finalized_major(app, client, monkeypatch):
+def test_tournament_detail_shows_penalty_badge_for_finalized_major(app, client, monkeypatch, golf_leagues):
     _set_status(monkeypatch, 'golf', 'open')
     member = _make_user('member')
-    _make_enrollment(member)
+    _make_enrollment(member, league_id=golf_leagues['handicap'].id)
     t = _make_tournament(is_major=True, status='complete', results_finalized=True)
     primary, backup = _players()
     _make_result(t, primary, status='cut', rounds_completed=2, earnings=0, final_position='CUT')
     _make_result(t, backup, status='complete', rounds_completed=4, earnings=500_000)
-    pick = _make_pick(member, t, primary, backup)
+    pick = _make_pick(member, t, primary, backup, league_id=golf_leagues['handicap'].id)
     pick.resolve_pick()
     db.session.commit()
 
@@ -692,16 +693,16 @@ def test_tournament_detail_shows_penalty_badge_for_finalized_major(app, client, 
     assert 'badge-penalty' in resp.get_data(as_text=True)
 
 
-def test_tournament_detail_hides_penalty_badge_when_not_finalized(app, client, monkeypatch):
+def test_tournament_detail_hides_penalty_badge_when_not_finalized(app, client, monkeypatch, golf_leagues):
     """Complete-but-not-finalized major must not render a premature badge."""
     _set_status(monkeypatch, 'golf', 'open')
     member = _make_user('member')
-    _make_enrollment(member)
+    _make_enrollment(member, league_id=golf_leagues['handicap'].id)
     t = _make_tournament(is_major=True, status='complete', results_finalized=False)
     primary, backup = _players()
     _make_result(t, primary, status='cut', rounds_completed=2, earnings=0, final_position='CUT')
     _make_result(t, backup, status='complete', rounds_completed=4, earnings=500_000)
-    pick = _make_pick(member, t, primary, backup)
+    pick = _make_pick(member, t, primary, backup, league_id=golf_leagues['handicap'].id)
     pick.resolve_pick()
     db.session.commit()
 
@@ -710,15 +711,15 @@ def test_tournament_detail_hides_penalty_badge_when_not_finalized(app, client, m
     assert 'badge-penalty' not in resp.get_data(as_text=True)
 
 
-def test_scorecard_shows_penalty_badge_for_finalized_major(app, client, monkeypatch):
+def test_scorecard_shows_penalty_badge_for_finalized_major(app, client, monkeypatch, golf_leagues):
     _set_status(monkeypatch, 'golf', 'open')
     member = _make_user('member')
-    _make_enrollment(member)
+    _make_enrollment(member, league_id=golf_leagues['handicap'].id)
     t = _make_tournament(is_major=True, status='complete', results_finalized=True)
     primary, backup = _players()
     _make_result(t, primary, status='cut', rounds_completed=2, earnings=0, final_position='CUT')
     _make_result(t, backup, status='complete', rounds_completed=4, earnings=500_000)
-    pick = _make_pick(member, t, primary, backup)
+    pick = _make_pick(member, t, primary, backup, league_id=golf_leagues['handicap'].id)
     pick.resolve_pick()
     db.session.commit()
     _login(client, member)

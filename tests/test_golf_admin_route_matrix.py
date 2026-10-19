@@ -32,8 +32,8 @@ def _user(username, is_admin=False, display_name=None):
     return u
 
 
-def _enroll(user, season, is_admin=False):
-    e = GolfEnrollment(user_id=user.id, season_year=season, is_admin=is_admin)
+def _enroll(user, season, is_admin=False, *, league_id):
+    e = GolfEnrollment(user_id=user.id, league_id=league_id, season_year=season, is_admin=is_admin)
     db.session.add(e)
     db.session.commit()
     return e
@@ -81,10 +81,10 @@ def test_admin_post_requires_login(app, client, path):
 
 
 @pytest.mark.parametrize('path', GET_ROUTES + POST_ROUTES)
-def test_admin_route_rejects_enrolled_non_admin(app, client, path):
+def test_admin_route_rejects_enrolled_non_admin(app, client, path, golf_leagues):
     """An enrolled non-admin is sent to the room (not /login, not a 404)."""
     user = _user('pleb')
-    _enroll(user, app.config['SEASON_YEAR'])
+    _enroll(user, app.config['SEASON_YEAR'], league_id=golf_leagues['handicap'].id)
     _login(client, user)
 
     method = client.post if path in POST_ROUTES else client.get
@@ -102,32 +102,32 @@ def test_state_mutating_routes_reject_get(app, client, path):
     assert client.get(path).status_code == 405
 
 
-def test_current_season_enrollment_admin_allowed(app, client):
+def test_current_season_enrollment_admin_allowed(app, client, golf_leagues):
     user = _user('current_admin')
-    _enroll(user, app.config['SEASON_YEAR'], is_admin=True)
+    _enroll(user, app.config['SEASON_YEAR'], is_admin=True, league_id=golf_leagues['handicap'].id)
     _login(client, user)
     assert client.get('/golf/admin/').status_code == 200
 
 
-def test_prior_season_enrollment_admin_rejected(app, client):
+def test_prior_season_enrollment_admin_rejected(app, client, golf_leagues):
     user = _user('prior_admin')
-    _enroll(user, app.config['SEASON_YEAR'] - 1, is_admin=True)
+    _enroll(user, app.config['SEASON_YEAR'] - 1, is_admin=True, league_id=golf_leagues['handicap'].id)
     _login(client, user)
     resp = client.get('/golf/admin/')
     assert resp.status_code == 302
     assert '/golf' in resp.headers['Location']
 
 
-def test_admin_lists_are_this_seasons_enrollees_only(app, client):
+def test_admin_lists_are_this_seasons_enrollees_only(app, client, golf_leagues):
     """The roster, the override member select and the dashboard read this
     season's enrollees: a platform user with no line, or a line from another
     season, is not on them."""
     season = app.config['SEASON_YEAR']
     admin = _user('padmin', is_admin=True, display_name='The Commish')
     on_sheet = _user('on_sheet', display_name='Casey Onsheet')
-    _enroll(on_sheet, season)
+    _enroll(on_sheet, season, league_id=golf_leagues['handicap'].id)
     last_year = _user('last_year', display_name='Dana Lastyear')
-    _enroll(last_year, season - 1)
+    _enroll(last_year, season - 1, league_id=golf_leagues['handicap'].id)
     _user('no_line', display_name='Morgan Noline')
     _login(client, admin)
 

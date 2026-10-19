@@ -62,13 +62,13 @@ def sunday(monkeypatch):
 
 # --- seed helpers (run inside the fixture's app context) --------------------
 
-def _member(season, username, display_name=None, total=0, has_paid=True):
+def _member(season, username, display_name=None, total=0, has_paid=True, *, league_id):
     user = User(username=username, email=f'{username}@test.com',
                 display_name=display_name or username)
     user.set_password('pw')
     db.session.add(user)
     db.session.flush()
-    db.session.add(GolfEnrollment(user_id=user.id, season_year=season,
+    db.session.add(GolfEnrollment(user_id=user.id, league_id=league_id, season_year=season,
                                   total_points=total, has_paid=has_paid))
     db.session.commit()
     return user
@@ -109,8 +109,8 @@ def _result(tournament, player, position='1', status='active', rounds=3, earning
     return result
 
 
-def _pick(user, tournament, primary, backup, **kwargs):
-    pick = GolfPick(user_id=user.id, tournament_id=tournament.id,
+def _pick(user, tournament, primary, backup, *, league_id, **kwargs):
+    pick = GolfPick(user_id=user.id, league_id=league_id, tournament_id=tournament.id,
                     primary_player_id=primary.id, backup_player_id=backup.id, **kwargs)
     db.session.add(pick)
     db.session.commit()
@@ -153,14 +153,14 @@ def test_ordinal():
 # week_lines: every member week state
 # ============================================================================
 
-def test_week_line_live_projection_is_pencil(app, season, sunday):
-    member = _member(season, 'm')
+def test_week_line_live_projection_is_pencil(app, season, sunday, golf_leagues):
+    member = _member(season, 'm', league_id=golf_leagues['handicap'].id)
     t = _tournament(season)
     primary, backup = _golfer('Leader'), _golfer('Spare')
     # The stored earnings are never the figure before the event banks: the
     # projection is re-derived from position.
     _result(t, primary, position='1', earnings=999, score=-11)
-    _pick(member, t, primary, backup)
+    _pick(member, t, primary, backup, league_id=golf_leagues['handicap'].id)
 
     line = _lines(t)[member.id]
     assert line.golfer.id == primary.id
@@ -171,25 +171,25 @@ def test_week_line_live_projection_is_pencil(app, season, sunday):
     assert line.deduction is None and line.replaces is None and not line.used
 
 
-def test_week_line_major_projection_carries_the_multiplier_once(app, season, sunday):
-    member = _member(season, 'm')
+def test_week_line_major_projection_carries_the_multiplier_once(app, season, sunday, golf_leagues):
+    member = _member(season, 'm', league_id=golf_leagues['handicap'].id)
     t = _tournament(season, is_major=True)
     primary, backup = _golfer('Leader'), _golfer('Spare')
     _result(t, primary, position='1')
-    _pick(member, t, primary, backup)
+    _pick(member, t, primary, backup, league_id=golf_leagues['handicap'].id)
 
     assert _lines(t)[member.id].figure == 2_700_000
 
 
 @pytest.mark.parametrize('status, word', [('cut', 'Cut'), ('CUT', 'Cut'), ('wd', 'WD'), ('dq', 'DQ')])
-def test_week_line_deduction_is_a_certain_zero(app, season, sunday, status, word):
-    member = _member(season, 'm')
+def test_week_line_deduction_is_a_certain_zero(app, season, sunday, status, word, golf_leagues):
+    member = _member(season, 'm', league_id=golf_leagues['handicap'].id)
     t = _tournament(season)
     primary, backup = _golfer('Gone'), _golfer('Spare')
     # rounds=2: a withdrawal after round 2 keeps the primary as the golfer who counts.
     _result(t, primary, position=status.upper(), status=status, rounds=2)
     _result(t, backup, position='T5')
-    _pick(member, t, primary, backup)
+    _pick(member, t, primary, backup, league_id=golf_leagues['handicap'].id)
 
     line = _lines(t)[member.id]
     assert line.golfer.id == primary.id
@@ -198,13 +198,13 @@ def test_week_line_deduction_is_a_certain_zero(app, season, sunday, status, word
     assert line.position == ''
 
 
-def test_week_line_backup_counts_when_primary_withdraws_early(app, season, sunday):
-    member = _member(season, 'm')
+def test_week_line_backup_counts_when_primary_withdraws_early(app, season, sunday, golf_leagues):
+    member = _member(season, 'm', league_id=golf_leagues['handicap'].id)
     t = _tournament(season)
     primary, backup = _golfer('Withdrew'), _golfer('Stepped')
     _result(t, primary, position='WD', status='wd', rounds=1)
     _result(t, backup, position='1')
-    _pick(member, t, primary, backup)
+    _pick(member, t, primary, backup, league_id=golf_leagues['handicap'].id)
 
     line = _lines(t)[member.id]
     assert line.golfer.id == backup.id
@@ -214,50 +214,50 @@ def test_week_line_backup_counts_when_primary_withdraws_early(app, season, sunda
     assert line.figure == 1_800_000 and line.in_pencil
 
 
-def test_week_line_both_withdrew_early_keeps_the_primary(app, season, sunday):
-    member = _member(season, 'm')
+def test_week_line_both_withdrew_early_keeps_the_primary(app, season, sunday, golf_leagues):
+    member = _member(season, 'm', league_id=golf_leagues['handicap'].id)
     t = _tournament(season)
     primary, backup = _golfer('Withdrew'), _golfer('Also')
     _result(t, primary, position='WD', status='wd', rounds=1)
     _result(t, backup, position='WD', status='wd', rounds=0)
-    _pick(member, t, primary, backup)
+    _pick(member, t, primary, backup, league_id=golf_leagues['handicap'].id)
 
     line = _lines(t)[member.id]
     assert line.golfer.id == primary.id and line.replaces is None
     assert line.deduction == 'WD' and line.figure == 0
 
 
-def test_week_line_before_the_first_read(app, season, sunday):
-    member = _member(season, 'm')
+def test_week_line_before_the_first_read(app, season, sunday, golf_leagues):
+    member = _member(season, 'm', league_id=golf_leagues['handicap'].id)
     t = _tournament(season)
     primary, backup = _golfer('Unread'), _golfer('Spare')
-    _pick(member, t, primary, backup)
+    _pick(member, t, primary, backup, league_id=golf_leagues['handicap'].id)
 
     line = _lines(t)[member.id]
     assert line.figure is None and not line.in_pencil
     assert line.position == '' and line.to_par is None
 
 
-def test_week_line_banked_reads_points_earned_only(app, season, sunday):
-    member = _member(season, 'm')
+def test_week_line_banked_reads_points_earned_only(app, season, sunday, golf_leagues):
+    member = _member(season, 'm', league_id=golf_leagues['handicap'].id)
     t = _tournament(season, status='complete', finalized=True)
     primary, backup = _golfer('Banked'), _golfer('Spare')
     _result(t, primary, position='1', status='complete', rounds=4, earnings=1)
     _pick(member, t, primary, backup, active_player_id=primary.id,
-          points_earned=250_000, primary_used=True)
+          points_earned=250_000, primary_used=True, league_id=golf_leagues['handicap'].id)
 
     line = _lines(t)[member.id]
     assert line.figure == 250_000
     assert line.banked and not line.in_pencil and line.used
 
 
-def test_week_line_settling_is_still_a_projection(app, season, sunday):
+def test_week_line_settling_is_still_a_projection(app, season, sunday, golf_leagues):
     """Played out, results not final: pencil, from position, never stored earnings."""
-    member = _member(season, 'm')
+    member = _member(season, 'm', league_id=golf_leagues['handicap'].id)
     t = _tournament(season, status='complete', finalized=False)
     primary, backup = _golfer('Settling'), _golfer('Spare')
     _result(t, primary, position='1', status='complete', rounds=4, earnings=5)
-    _pick(member, t, primary, backup)
+    _pick(member, t, primary, backup, league_id=golf_leagues['handicap'].id)
 
     line = _lines(t)[member.id]
     assert line.figure == 1_800_000 and line.in_pencil
@@ -276,7 +276,7 @@ def test_live_event_is_the_latest_locked_week_not_yet_banked():
     assert live_event([]) is None
 
 
-def test_week_lines_fire_no_query_per_pick(app, season, sunday):
+def test_week_lines_fire_no_query_per_pick(app, season, sunday, golf_leagues):
     from sqlalchemy import event
 
     t = _tournament(season)
@@ -284,7 +284,7 @@ def test_week_lines_fire_no_query_per_pick(app, season, sunday):
         primary, backup = _golfer(f'P{i}'), _golfer(f'B{i}')
         _result(t, primary, position='WD', status='wd', rounds=1)
         _result(t, backup, position=f'T{i + 2}')
-        _pick(_member(season, f'm{i}'), t, primary, backup)
+        _pick(_member(season, f'm{i}', league_id=golf_leagues['handicap'].id), t, primary, backup, league_id=golf_leagues['handicap'].id)
 
     from sqlalchemy.orm import joinedload
     picks = (GolfPick.query
@@ -308,16 +308,16 @@ def test_week_lines_fire_no_query_per_pick(app, season, sunday):
 # build_sheet / build_board
 # ============================================================================
 
-def test_sheet_orders_by_projected_total_and_names_each_state(app, season, sunday):
-    leader = _member(season, 'leader', total=2_500_000)      # golfer cut: stays banked
-    chaser = _member(season, 'chaser', total=1_000_000)      # +1.8M projected: passes
-    idle = _member(season, 'idle', total=400_000)            # no pick
+def test_sheet_orders_by_projected_total_and_names_each_state(app, season, sunday, golf_leagues):
+    leader = _member(season, 'leader', total=2_500_000, league_id=golf_leagues['handicap'].id)      # golfer cut: stays banked
+    chaser = _member(season, 'chaser', total=1_000_000, league_id=golf_leagues['handicap'].id)      # +1.8M projected: passes
+    idle = _member(season, 'idle', total=400_000, league_id=golf_leagues['handicap'].id)            # no pick
     t = _tournament(season)
     hot, cold, spare = _golfer('Hot'), _golfer('Cold'), _golfer('Spare')
     _result(t, hot, position='1')
     _result(t, cold, position='CUT', status='cut', rounds=2)
-    _pick(leader, t, cold, spare)
-    _pick(chaser, t, hot, spare)
+    _pick(leader, t, cold, spare, league_id=golf_leagues['handicap'].id)
+    _pick(chaser, t, hot, spare, league_id=golf_leagues['handicap'].id)
 
     enrollments = GolfEnrollment.query.filter_by(season_year=season).all()
     sheet = build_sheet(enrollments, viewer_id=leader.id, lines=_lines(t))
@@ -333,10 +333,10 @@ def test_sheet_orders_by_projected_total_and_names_each_state(app, season, sunda
     assert sheet.projected
 
 
-def test_sheet_between_events_is_all_banked_with_shared_ranks(app, season):
-    a = _member(season, 'bravo', total=900)
-    b = _member(season, 'alpha', total=900)
-    c = _member(season, 'charlie', total=100, has_paid=False)
+def test_sheet_between_events_is_all_banked_with_shared_ranks(app, season, golf_leagues):
+    a = _member(season, 'bravo', total=900, league_id=golf_leagues['handicap'].id)
+    b = _member(season, 'alpha', total=900, league_id=golf_leagues['handicap'].id)
+    c = _member(season, 'charlie', total=100, has_paid=False, league_id=golf_leagues['handicap'].id)
 
     sheet = build_sheet(GolfEnrollment.query.filter_by(season_year=season).all())
 
@@ -349,32 +349,32 @@ def test_sheet_between_events_is_all_banked_with_shared_ranks(app, season):
     assert [r.unpaid for r in sheet.rows] == [False, False, True]
 
 
-def test_sheet_never_counts_a_resolved_week_twice(app, season, sunday):
+def test_sheet_never_counts_a_resolved_week_twice(app, season, sunday, golf_leagues):
     """A Commish override resolves a pick on a settling event: its points are
     already in total_points, so the projection is not added on top."""
-    member = _member(season, 'm', total=300_000)
+    member = _member(season, 'm', total=300_000, league_id=golf_leagues['handicap'].id)
     t = _tournament(season, status='complete', finalized=False)
     primary, backup = _golfer('Resolved'), _golfer('Spare')
     _result(t, primary, position='1', status='complete', rounds=4)
-    _pick(member, t, primary, backup, active_player_id=primary.id, points_earned=300_000)
+    _pick(member, t, primary, backup, active_player_id=primary.id, points_earned=300_000, league_id=golf_leagues['handicap'].id)
 
     sheet = build_sheet(GolfEnrollment.query.filter_by(season_year=season).all(),
                         lines=_lines(t))
     assert sheet.rows[0].total == 300_000 and not sheet.rows[0].projected
 
 
-def test_board_ranks_by_the_weeks_figure_not_the_username(app, season, sunday):
-    low = _member(season, 'aaa_low')
-    high = _member(season, 'zzz_high')
-    tied = _member(season, 'mmm_tied')
-    absent = _member(season, 'absent')
+def test_board_ranks_by_the_weeks_figure_not_the_username(app, season, sunday, golf_leagues):
+    low = _member(season, 'aaa_low', league_id=golf_leagues['handicap'].id)
+    high = _member(season, 'zzz_high', league_id=golf_leagues['handicap'].id)
+    tied = _member(season, 'mmm_tied', league_id=golf_leagues['handicap'].id)
+    absent = _member(season, 'absent', league_id=golf_leagues['handicap'].id)
     t = _tournament(season)
     first, tenth, spare = _golfer('First'), _golfer('Tenth'), _golfer('Spare')
     _result(t, first, position='1')
     _result(t, tenth, position='10')
-    _pick(low, t, tenth, spare)
-    _pick(high, t, first, spare)
-    _pick(tied, t, first, spare)
+    _pick(low, t, tenth, spare, league_id=golf_leagues['handicap'].id)
+    _pick(high, t, first, spare, league_id=golf_leagues['handicap'].id)
+    _pick(tied, t, first, spare, league_id=golf_leagues['handicap'].id)
 
     enrollments = GolfEnrollment.query.filter_by(season_year=season).all()
     board = build_board(_lines(t), enrollments, viewer_id=low.id)
@@ -391,24 +391,24 @@ def test_board_ranks_by_the_weeks_figure_not_the_username(app, season, sunday):
 # /golf/ — The Sheet
 # ============================================================================
 
-def _live_week(season):
+def _live_week(season, *, league_id):
     """Three members on a live major: one in the money, one cut, one with no pick."""
-    me = _member(season, 'viewer', display_name='ViewerLine', total=1_000_000)
-    rival = _member(season, 'rival', display_name='RivalLine', total=2_500_000)
-    idle = _member(season, 'idle', display_name='IdleLine', total=50_000)
+    me = _member(season, 'viewer', display_name='ViewerLine', total=1_000_000, league_id=league_id)
+    rival = _member(season, 'rival', display_name='RivalLine', total=2_500_000, league_id=league_id)
+    idle = _member(season, 'idle', display_name='IdleLine', total=50_000, league_id=league_id)
     t = _tournament(season, is_major=True)
     hot, cold, spare = _golfer('Hotgolfer'), _golfer('Coldgolfer'), _golfer('Sparegolfer')
     # Both stamped by the 4 PM CT read (21:00 UTC); the first is an hour stale.
     _result(t, hot, position='1', updated_at=datetime(2026, 4, 12, 17, 0))
     _result(t, cold, position='CUT', status='cut', rounds=2,
             updated_at=datetime(2026, 4, 12, 21, 0))
-    _pick(me, t, hot, spare)
-    _pick(rival, t, cold, spare, penalty_triggered=True)
+    _pick(me, t, hot, spare, league_id=league_id)
+    _pick(rival, t, cold, spare, penalty_triggered=True, league_id=league_id)
     return me, rival, idle, t
 
 
-def test_sheet_page_live(app, client, season, sunday):
-    me, rival, idle, t = _live_week(season)
+def test_sheet_page_live(app, client, season, sunday, golf_leagues):
+    me, rival, idle, t = _live_week(season, league_id=golf_leagues['handicap'].id)
     _login(client, me)
 
     body = client.get('/golf/').get_data(as_text=True)
@@ -435,8 +435,8 @@ def test_sheet_page_live(app, client, season, sunday):
     assert 'No pick' in body
 
 
-def test_sheet_page_pot_line(app, client, season, sunday):
-    _live_week(season)
+def test_sheet_page_pot_line(app, client, season, sunday, golf_leagues):
+    _live_week(season, league_id=golf_leagues['handicap'].id)
     body = client.get('/golf/').get_data(as_text=True)
 
     assert 'Prize Pool' in body
@@ -446,8 +446,8 @@ def test_sheet_page_pot_line(app, client, season, sunday):
     assert '<dd>$90</dd>' in body       # in the pool
 
 
-def test_sheet_page_signed_out_has_no_line(app, client, season, sunday):
-    _live_week(season)
+def test_sheet_page_signed_out_has_no_line(app, client, season, sunday, golf_leagues):
+    _live_week(season, league_id=golf_leagues['handicap'].id)
     body = client.get('/golf/').get_data(as_text=True)
 
     assert 'Your line' not in body
@@ -455,8 +455,8 @@ def test_sheet_page_signed_out_has_no_line(app, client, season, sunday):
     assert 'ViewerLine' in body
 
 
-def test_sheet_page_next_pick_during_live_play(app, client, season, sunday):
-    me, *_ = _live_week(season)
+def test_sheet_page_next_pick_during_live_play(app, client, season, sunday, golf_leagues):
+    me, *_ = _live_week(season, league_id=golf_leagues['handicap'].id)
     _tournament(season, name='RBC Heritage', status='upcoming', week=14,
                 start=datetime(2026, 4, 16), end=datetime(2026, 4, 19),
                 lock=datetime(2026, 4, 16, 6, 5))
@@ -480,9 +480,9 @@ def _open_field(season, monkeypatch):
     return t, players
 
 
-def test_sheet_page_open_pick_offers_the_action(app, client, season, monkeypatch):
+def test_sheet_page_open_pick_offers_the_action(app, client, season, monkeypatch, golf_leagues):
     t, _players = _open_field(season, monkeypatch)
-    me = _member(season, 'viewer', total=10)
+    me = _member(season, 'viewer', total=10, league_id=golf_leagues['handicap'].id)
     _login(client, me)
 
     body = client.get('/golf/').get_data(as_text=True)
@@ -494,10 +494,10 @@ def test_sheet_page_open_pick_offers_the_action(app, client, season, monkeypatch
     assert '>Banked<' in body
 
 
-def test_sheet_page_made_pick_offers_change(app, client, season, monkeypatch):
+def test_sheet_page_made_pick_offers_change(app, client, season, monkeypatch, golf_leagues):
     t, players = _open_field(season, monkeypatch)
-    me = _member(season, 'viewer', total=10)
-    _pick(me, t, players[0], players[1])
+    me = _member(season, 'viewer', total=10, league_id=golf_leagues['handicap'].id)
+    _pick(me, t, players[0], players[1], league_id=golf_leagues['handicap'].id)
     _login(client, me)
 
     body = client.get('/golf/').get_data(as_text=True)
@@ -506,8 +506,8 @@ def test_sheet_page_made_pick_offers_change(app, client, season, monkeypatch):
     assert 'golf-btn' not in body
 
 
-def test_sheet_page_offers_a_seat_only_while_the_room_takes_them(app, client, season, monkeypatch):
-    _member(season, 'seated', display_name='SeatedLine')
+def test_sheet_page_offers_a_seat_only_while_the_room_takes_them(app, client, season, monkeypatch, golf_leagues):
+    _member(season, 'seated', display_name='SeatedLine', league_id=golf_leagues['handicap'].id)
     visitor = User(username='visitor', email='visitor@test.com', display_name='Visitor')
     visitor.set_password('pw')
     db.session.add(visitor)
@@ -529,21 +529,21 @@ def test_sheet_page_empty_state(app, client, season):
     assert '<table' not in body
 
 
-def test_sheet_with_no_schedule_reads_as_pre(app, client, season):
+def test_sheet_with_no_schedule_reads_as_pre(app, client, season, golf_leagues):
     """A season with no events yet is Pre (DESIGN.md §4.3), never "every line
     is banked": the context line says the schedule is not posted."""
-    _member(season, 'early')
+    _member(season, 'early', league_id=golf_leagues['handicap'].id)
     body = client.get('/golf/').get_data(as_text=True)
     assert 'the schedule is not posted yet' in body
     assert 'every line is banked' not in body
     assert 'golf-champion' not in body
 
 
-def test_sheet_of_a_banked_season_leads_with_the_champion(app, client, season):
+def test_sheet_of_a_banked_season_leads_with_the_champion(app, client, season, golf_leagues):
     """Every event banked: the champion fold opens the sheet (the Record Room
     leads the Final state), the figure in ink, a tie named as one."""
-    champ = _member(season, 'champ', display_name='Casey Champion', total=4_200_000)
-    _member(season, 'second', total=750_000)
+    champ = _member(season, 'champ', display_name='Casey Champion', total=4_200_000, league_id=golf_leagues['handicap'].id)
+    _member(season, 'second', total=750_000, league_id=golf_leagues['handicap'].id)
     _tournament(season, name='Sony Open in Hawaii', status='complete', finalized=True, week=1)
     _tournament(season, name='Masters Tournament', status='complete', finalized=True, week=13)
 
@@ -559,10 +559,10 @@ def test_sheet_of_a_banked_season_leads_with_the_champion(app, client, season):
     assert body.index('id="golf-champion"') < body.index('The Sheet</h1>')
 
 
-def test_sheet_names_tied_champions_and_the_record_once_closed(app, client, season):
+def test_sheet_names_tied_champions_and_the_record_once_closed(app, client, season, golf_leagues):
     from models.records import FinishDraft, record_season
-    a = _member(season, 'alex', display_name='Alex', total=900)
-    b = _member(season, 'blake', display_name='Blake', total=900)
+    a = _member(season, 'alex', display_name='Alex', total=900, league_id=golf_leagues['handicap'].id)
+    b = _member(season, 'blake', display_name='Blake', total=900, league_id=golf_leagues['handicap'].id)
     _tournament(season, name='Sony Open in Hawaii', status='complete', finalized=True, week=1)
 
     body = client.get('/golf/').get_data(as_text=True)
@@ -584,8 +584,8 @@ def test_sheet_names_tied_champions_and_the_record_once_closed(app, client, seas
 # /golf/tournament/<id> — The Board
 # ============================================================================
 
-def test_board_page_live(app, client, season, sunday):
-    me, rival, idle, t = _live_week(season)
+def test_board_page_live(app, client, season, sunday, golf_leagues):
+    me, rival, idle, t = _live_week(season, league_id=golf_leagues['handicap'].id)
     _tournament(season, name='Valero Texas Open', status='complete', finalized=True,
                 week=12, start=datetime(2026, 4, 2), end=datetime(2026, 4, 5),
                 lock=datetime(2026, 4, 2, 7, 30))
@@ -610,14 +610,14 @@ def test_board_page_live(app, client, season, sunday):
     assert '>Projected<' in body and '>Banked<' not in body and 'Earnings' not in body
 
 
-def test_board_page_banked(app, client, season, sunday):
-    me = _member(season, 'viewer', display_name='ViewerLine')
+def test_board_page_banked(app, client, season, sunday, golf_leagues):
+    me = _member(season, 'viewer', display_name='ViewerLine', league_id=golf_leagues['handicap'].id)
     t = _tournament(season, status='complete', finalized=True)
     primary, backup = _golfer('Bankedgolfer'), _golfer('Sparegolfer')
     _result(t, primary, position='T3', status='complete', rounds=4, score=-9)
     _pick(me, t, primary, backup, active_player_id=primary.id,
           points_earned=640_000, primary_used=True, admin_override=True,
-          admin_override_note='Phoned it in')
+          admin_override_note='Phoned it in', league_id=golf_leagues['handicap'].id)
     _login(client, me)
 
     body = client.get(f'/golf/tournament/{t.id}').get_data(as_text=True)
@@ -633,8 +633,8 @@ def test_board_page_banked(app, client, season, sunday):
     assert 'Penalties assessed' not in body          # not a major
 
 
-def test_board_page_without_a_pick_leads_with_the_purse(app, client, season, sunday):
-    _me, _rival, _idle, t = _live_week(season)
+def test_board_page_without_a_pick_leads_with_the_purse(app, client, season, sunday, golf_leagues):
+    _me, _rival, _idle, t = _live_week(season, league_id=golf_leagues['handicap'].id)
     body = client.get(f'/golf/tournament/{t.id}').get_data(as_text=True)
 
     assert 'Your pick' not in body
@@ -642,14 +642,14 @@ def test_board_page_without_a_pick_leads_with_the_purse(app, client, season, sun
     assert '2 picks on the board' in body
 
 
-def test_board_page_hides_every_other_pick_until_the_lock(app, client, season, monkeypatch):
+def test_board_page_hides_every_other_pick_until_the_lock(app, client, season, monkeypatch, golf_leagues):
     t, players = _open_field(season, monkeypatch)
-    me = _member(season, 'viewer', display_name='ViewerLine')
-    rival = _member(season, 'rival', display_name='RivalLine')
+    me = _member(season, 'viewer', display_name='ViewerLine', league_id=golf_leagues['handicap'].id)
+    rival = _member(season, 'rival', display_name='RivalLine', league_id=golf_leagues['handicap'].id)
     mine, spare = _golfer('Minegolfer'), _golfer('Mysparegolfer')
     theirs, their_spare = _golfer('Secretgolfer'), _golfer('Hiddenspare')
-    _pick(me, t, mine, spare)
-    _pick(rival, t, theirs, their_spare)
+    _pick(me, t, mine, spare, league_id=golf_leagues['handicap'].id)
+    _pick(rival, t, theirs, their_spare, league_id=golf_leagues['handicap'].id)
     _login(client, me)
 
     body = client.get(f'/golf/tournament/{t.id}').get_data(as_text=True)
@@ -662,7 +662,7 @@ def test_board_page_hides_every_other_pick_until_the_lock(app, client, season, m
     assert '<table' not in body
 
 
-def _masters_inside_the_refresh(app, client, season, monkeypatch, status, now):
+def _masters_inside_the_refresh(app, client, season, monkeypatch, status, now, *, league_id):
     """The Masters (first tee 7:40 AM CT) read at ``now`` with ``status`` held.
 
     Inside the request hook's refresh interval, so the status a sync wrote (or
@@ -671,22 +671,22 @@ def _masters_inside_the_refresh(app, client, season, monkeypatch, status, now):
     monkeypatch.setenv('GOLF_FAKE_NOW', now)
     monkeypatch.setitem(app.config, '_GOLF_LAST_STATUS_REFRESH', get_current_time())
     t = _tournament(season, status=status)
-    me = _member(season, 'viewer', display_name='ViewerLine')
-    rival = _member(season, 'rival', display_name='RivalLine')
-    _pick(me, t, _golfer('Minegolfer'), _golfer('Mysparegolfer'))
-    _pick(rival, t, _golfer('Secretgolfer'), _golfer('Hiddenspare'))
+    me = _member(season, 'viewer', display_name='ViewerLine', league_id=league_id)
+    rival = _member(season, 'rival', display_name='RivalLine', league_id=league_id)
+    _pick(me, t, _golfer('Minegolfer'), _golfer('Mysparegolfer'), league_id=league_id)
+    _pick(rival, t, _golfer('Secretgolfer'), _golfer('Hiddenspare'), league_id=league_id)
     _login(client, me)
     return t
 
 
-def _synced_active_before_the_lock(app, client, season, monkeypatch):
+def _synced_active_before_the_lock(app, client, season, monkeypatch, *, league_id):
     """A sync marked the Masters active at Thursday midnight; it is 6:00 AM CT."""
     return _masters_inside_the_refresh(app, client, season, monkeypatch,
-                                       status='active', now='2026-04-09T11:00:00')
+                                       status='active', now='2026-04-09T11:00:00', league_id=league_id)
 
 
-def test_board_page_opens_at_the_lock_not_at_a_synced_status(app, client, season, monkeypatch):
-    t = _synced_active_before_the_lock(app, client, season, monkeypatch)
+def test_board_page_opens_at_the_lock_not_at_a_synced_status(app, client, season, monkeypatch, golf_leagues):
+    t = _synced_active_before_the_lock(app, client, season, monkeypatch, league_id=golf_leagues['handicap'].id)
 
     body = client.get(f'/golf/tournament/{t.id}').get_data(as_text=True)
 
@@ -696,8 +696,8 @@ def test_board_page_opens_at_the_lock_not_at_a_synced_status(app, client, season
     assert '<table' not in body
 
 
-def test_sheet_page_pencils_a_week_only_past_its_lock(app, client, season, monkeypatch):
-    _synced_active_before_the_lock(app, client, season, monkeypatch)
+def test_sheet_page_pencils_a_week_only_past_its_lock(app, client, season, monkeypatch, golf_leagues):
+    _synced_active_before_the_lock(app, client, season, monkeypatch, league_id=golf_leagues['handicap'].id)
 
     body = client.get('/golf/').get_data(as_text=True)
 
@@ -708,11 +708,11 @@ def test_sheet_page_pencils_a_week_only_past_its_lock(app, client, season, monke
     assert 'Next: Minegolfer at the Masters Tournament' in body
 
 
-def test_sheet_page_turns_over_at_the_lock_before_the_status_does(app, client, season, monkeypatch):
+def test_sheet_page_turns_over_at_the_lock_before_the_status_does(app, client, season, monkeypatch, golf_leagues):
     # 8:00 AM CT Thursday, twenty minutes past the lock; the hook has not yet
     # moved the Masters off 'upcoming', and its field is published.
     t = _masters_inside_the_refresh(app, client, season, monkeypatch,
-                                    status='upcoming', now='2026-04-09T13:00:00')
+                                    status='upcoming', now='2026-04-09T13:00:00', league_id=golf_leagues['handicap'].id)
     players = [GolfPlayer(api_player_id=f'F{i}', first_name='Field', last_name=f'Player{i}')
                for i in range(50)]
     db.session.add_all(players)
@@ -730,9 +730,9 @@ def test_sheet_page_turns_over_at_the_lock_before_the_status_does(app, client, s
     assert 'Round 1' in body and 'first read at noon CT' in body
 
 
-def test_board_page_open_field_offers_the_action(app, client, season, monkeypatch):
+def test_board_page_open_field_offers_the_action(app, client, season, monkeypatch, golf_leagues):
     t, _players = _open_field(season, monkeypatch)
-    me = _member(season, 'viewer')
+    me = _member(season, 'viewer', league_id=golf_leagues['handicap'].id)
     _login(client, me)
 
     body = client.get(f'/golf/tournament/{t.id}').get_data(as_text=True)

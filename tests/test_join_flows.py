@@ -207,13 +207,13 @@ def test_golf_join_post_creates_enrollment(app, client, monkeypatch):
         assert enr.season_year == 2026
 
 
-def test_golf_join_duplicate_redirects_to_dashboard(app, client, monkeypatch):
+def test_golf_join_duplicate_redirects_to_dashboard(app, client, monkeypatch, golf_leagues):
     _set_status(monkeypatch, 'golf', 'open')
     uid = _make_user(app, 'g4')
     _login(client, uid)
     from games.golf.models import GolfEnrollment
     with app.app_context():
-        db.session.add(GolfEnrollment(user_id=uid, season_year=2026))
+        db.session.add(GolfEnrollment(user_id=uid, league_id=golf_leagues['handicap'].id, season_year=2026))
         db.session.commit()
     resp = client.get('/golf/join', follow_redirects=False)
     assert resp.status_code == 302

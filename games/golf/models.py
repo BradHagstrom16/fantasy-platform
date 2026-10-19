@@ -28,6 +28,33 @@ PENALTY_PER_INCIDENT = 15
 
 
 # ============================================================================
+# GolfLeague — One competition inside the golf game (ADR-075)
+# ============================================================================
+
+class GolfLeague(db.Model):
+    """A league of The Pay Sheet: its own roster, picks, pot and champion.
+
+    Both leagues play one rule set; what differs lives here. The rows are
+    seeded from ``constants.LEAGUE_SEED`` (``services/leagues.py``); the fee
+    and penalty are copied from config and ``PENALTY_PER_INCIDENT`` at seed
+    time only, after which the row is the source of truth.
+    """
+    __tablename__ = 'golf_league'
+
+    id = db.Column(db.Integer, primary_key=True)
+    slug = db.Column(db.String(20), unique=True, nullable=False)
+    name = db.Column(db.String(60), nullable=False)
+    entry_fee = db.Column(db.Integer, nullable=False)
+    penalty_per_incident = db.Column(db.Integer, nullable=False)
+    # 1 = the house league (Handicap).
+    ordinal = db.Column(db.Integer, unique=True, nullable=False)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC))
+
+    def __repr__(self):
+        return f'<GolfLeague {self.slug}>'
+
+
+# ============================================================================
 # GolfEnrollment — Tracks who's playing golf + their game-specific data
 # ============================================================================
 
@@ -41,6 +68,7 @@ class GolfEnrollment(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    league_id = db.Column(db.Integer, db.ForeignKey('golf_league.id'), nullable=False, index=True)
     season_year = db.Column(db.Integer, nullable=False)
 
     # Season standings
@@ -61,9 +89,10 @@ class GolfEnrollment(db.Model):
 
     # Relationships
     user = db.relationship('User')
+    league = db.relationship('GolfLeague')
 
     __table_args__ = (
-        db.UniqueConstraint('user_id', 'season_year', name='unique_golf_enrollment'),
+        db.UniqueConstraint('user_id', 'league_id', 'season_year', name='unique_golf_enrollment'),
     )
 
     def calculate_total_points(self):
@@ -316,12 +345,13 @@ class GolfSeasonPlayerUsage(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    league_id = db.Column(db.Integer, db.ForeignKey('golf_league.id'), nullable=False, index=True)
     player_id = db.Column(db.Integer, db.ForeignKey('golf_player.id'), nullable=False, index=True)
     season_year = db.Column(db.Integer, nullable=False)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC))
 
     __table_args__ = (
-        db.UniqueConstraint('user_id', 'player_id', 'season_year', name='unique_golf_player_usage'),
+        db.UniqueConstraint('user_id', 'league_id', 'player_id', 'season_year', name='unique_golf_player_usage'),
     )
 
     user = db.relationship('User')
@@ -427,6 +457,7 @@ class GolfPick(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    league_id = db.Column(db.Integer, db.ForeignKey('golf_league.id'), nullable=False, index=True)
     tournament_id = db.Column(db.Integer, db.ForeignKey('golf_tournament.id'), nullable=False, index=True)
 
     # The picks
@@ -456,13 +487,14 @@ class GolfPick(db.Model):
 
     # Relationships
     user = db.relationship('User')
+    league = db.relationship('GolfLeague')
     tournament = db.relationship('GolfTournament')
     primary_player = db.relationship('GolfPlayer', foreign_keys=[primary_player_id])
     backup_player = db.relationship('GolfPlayer', foreign_keys=[backup_player_id])
     active_player = db.relationship('GolfPlayer', foreign_keys=[active_player_id])
 
     __table_args__ = (
-        db.UniqueConstraint('user_id', 'tournament_id', name='unique_golf_user_tournament_pick'),
+        db.UniqueConstraint('user_id', 'league_id', 'tournament_id', name='unique_golf_user_tournament_pick'),
     )
 
     def validate_availability(self, season_year: int):

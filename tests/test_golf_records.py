@@ -27,8 +27,8 @@ def _user(username, display_name=None):
     return u
 
 
-def _line(user, season, total):
-    e = GolfEnrollment(user_id=user.id, season_year=season, total_points=total)
+def _line(user, season, total, *, league_id):
+    e = GolfEnrollment(user_id=user.id, league_id=league_id, season_year=season, total_points=total)
     db.session.add(e)
     db.session.commit()
     return e
@@ -47,24 +47,24 @@ def _event(season, name, week, finalized=True):
     return t
 
 
-def _banked_season(season):
+def _banked_season(season, *, league_id):
     _event(season, 'Sony Open in Hawaii', 1)
     _event(season, 'The American Express', 2)
     casey = _user('casey', display_name='Casey Champion')
     brock = _user('brock', display_name='Brock Second')
     dana = _user('dana', display_name='Dana Second')
     morgan = _user('morgan')
-    _line(casey, season, 4_200_000)
-    _line(dana, season, 750_000)
-    _line(brock, season, 750_000)
-    _line(morgan, season, 0)
+    _line(casey, season, 4_200_000, league_id=league_id)
+    _line(dana, season, 750_000, league_id=league_id)
+    _line(brock, season, 750_000, league_id=league_id)
+    _line(morgan, season, 0, league_id=league_id)
     return casey, brock, dana, morgan
 
 
-def test_a_banked_season_ranks_the_lines_with_shared_places(app):
+def test_a_banked_season_ranks_the_lines_with_shared_places(app, golf_leagues):
     from games.golf.services.records import season_finishes
     season = app.config['SEASON_YEAR']
-    casey, brock, dana, morgan = _banked_season(season)
+    casey, brock, dana, morgan = _banked_season(season, league_id=golf_leagues['handicap'].id)
 
     drafts = season_finishes(season)
 
@@ -77,13 +77,13 @@ def test_a_banked_season_ranks_the_lines_with_shared_places(app):
     assert [d.outcome for d in drafts] == ['champion', None, None, None]
 
 
-def test_tied_leaders_are_both_champions(app):
+def test_tied_leaders_are_both_champions(app, golf_leagues):
     from games.golf.services.records import season_finishes
     season = app.config['SEASON_YEAR']
     _event(season, 'Sony Open in Hawaii', 1)
     a, b = _user('a', display_name='Alex'), _user('b', display_name='Blake')
-    _line(a, season, 1_000_000)
-    _line(b, season, 1_000_000)
+    _line(a, season, 1_000_000, league_id=golf_leagues['handicap'].id)
+    _line(b, season, 1_000_000, league_id=golf_leagues['handicap'].id)
     drafts = season_finishes(season)
     assert [(d.place, d.outcome) for d in drafts] == [(1, 'champion'), (1, 'champion')]
 
@@ -94,22 +94,22 @@ def test_refuses_a_season_with_no_schedule(app):
         season_finishes(2031)
 
 
-def test_refuses_while_an_event_is_not_banked(app):
+def test_refuses_while_an_event_is_not_banked(app, golf_leagues):
     from games.golf.services.records import season_finishes
     season = app.config['SEASON_YEAR']
     _event(season, 'Sony Open in Hawaii', 1)
     _event(season, 'Masters Tournament', 15, finalized=False)
-    _line(_user('casey'), season, 100)
+    _line(_user('casey'), season, 100, league_id=golf_leagues['handicap'].id)
     with pytest.raises(SeasonNotClosed, match='Masters Tournament'):
         season_finishes(season)
 
 
-def test_a_past_season_closes_from_its_own_rows(app):
+def test_a_past_season_closes_from_its_own_rows(app, golf_leagues):
     """Like the Docket's seam and unlike Survivor's, the builder takes any
     year: 2026 closes from a box whose configured season is 2027."""
     from games.golf.services.records import season_finishes
     past = app.config['SEASON_YEAR'] - 1
-    casey, *_ = _banked_season(past)
+    casey, *_ = _banked_season(past, league_id=golf_leagues['handicap'].id)
     _event(app.config['SEASON_YEAR'], 'Sony Open in Hawaii', 1, finalized=False)
     drafts = season_finishes(past)
     assert drafts[0].user_id == casey.id and drafts[0].place == 1
@@ -121,10 +121,10 @@ def test_the_registry_wires_the_seam():
     assert get_entry('golf').season_finishes is season_finishes
 
 
-def test_records_close_golf_puts_the_season_on_record(app):
+def test_records_close_golf_puts_the_season_on_record(app, golf_leagues):
     from core.records.cli import records_cli
     season = app.config['SEASON_YEAR']
-    casey, *_ = _banked_season(season)
+    casey, *_ = _banked_season(season, league_id=golf_leagues['handicap'].id)
 
     result = app.test_cli_runner().invoke(records_cli, ['close', 'golf', str(season)])
 

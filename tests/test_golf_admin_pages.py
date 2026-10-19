@@ -37,8 +37,8 @@ def _user(username, is_admin=False, display_name=None):
     return u
 
 
-def _enroll(user, season, **kw):
-    e = GolfEnrollment(user_id=user.id, season_year=season, **kw)
+def _enroll(user, season, *, league_id, **kw):
+    e = GolfEnrollment(user_id=user.id, league_id=league_id, season_year=season, **kw)
     db.session.add(e)
     db.session.commit()
     return e
@@ -153,16 +153,16 @@ def test_dashboard_meter_warns_in_words_past_four_fifths(app, client, tmp_path, 
     assert '20 left' in body
 
 
-def test_dashboard_leads_with_what_needs_settling(app, client, tmp_path, monkeypatch):
+def test_dashboard_leads_with_what_needs_settling(app, client, tmp_path, monkeypatch, golf_leagues):
     """The first ledger: played events not yet banked, Process on each row;
     the tab's three figures; nothing of the platform's user count."""
     monkeypatch.setenv('GOLF_API_LOG_DIR', str(tmp_path / 'none'))
     season = app.config['SEASON_YEAR']
     admin = _user('padmin', is_admin=True)
     paid = _user('paid', display_name='Casey Paid')
-    _enroll(paid, season, has_paid=True)
+    _enroll(paid, season, has_paid=True, league_id=golf_leagues['handicap'].id)
     owes = _user('owes', display_name='Dana Owes')
-    _enroll(owes, season, has_paid=False)
+    _enroll(owes, season, has_paid=False, league_id=golf_leagues['handicap'].id)
     _user('stranger', display_name='Morgan Stranger')
     _event(season, 'Sony Open in Hawaii', 1, 60)
     rbc = _event(season, 'RBC Heritage', 16, 4, finalized=False)
@@ -226,12 +226,12 @@ def test_process_button_reaches_the_scoring_pass(app, client):
     assert 'Processed results for 0 picks.' in resp.get_data(as_text=True)
 
 
-def test_the_roster_and_the_tab_carry_the_chip_and_the_check(app, client):
+def test_the_roster_and_the_tab_carry_the_chip_and_the_check(app, client, golf_leagues):
     season = app.config['SEASON_YEAR']
     admin = _user('padmin', is_admin=True, display_name='The Commish')
-    _enroll(admin, season, has_paid=True)
+    _enroll(admin, season, has_paid=True, league_id=golf_leagues['handicap'].id)
     member = _user('member', display_name='Casey Member')
-    _enroll(member, season, has_paid=False, total_points=1_234_567)
+    _enroll(member, season, has_paid=False, total_points=1_234_567, league_id=golf_leagues['handicap'].id)
     _login(client, admin)
 
     roster = client.get('/golf/admin/users').get_data(as_text=True)
@@ -249,13 +249,13 @@ def test_the_roster_and_the_tab_carry_the_chip_and_the_check(app, client):
     assert 'golf-chip js-paid-status golf-chip--deduction">Unpaid' in tab
 
 
-def test_the_gate_is_the_pens_only_fill(app, client):
+def test_the_gate_is_the_pens_only_fill(app, client, golf_leagues):
     """Under the gate the page has one pen fill, Confirm and re-resolve; the
     form's own save becomes a text action (OWN-WORLD: one fill per page)."""
     season = app.config['SEASON_YEAR']
     admin = _user('padmin', is_admin=True)
     member = _user('member', display_name='Casey Member')
-    _enroll(member, season)
+    _enroll(member, season, league_id=golf_leagues['handicap'].id)
     t = _event(season, 'RBC Heritage', 16, 4, finalized=True)
     a = GolfPlayer(api_player_id='A', first_name='Alpha', last_name='One')
     b = GolfPlayer(api_player_id='B', first_name='Bravo', last_name='Two')
@@ -277,22 +277,22 @@ def test_the_gate_is_the_pens_only_fill(app, client):
     assert 'Write the override' not in body
 
 
-def test_emails_break_at_the_at_sign(app, client):
+def test_emails_break_at_the_at_sign(app, client, golf_leagues):
     season = app.config['SEASON_YEAR']
     admin = _user('padmin', is_admin=True)
     member = _user('jacksonkolakowski', display_name='Double J')
-    _enroll(member, season)
+    _enroll(member, season, league_id=golf_leagues['handicap'].id)
     _login(client, admin)
     for path in ('/golf/admin/users', '/golf/admin/payments'):
         body = client.get(path).get_data(as_text=True)
         assert 'jacksonkolakowski<wbr>@test.com' in body, path
 
 
-def test_the_pen_renders_the_field_as_real_selects(app, client):
+def test_the_pen_renders_the_field_as_real_selects(app, client, golf_leagues):
     season = app.config['SEASON_YEAR']
     admin = _user('padmin', is_admin=True)
     member = _user('member', display_name='Casey Member')
-    _enroll(member, season)
+    _enroll(member, season, league_id=golf_leagues['handicap'].id)
     t = _event(season, 'RBC Heritage', 16, -3, status='upcoming', finalized=False)
     a = GolfPlayer(api_player_id='A', first_name='Alpha', last_name='One')
     b = GolfPlayer(api_player_id='B', first_name='Bravo', last_name='Two')
@@ -314,7 +314,7 @@ def test_the_pen_renders_the_field_as_real_selects(app, client):
     assert 'No overrides yet' in body
     assert 'tom-select' not in body.lower()
 
-    pick = GolfPick(user_id=member.id, tournament_id=t.id, primary_player_id=a.id,
+    pick = GolfPick(user_id=member.id, league_id=golf_leagues['handicap'].id, tournament_id=t.id, primary_player_id=a.id,
                     backup_player_id=b.id, admin_override=True, admin_override_note='late entry')
     db.session.add(pick)
     db.session.commit()
