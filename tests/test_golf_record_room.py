@@ -421,13 +421,15 @@ def test_record_room_links_the_record_once_the_season_is_closed(app, client, sea
     from models.records import FinishDraft, record_season
     alice, bob, _g, _events = _two_events(season, league_id=golf_leagues['handicap'].id)
     record_season('golf', season, [
-        FinishDraft(alice.id, 'Alice', 1, 'champion', '$2,300,000'),
-        FinishDraft(bob.id, 'Bob', 2, None, '$400,000'),
+        FinishDraft(alice.id, 'Alice', 1, 'champion', '$2,300,000',
+                    division='handicap', division_name='Handicap Pay Sheet'),
+        FinishDraft(bob.id, 'Bob', 2, None, '$400,000',
+                    division='handicap', division_name='Handicap Pay Sheet'),
     ])
     body = _page(client)
     fold = _leaf(body, 'golf-champion')
     assert 'On the club’s record.' in fold
-    assert f'href="/records#board-golf-{season}"' in fold
+    assert f'href="/records#board-golf-{season}-handicap"' in fold
     assert 'golf-money--banked">$2,300,000' in fold
 
 

@@ -12,6 +12,7 @@ from flask import abort, render_template
 from flask_login import login_required
 from markupsafe import Markup
 
+from core.audiences import audience_choices, audience_labels
 from core.tribune import tribune_bp
 from core.tribune.services import (
     filed_week,
@@ -20,13 +21,11 @@ from core.tribune.services import (
     sent_issues,
     week_head,
 )
-from games.registry import GAMES
 
 
-def _audience_line(announcement) -> str:
-    """'To CFB Survivor Pool and The Docket members' (registry order)."""
-    chosen = set(announcement.audience_list)
-    names = [entry.display_name for entry in GAMES if entry.slug in chosen]
+def _audience_line(announcement, choices) -> str:
+    """'To CFB Survivor Pool and The Docket members' (``audience_labels``)."""
+    names = audience_labels(announcement.audience_list, choices)
     if not names:
         return 'To the club'
     joined = names[0] if len(names) == 1 else ', '.join(names[:-1]) + ' and ' + names[-1]
@@ -54,13 +53,14 @@ def _issues():
     audience line and week for the templates."""
     rows = sent_issues()
     total = len(rows)
+    choices = audience_choices()
     return [{
         'id': row.id,
         'number': total - index,
         'headline': row.headline or row.subject,
         'deck': _deck(row),
         'date': issue_date(row),
-        'audience': _audience_line(row),
+        'audience': _audience_line(row, choices),
         'week': _week_of(row),
         'row': row,
     } for index, row in enumerate(rows)]

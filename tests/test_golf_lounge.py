@@ -238,6 +238,112 @@ def test_post_context_with_no_lines_has_no_champion(app, monkeypatch, golf_leagu
 
 
 # ============================================================================
+# Two leagues (ADR-075, PR C): the viewer's sheet, the other sheet named
+# ============================================================================
+
+def _render(app, partial, ctx, join_open=False):
+    from types import SimpleNamespace
+
+    from flask import render_template
+
+    from games.registry import get_entry
+
+    with app.test_request_context('/'):
+        return render_template(f'golf/lounge/{partial}.html',
+                               h=SimpleNamespace(ctx=ctx, entry=get_entry('golf'), join_open=join_open))
+
+
+def _second_line(user, season, total, *, league_id):
+    db.session.add(GolfEnrollment(user_id=user.id, league_id=league_id, season_year=season,
+                                  total_points=total))
+    db.session.commit()
+
+
+def test_lounge_panel_is_the_viewers_league_and_names_the_other_for_brad(app, monkeypatch, golf_leagues):
+    """Brad on both sheets: the panel is the Handicap line (the lowest
+    ordinal), and one line names the Pollyanna line with its banked money
+    and place, linking that sheet; a member of one sheet gets no such line."""
+    season = app.config['SEASON_YEAR']
+    handicap, pollyanna = golf_leagues['handicap'].id, golf_leagues['pollyanna'].id
+    brad = _member(season, 'brad', display_name='Brad', total=1_000_000, league_id=handicap)
+    _second_line(brad, season, 500_000, league_id=pollyanna)
+    _member(season, 'peer', display_name='Polly Peer', total=900_000, league_id=pollyanna)
+    solo = _member(season, 'solo', display_name='Solo', total=0, league_id=handicap)
+    _tournament(season)
+    monkeypatch.setenv('GOLF_FAKE_NOW', SUNDAY_AFTERNOON)
+
+    ctx = build_lounge_context(brad, 'live')
+
+    assert ctx['league'] == 'handicap' and ctx['league_name'] == 'Handicap Pay Sheet'
+    assert ctx['other_lines'] == [{'name': 'Pollyanna Pay Sheet', 'slug': 'pollyanna',
+                                   'place': '2', 'field': 2, 'money': '$500,000', 'word': 'banked'}]
+    html = _render(app, '_panel_live', ctx)
+    assert 'On the Pollyanna Pay Sheet' in html and 'href="/golf/pollyanna/"' in html
+    assert 'Polly Peer' not in html
+
+    assert build_lounge_context(solo, 'live')['other_lines'] == []
+    post = build_lounge_context(brad, 'post')
+    assert post['other_lines'][0]['slug'] == 'pollyanna'
+    assert 'href="/golf/pollyanna/"' in _render(app, '_panel_post', post)
+
+
+def test_lounge_links_carry_the_league(app, monkeypatch, golf_leagues):
+    """Every league-scoped link in a Handicap member's panels names the
+    league in its path; the door into the room stays /golf/ (the cookie)."""
+    season = app.config['SEASON_YEAR']
+    me = _member(season, 'me', display_name='Me', total=1, league_id=golf_leagues['handicap'].id)
+    _tournament(season)
+    monkeypatch.setenv('GOLF_FAKE_NOW', SUNDAY_AFTERNOON)
+    for state in ('pre', 'live', 'post'):
+        html = _render(app, f'_panel_{state}', build_lounge_context(me, state))
+        hrefs = re.findall(r'href="(/golf/[^"]*)"', html)
+        assert hrefs, state
+        for href in hrefs:
+            assert href == '/golf/' or href.startswith('/golf/handicap/'), (state, href)
+        assert '/golf/' in hrefs, state
+        if state != 'pre':
+            assert '/golf/handicap/' in hrefs, state   # "Full sheet" opens the board's own league
+
+
+def test_total_enrolled_counts_every_seat(app, monkeypatch, golf_leagues):
+    """The club's number is every golf seat; the board is the viewer's league."""
+    season = app.config['SEASON_YEAR']
+    handicap, pollyanna = golf_leagues['handicap'].id, golf_leagues['pollyanna'].id
+    me = _member(season, 'me', total=1, league_id=handicap)
+    for i in range(3):
+        _member(season, f'h{i}', league_id=handicap)
+    for i in range(3):
+        _member(season, f'p{i}', league_id=pollyanna)
+    _tournament(season)
+    monkeypatch.setenv('GOLF_FAKE_NOW', SUNDAY_AFTERNOON)
+
+    visitor = User(username='visitor', email='v@test.com')
+    assert build_lounge_context(visitor, None)['roster_count'] == 7
+    ctx = build_lounge_context(me, 'live')
+    assert ctx['total_enrolled'] == 7 and ctx['field'] == 4 and len(ctx['top']) == 3
+
+
+def test_pre_panel_names_both_sheets(app, golf_leagues):
+    visitor = User(username='visitor', email='v@test.com')
+    visitor.set_password('pw')
+    db.session.add(visitor)
+    db.session.commit()
+    line = ('Two sheets this year: the Handicap Pay Sheet and the Pollyanna Pay Sheet. '
+            'Take a seat on either.')
+    html = _render(app, '_panel_pre', build_lounge_context(visitor, 'pre'), join_open=True)
+    assert line in html and html.count('class="hl-cta"') == 1
+    golf_leagues['pollyanna'].name = 'Pollyanna Sheet'   # a rename follows the row
+    db.session.commit()
+    renamed = _render(app, '_panel_pre', build_lounge_context(visitor, 'pre'), join_open=True)
+    assert 'the Handicap Pay Sheet and the Pollyanna Sheet.' in renamed
+    golf_leagues['pollyanna'].name = 'Pollyanna Pay Sheet'
+    db.session.commit()
+    seated = _member(app.config['SEASON_YEAR'], 'seated', league_id=golf_leagues['handicap'].id)
+    assert line not in _render(app, '_panel_pre', build_lounge_context(seated, 'pre'), join_open=True)
+    assert line not in _render(app, '_panel_pre', build_lounge_context(visitor, 'pre'), join_open=False)
+
+
+# ============================================================================
 # Contracts
 # ============================================================================
 

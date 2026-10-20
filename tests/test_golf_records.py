@@ -133,3 +133,115 @@ def test_records_close_golf_puts_the_season_on_record(app, golf_leagues):
     assert [(r.place, r.name) for r in rows][:2] == [(1, 'Casey Champion'), (2, 'Brock Second')]
     assert rows[0].user_id == casey.id
     assert db.session.get(User, casey.id).is_reigning_champion is True
+
+
+# --- one board per league (ADR-075, Task C1) ---------------------------------
+
+def _pollyanna_room(season, *, league_id):
+    """Two Pollyanna lines; Casey (the Handicap champion) is on neither."""
+    polly = _user('polly', display_name='Polly Leader')
+    quinn = _user('quinn', display_name='Quinn Second')
+    _line(polly, season, 900_000, league_id=league_id)
+    _line(quinn, season, 100_000, league_id=league_id)
+    return polly, quinn
+
+
+def test_close_golf_writes_one_board_per_league(app, golf_leagues):
+    from core.records.cli import records_cli
+    from models.records import reigning_champion_user_ids
+    season = app.config['SEASON_YEAR']
+    casey, *_ = _banked_season(season, league_id=golf_leagues['handicap'].id)
+    polly, quinn = _pollyanna_room(season, league_id=golf_leagues['pollyanna'].id)
+
+    result = app.test_cli_runner().invoke(records_cli, ['close', 'golf', str(season)])
+
+    assert result.exit_code == 0, result.output
+    assert 'Handicap Pay Sheet: 4 finishers on record' in result.output
+    assert 'Pollyanna Pay Sheet: 2 finishers on record' in result.output
+    handicap = finishes_for('golf', season, division='handicap')
+    pollyanna = finishes_for('golf', season, division='pollyanna')
+    assert [(r.place, r.name, r.field_size) for r in pollyanna] == [
+        (1, 'Polly Leader', 2), (2, 'Quinn Second', 2)]
+    assert {r.division_name for r in handicap} == {'Handicap Pay Sheet'}
+    assert {r.division_name for r in pollyanna} == {'Pollyanna Pay Sheet'}
+    assert [r.user_id for r in handicap + pollyanna if r.place == 1] == [casey.id, polly.id]
+    assert reigning_champion_user_ids() == frozenset({casey.id, polly.id})
+    assert db.session.get(User, polly.id).is_reigning_champion is True
+    assert db.session.get(User, quinn.id).is_reigning_champion is False
+
+
+def test_records_show_prints_both_divisions(app, golf_leagues):
+    from core.records.cli import records_cli
+    season = app.config['SEASON_YEAR']
+    _banked_season(season, league_id=golf_leagues['handicap'].id)
+    _pollyanna_room(season, league_id=golf_leagues['pollyanna'].id)
+    runner = app.test_cli_runner()
+    assert runner.invoke(records_cli, ['close', 'golf', str(season)]).exit_code == 0
+
+    index = runner.invoke(records_cli, ['show'])
+    assert index.exit_code == 0, index.output
+    assert f'golf {season} handicap: 4 finishers' in index.output
+    assert f'golf {season} pollyanna: 2 finishers' in index.output
+
+    board = runner.invoke(records_cli, ['show', 'golf', str(season)])
+    assert board.exit_code == 0, board.output
+    out = board.output
+    assert 'Handicap Pay Sheet: 4 finishers' in out and 'Pollyanna Pay Sheet: 2 finishers' in out
+    # Each league's board under its own name, the house league first.
+    assert out.index('Handicap Pay Sheet') < out.index('Casey Champion') \
+        < out.index('Pollyanna Pay Sheet') < out.index('Polly Leader')
+
+
+def test_a_league_with_no_enrollee_is_skipped_and_named(app, golf_leagues):
+    """Review Focus 5: the empty league is named and skipped, the other closes."""
+    from core.records.cli import records_cli
+    season = app.config['SEASON_YEAR']
+    casey, *_ = _banked_season(season, league_id=golf_leagues['handicap'].id)
+
+    result = app.test_cli_runner().invoke(records_cli, ['close', 'golf', str(season)])
+
+    assert result.exit_code == 0, result.output
+    assert f'Pollyanna Pay Sheet: nobody on the sheet in {season}, skipped' in result.stderr
+    assert 'Handicap Pay Sheet: 4 finishers on record' in result.output
+    rows = finishes_for('golf', season)
+    assert {r.division for r in rows} == {'handicap'}
+    assert rows[0].user_id == casey.id
+
+
+def test_every_league_empty_is_an_empty_board(app, golf_leagues):
+    from core.records.cli import records_cli
+    season = app.config['SEASON_YEAR']
+    _event(season, 'Sony Open in Hawaii', 1)
+    result = app.test_cli_runner().invoke(records_cli, ['close', 'golf', str(season)])
+    assert result.exit_code == 1
+    assert 'the board is empty' in result.output
+    assert 'Handicap Pay Sheet: nobody on the sheet' in result.stderr
+    assert finishes_for('golf', season) == []
+
+
+def test_a_closed_handicap_board_never_crowns_the_pollyanna_pages(app, client, golf_leagues):
+    """The record is read per league: Handicap's closed board crowns the
+    Handicap Sheet and Record Room only. Pollyanna's own banked season stays
+    off the record until it is closed, and never borrows Casey's crown."""
+    from models.records import FinishDraft, record_season
+    season = app.config['SEASON_YEAR']
+    casey, *_ = _banked_season(season, league_id=golf_leagues['handicap'].id)
+    _pollyanna_room(season, league_id=golf_leagues['pollyanna'].id)
+    record_season('golf', season, [
+        FinishDraft(casey.id, 'Casey Champion', 1, 'champion', '$4,200,000',
+                    division='handicap', division_name='Handicap Pay Sheet'),
+    ])
+
+    for url in ('/golf/handicap/', '/golf/handicap/stats'):
+        body = client.get(url).get_data(as_text=True)
+        fold = body[body.index('id="golf-champion"'):]
+        fold = fold[:fold.index('</section>')]
+        assert 'Casey Champion' in fold, url
+        assert 'On the club’s record.' in fold, url
+        assert f'href="/records#board-golf-{season}-handicap"' in fold, url
+
+    for url in ('/golf/pollyanna/', '/golf/pollyanna/stats'):
+        body = client.get(url).get_data(as_text=True)
+        assert 'Casey Champion' not in body, url
+        assert 'On the club’s record.' not in body, url
+        assert '#board-golf-' not in body, url

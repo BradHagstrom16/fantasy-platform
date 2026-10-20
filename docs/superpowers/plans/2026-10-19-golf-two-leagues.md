@@ -286,7 +286,7 @@ Copy: one block per league in ordinal order with its name, its fee from the row,
 
 - [x] **Step 1:** Failing tests: `test_nudge_shows_for_an_unpaid_line_in_that_league_only` (Brad unpaid in Pollyanna, paid in Handicap: the Pollyanna sheet carries the card with Pollyanna's fee, the Handicap sheet does not); `test_nudge_hides_for_admins_commissioners_and_blank_rails`; `test_picks_open_letter_carries_the_leagues_fee_strip` (+ `test_no_member_self_mark_control`).
 - [x] **Step 2:** FAIL. **Step 3:** Implement under impeccable (the gate takes the line, `payment_nudge_for(line, is_platform_admin)`, the CFB/Docket shape; the card is a `.golf-leaf` of the room's own, not the platform partial; `tab_block` gained `name=` so the strip names the league). **Step 4:** PASS; full suite + ruff; the D3 assertion audit in the PR body. **Step 5:** Commit: `golf: Settle the Tab per league`.
-- [x] **Step 6:** Smoke the sheet, the four Back Office pages and the card on 5099 (done 2026-10-19 via /browse; report `.gstack/browse-reports/2026-10-19-1741-golf-prb/`, local, not committed); open PR B (draft). CodeRabbit clean; merge: Brad's.
+- [x] **Step 6:** Smoke the sheet, the four Back Office pages and the card on 5099 (done 2026-10-19 via /browse; report `.gstack/browse-reports/2026-10-19-1741-golf-prb/`, local, not committed); open PR B (draft). CodeRabbit clean; merged 2026-10-19 as db3cf0e (#271).
 
 ---
 
@@ -310,8 +310,8 @@ Branch `golf-two-leagues-c` from `main` after PR B.
 - `SEASON_ARCHIVES` keys become `(game, year, division)`: `('cfb', 2025, '')`, `('worldcup', 2026, '')`, `('golf', 2026, 'handicap')`.
 - `/records`: a fold per (game, year, division) headed `game_name` + `division_name` when set; anchors `#board-{game}-{year}` gain `-{division}` when set; the roll of champions shows the division name under the game.
 
-- [ ] **Step 1:** Failing tests: `test_close_golf_writes_one_board_per_league` (two place-1 rows, both trophies via `reigning_champion_user_ids`); `test_records_show_prints_both_divisions` (review G3); `test_a_league_with_no_enrollee_is_skipped_and_named`; `test_check_board_validates_per_division` (Brad at place 1 in both divisions passes; the same user twice in one division fails); `test_records_page_folds_each_league` and the archive link `/golf/handicap/stats?season=2026`; the migration backfill asserted on Postgres (`@pytest.mark.postgres`).
-- [ ] **Step 2:** FAIL. **Step 3:** Implement; `migration-reviewer` on the migration; Postgres migration chain. **Step 4:** PASS; full suite both engines. **Step 5:** Commit: `records: a division per board (golf's two leagues)`
+- [x] **Step 1:** Failing tests: `test_close_golf_writes_one_board_per_league` (two place-1 rows, both trophies via `reigning_champion_user_ids`); `test_records_show_prints_both_divisions` (review G3); `test_a_league_with_no_enrollee_is_skipped_and_named`; `test_check_board_validates_per_division` (Brad at place 1 in both divisions passes; the same user twice in one division fails); `test_records_page_folds_each_league` and the archive link `/golf/handicap/stats?season=2026`; the migration backfill asserted on Postgres (`@pytest.mark.postgres`).
+- [x] **Step 2:** FAIL. **Step 3:** Implement; `migration-reviewer` on the migration; Postgres migration chain. **Step 4:** PASS; full suite both engines. **Step 5:** Commit: `records: a division per board (golf's two leagues)`
 
 ### Task C2: The lounge
 
@@ -321,7 +321,7 @@ Branch `golf-two-leagues-c` from `main` after PR B.
 
 **Interfaces:** `build_lounge_context(user, state)` adds `league` (slug of the viewer's league: `enrollments_for` lowest ordinal, else `house_league()`), `league_name`, and `other_lines: list[dict(name, place, money, url)]` for a member of more than one league; `total_enrolled` counts every golf seat (the club's number), the board and `mine` are the viewer's league's. Every `url_for('golf.…')` in the four partials passes `league=g.league`. Pre-panel copy under impeccable names both sheets in one line ("Two sheets this year: the Handicap and the Pollyanna. Take a seat on either."); the ask stays one `.hl-cta` to `golf.join`.
 
-- [ ] **Step 1:** Failing tests: `test_lounge_panel_is_the_viewers_league_and_names_the_other_for_brad`; `test_lounge_links_carry_the_league`; the firewall and CTA parity locks keep passing. **Step 2:** FAIL. **Step 3:** Implement under impeccable (root `DESIGN.md` headliner system + `games/golf/DESIGN.md` §8.24). **Step 4:** PASS. **Step 5:** Commit: `golf lounge: the viewer's sheet, the other sheet named`
+- [x] **Step 1:** Failing tests: `test_lounge_panel_is_the_viewers_league_and_names_the_other_for_brad`; `test_lounge_links_carry_the_league`; the firewall and CTA parity locks keep passing. **Step 2:** FAIL. **Step 3:** Implement under impeccable (root `DESIGN.md` headliner system + `games/golf/DESIGN.md` §8.24). **Step 4:** PASS. **Step 5:** Commit: `golf lounge: the viewer's sheet, the other sheet named`
 
 ### Task C3: Announce audiences per league
 
@@ -331,7 +331,7 @@ Branch `golf-two-leagues-c` from `main` after PR B.
 
 **Interfaces:** `resolve_recipients(audiences, active_only)` accepts `golf:<slug>`; `golf` alone is every league; the Announcement row stores the keys as today (comma-joined); the Tribune files golf issues as before.
 
-- [ ] **Step 1:** Failing test `test_announce_golf_audiences_are_per_league_or_all`. **Step 2:** FAIL. **Step 3:** Implement. **Step 4:** PASS. **Step 5:** Commit: `announce: a golf audience per league`
+- [x] **Step 1:** Failing test `test_announce_golf_audiences_are_per_league_or_all`. **Step 2:** FAIL. **Step 3:** Implement. **Step 4:** PASS. **Step 5:** Commit: `announce: a golf audience per league`
 
 ### Task C4: Docs, ADR, memory
 
@@ -343,7 +343,8 @@ Branch `golf-two-leagues-c` from `main` after PR B.
 - Modify: `docs/golf-pickem-launch-prep-roadmap-2026-06-30.md` (the prod import runbook adds `--league handicap`)
 - Test: `tests/test_golf_design_doc.py`, `tests/test_design_*.py`
 
-- [ ] **Step 1:** Write the rows and sections; run `tests/test_golf_design_doc.py`; PASS. **Step 2:** Commit: `docs: ADR-075 two golf leagues; DESIGN.md §9; CLAUDE.md`. Open PR C; CodeRabbit clean; merge. Deploy with `./deploy.sh` (pre-migrate dump runs; the two migrations apply to empty golf tables); post-deploy: `systemctl status`, journal scan, `ps -o args= -C gunicorn`, then `flask golf league list` on the box shows both rows.
+- [x] **Step 1:** Write the rows and sections; run `tests/test_golf_design_doc.py`; PASS. **Step 2:** Commit: `docs: ADR-075 two golf leagues; DESIGN.md §9; CLAUDE.md`.
+- [ ] **Step 3:** Open PR C; CodeRabbit clean; merge. Deploy with `./deploy.sh` (pre-migrate dump runs; `32cd68a3e8ea` seeds both leagues into empty golf tables, `e79308879acb` files the record's existing golf rows under division `handicap` (prod has none) and every other game's under `''`); post-deploy: `systemctl status`, journal scan, `ps -o args= -C gunicorn`, then `flask golf league list` on the box shows both rows.
 
 ### Verification (end to end)
 

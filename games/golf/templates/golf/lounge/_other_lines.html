@@ -1,0 +1,11 @@
+{# The other sheet (ADR-075): a member of more than one league reads, under
+   their own line, where they stand on each other sheet, and the link into it.
+   The panel itself is the lowest-ordinal line; this is the only place the
+   lounge names a second league. Lounge classes only (the Informational
+   hairline, the gold route link); the money is a figure with its word. #}
+{%- for line in g.other_lines %}
+<div class="field-impact">
+  <span class="field-impact-line">On the {{ line.name }}: {{ line.money }} {{ line.word }} <span class="hl-nowrap">&middot; {{ line.place }} of {{ line.field }}.</span></span>
+  <a class="route-link" href="{{ url_for('golf.index', league=line.slug) }}">That sheet &rsaquo;</a>
+</div>
+{%- endfor %}

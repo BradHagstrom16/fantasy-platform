@@ -570,13 +570,15 @@ def test_sheet_names_tied_champions_and_the_record_once_closed(app, client, seas
     assert 'Alex' in body and 'Blake' in body
 
     record_season('golf', season, [
-        FinishDraft(a.id, 'Alex', 1, 'champion', '$900'),
-        FinishDraft(b.id, 'Blake', 1, 'champion', '$900'),
+        FinishDraft(a.id, 'Alex', 1, 'champion', '$900',
+                    division='handicap', division_name='Handicap Pay Sheet'),
+        FinishDraft(b.id, 'Blake', 1, 'champion', '$900',
+                    division='handicap', division_name='Handicap Pay Sheet'),
     ])
     body = client.get('/golf/handicap/').get_data(as_text=True)
     fold = body[body.index('id="golf-champion"'):body.index('</section>', body.index('id="golf-champion"'))]
     assert 'On the club’s record.' in fold
-    assert f'href="/records#board-golf-{season}"' in fold
+    assert f'href="/records#board-golf-{season}-handicap"' in fold
     assert 'The season is banked.' not in fold
 
 

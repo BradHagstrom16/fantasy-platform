@@ -14,7 +14,7 @@ from urllib.parse import parse_qs, urlsplit
 from extensions import db
 from games.golf.services.payment import payment_nudge_for
 from games.golf.services.reminders import send_picks_open_email
-from tests.test_golf_leagues import (
+from tests._golf_helpers import (
     _line_of,
     _member,
     _platform_admin,

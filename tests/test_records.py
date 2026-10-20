@@ -156,7 +156,98 @@ def test_seasons_on_record_newest_first(app):
     record_season('cfb', 2025, _drafts(('A', 1)))
     record_season('worldcup', 2026, _drafts(('B', 1)))
     record_season('cfb', 2026, _drafts(('C', 1)))
-    assert seasons_on_record() == [('cfb', 2026), ('worldcup', 2026), ('cfb', 2025)]
+    assert seasons_on_record() == [
+        ('cfb', 2026, '', ''), ('worldcup', 2026, '', ''), ('cfb', 2025, '', '')]
+
+
+# --- divisions (golf's two leagues, ADR-075) -----------------------------------
+
+def _league_drafts(division, division_name, *entries):
+    """(name, place[, user_id]) tuples -> FinishDrafts of one division."""
+    return [FinishDraft(user_id=e[2] if len(e) > 2 else None, name=e[0], place=e[1],
+                        outcome=None, detail=None, division=division,
+                        division_name=division_name) for e in entries]
+
+
+def test_check_board_validates_per_division(app):
+    """Each division is its own board: one member may win both, a name may
+    stand in both, and each board must be a competition rank of its own."""
+    brad = _user('brad')
+    rows = record_season('golf', 2026, [
+        *_league_drafts('handicap', 'Handicap Pay Sheet', ('Brad', 1, brad.id), ('B', 2)),
+        *_league_drafts('pollyanna', 'Pollyanna Pay Sheet', ('Brad', 1, brad.id),
+                        ('B', 2), ('C', 3)),
+    ])
+    assert [(r.division, r.name, r.place, r.field_size) for r in rows] == [
+        ('handicap', 'Brad', 1, 2), ('handicap', 'B', 2, 2),
+        ('pollyanna', 'Brad', 1, 3), ('pollyanna', 'B', 2, 3), ('pollyanna', 'C', 3, 3)]
+    assert {r.division_name for r in rows if r.division == 'pollyanna'} == {
+        'Pollyanna Pay Sheet'}
+
+    with pytest.raises(InvalidBoard, match='golf 2027 pollyanna: one member under two names'):
+        record_season('golf', 2027, [
+            *_league_drafts('handicap', 'Handicap Pay Sheet', ('Brad', 1, brad.id)),
+            *_league_drafts('pollyanna', 'Pollyanna Pay Sheet', ('Brad', 1, brad.id),
+                            ('Also Brad', 2, brad.id)),
+        ])
+    # A place 1 in one division does not rank the other: each needs its own.
+    with pytest.raises(InvalidBoard, match='golf 2027 pollyanna: places .* not a competition rank'):
+        record_season('golf', 2027, [
+            *_league_drafts('handicap', 'Handicap Pay Sheet', ('A', 1)),
+            *_league_drafts('pollyanna', 'Pollyanna Pay Sheet', ('B', 2)),
+        ])
+    assert finishes_for('golf', 2027) == []
+
+
+def test_check_board_refuses_a_division_named_two_ways_or_not_at_all(app):
+    """/records folds by (division, division_name): a division under two
+    names would print its board twice under one anchor."""
+    with pytest.raises(InvalidBoard, match=r"golf 2027 handicap: division named \['A', 'B'\]"):
+        record_season('golf', 2027, [*_league_drafts('handicap', 'A', ('X', 1)),
+                                     *_league_drafts('handicap', 'B', ('Y', 2))])
+    with pytest.raises(InvalidBoard, match=r"golf 2027 handicap: division named \[''\]"):
+        record_season('golf', 2027, _league_drafts('handicap', '', ('X', 1)))
+    with pytest.raises(InvalidBoard, match=r"cfb 2027: division named \['Stray'\]"):
+        record_season('cfb', 2027, _league_drafts('', 'Stray', ('X', 1)))
+    with pytest.raises(InvalidBoard, match='golf 2027: an unnamed board beside the leagues'):
+        record_season('golf', 2027, [*_league_drafts('handicap', 'Handicap Pay Sheet', ('X', 1)),
+                                     *_league_drafts('', '', ('Y', 1))])
+    assert finishes_for('golf', 2027) == [] and finishes_for('cfb', 2027) == []
+
+
+def test_finishes_for_reads_one_division_or_every_one(app):
+    record_season('golf', 2026, [
+        *_league_drafts('handicap', 'Handicap Pay Sheet', ('H', 1)),
+        *_league_drafts('pollyanna', 'Pollyanna Pay Sheet', ('P', 1)),
+    ])
+    assert [r.name for r in finishes_for('golf', 2026)] == ['H', 'P']
+    assert [r.name for r in finishes_for('golf', 2026, division='pollyanna')] == ['P']
+    assert seasons_on_record() == [
+        ('golf', 2026, 'handicap', 'Handicap Pay Sheet'),
+        ('golf', 2026, 'pollyanna', 'Pollyanna Pay Sheet')]
+    assert [(r.division, r.name) for r in champions()] == [('handicap', 'H'), ('pollyanna', 'P')]
+
+
+def test_force_rewrites_every_division_of_the_season(app):
+    """One close of a golf year is both leagues: --force replaces both."""
+    record_season('golf', 2026, [
+        *_league_drafts('handicap', 'Handicap Pay Sheet', ('H', 1)),
+        *_league_drafts('pollyanna', 'Pollyanna Pay Sheet', ('P', 1)),
+    ])
+    with pytest.raises(SeasonAlreadyOnRecord):
+        record_season('golf', 2026, _league_drafts('handicap', 'Handicap Pay Sheet', ('Z', 1)))
+    record_season('golf', 2026, _league_drafts('handicap', 'Handicap Pay Sheet', ('Z', 1)),
+                  force=True)
+    assert [(r.division, r.name) for r in finishes_for('golf', 2026)] == [('handicap', 'Z')]
+
+
+def test_both_league_champions_reign(app):
+    h, p = _user('h'), _user('p')
+    record_season('golf', 2026, [
+        *_league_drafts('handicap', 'Handicap Pay Sheet', ('H', 1, h.id)),
+        *_league_drafts('pollyanna', 'Pollyanna Pay Sheet', ('P', 1, p.id)),
+    ])
+    assert reigning_champion_user_ids() == frozenset({h.id, p.id})
 
 
 # --- the reigning champion --------------------------------------------------

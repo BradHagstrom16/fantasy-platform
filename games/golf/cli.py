@@ -480,12 +480,23 @@ def league_cli():
 
 
 @league_cli.command('list')
-def league_list_cmd():
-    """One line per league: slug, name, entry fee, penalty, ordinal."""
+@click.option('--season', type=int, default=None,
+              help='Season whose lines are counted (default: SEASON_YEAR).')
+def league_list_cmd(season):
+    """One line per league: slug, name, entry fee, penalty, ordinal, and the
+    season's line count (the check before `records close golf`)."""
+    from sqlalchemy import func, select
+
+    from games.golf.models import GolfEnrollment
     from games.golf.services.leagues import leagues
+    season = season or current_app.config['SEASON_YEAR']
+    counts = dict(db.session.execute(
+        select(GolfEnrollment.league_id, func.count())
+        .filter_by(season_year=season).group_by(GolfEnrollment.league_id)).all())
     for league in leagues():
         click.echo(f"{league.slug:<10} {league.name:<24} fee ${league.entry_fee:<4} "
-                   f"penalty ${league.penalty_per_incident:<4} ordinal {league.ordinal}")
+                   f"penalty ${league.penalty_per_incident:<4} ordinal {league.ordinal}  "
+                   f"lines {season} {counts.get(league.id, 0)}")
 
 
 @league_cli.command('set')

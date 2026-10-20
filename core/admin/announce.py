@@ -26,13 +26,14 @@ from sqlalchemy.orm import joinedload
 
 from core.admin import admin_bp
 from core.admin.routes import admin_required
+from core.audiences import audience_choices, audience_labels
 from extensions import db, limiter
 from games.cfb.models import CfbEnrollment
 from games.cfb.services.announce_blocks import BOARDS as SURVIVOR_BOARDS
 from games.docket.models import DocketEnrollment
 from games.docket.services.announce_blocks import BOARDS as DOCKET_BOARDS
 from games.docket.services.weeks import SEASON_YEAR as DOCKET_SEASON_YEAR
-from games.golf.models import GolfEnrollment
+from games.golf.models import GolfEnrollment, GolfLeague
 from games.registry import GAMES
 from games.worldcup.constants import SEASON_YEAR as WC_SEASON_YEAR
 from games.worldcup.models import WorldCupEnrollment
@@ -51,6 +52,7 @@ logger = logging.getLogger(__name__)
 
 MAX_SUBJECT = 200   # also the headline and inbox-preview cap (String(200))
 MAX_BODY = 10_000
+_AUDIENCES_LENGTH = Announcement.audiences.type.length   # String(64): every key ticked today is 53
 
 _VALID_FILTERS = ('all', 'active')
 
@@ -113,8 +115,8 @@ def _cfb_recipients(active_only):
     ]
 
 
-def _golf_recipients(active_only):
-    """Golf recipients for the current season.
+def _golf_recipients(active_only, league_slug=None):
+    """Golf recipients for the current season: one league's, or every league's.
 
     Golf has no elimination/withdrawal concept, so active == enrolled and
     ``active_only`` is accepted but ignored.
@@ -125,6 +127,9 @@ def _golf_recipients(active_only):
         .filter_by(season_year=season)
         .options(joinedload(GolfEnrollment.user))
     )
+    if league_slug is not None:
+        stmt = stmt.join(GolfLeague, GolfEnrollment.league_id == GolfLeague.id).where(
+            GolfLeague.slug == league_slug)
     enrollments = db.session.execute(stmt).scalars().all()
     return [
         Recipient(e.user.email, e.user.get_display_name())
@@ -160,21 +165,24 @@ _RESOLVERS = {
 
 
 def resolve_recipients(audiences, active_only):
-    """Resolve (email, name) recipients for the chosen games.
+    """Resolve (email, name) recipients for the chosen audiences.
 
-    ``audiences`` is a list of registry slugs; the union is deduplicated by
-    lowercased email, first occurrence wins, in registry order.
+    ``audiences`` is a list of audience keys (a registry slug, or
+    ``golf:<league slug>``); the union is deduplicated by lowercased email,
+    first occurrence wins, in catalogue order.
     """
     chosen = set(audiences)
     seen = set()
     recipients = []
-    for entry in GAMES:
-        if entry.slug not in chosen:
+    for key, _label in audience_choices():
+        if key not in chosen:
             continue
-        for r in _RESOLVERS[entry.slug](active_only):
-            key = r.email.strip().lower()
-            if key and key not in seen:
-                seen.add(key)
+        slug, _, qualifier = key.partition(':')
+        args = (qualifier,) if qualifier else ()
+        for r in _RESOLVERS[slug](active_only, *args):
+            email = r.email.strip().lower()
+            if email and email not in seen:
+                seen.add(email)
                 recipients.append(r)
     return recipients
 
@@ -260,11 +268,15 @@ def _errors(values, *, complete):
     (``complete``: preview, test and send need a subject, a body, and at
     least one game)."""
     errors = []
-    valid_games = {entry.slug for entry in GAMES}
-    if any(slug not in valid_games for slug in values['audiences']):
+    choices = audience_choices()
+    valid_audiences = dict(choices)
+    if any(key not in valid_audiences for key in values['audiences']):
         errors.append('Pick a valid audience.')
     elif complete and not values['audiences']:
         errors.append('Pick at least one game to send to.')
+    elif len(_stored_audiences(values['audiences'], choices)) > _AUDIENCES_LENGTH:
+        errors.append('Too many audiences to store: pick The Pay Sheet, which is every golf league, '
+                      'rather than the leagues one by one.')
     if values['recipient_filter'] not in _VALID_FILTERS:
         errors.append('Pick a valid recipient filter.')
     if values['cta'] not in ANNOUNCEMENT_CTAS:
@@ -282,6 +294,13 @@ def _errors(values, *, complete):
     return errors
 
 
+def _stored_audiences(keys, choices) -> str:
+    """The keys as ``Announcement.audiences`` holds them: comma-joined in
+    catalogue order, each once."""
+    chosen = set(keys)
+    return ','.join(key for key, _label in choices if key in chosen)
+
+
 def _save(announcement, values):
     """Store the composer's values on a draft (a new one when ``None``).
 
@@ -297,9 +316,7 @@ def _save(announcement, values):
         if announcement.is_sent:
             db.session.rollback()
             return None
-    chosen = set(values['audiences'])
-    announcement.audiences = ','.join(
-        entry.slug for entry in GAMES if entry.slug in chosen)
+    announcement.audiences = _stored_audiences(values['audiences'], audience_choices())
     announcement.recipient_filter = values['recipient_filter']
     announcement.subject = values['subject']
     announcement.headline = values['headline'] or None
@@ -336,17 +353,17 @@ def _page(announcement, values, preview=None):
     sent = db.session.scalars(
         select(Announcement).where(Announcement.sent_at.is_not(None))
         .order_by(Announcement.sent_at.desc()).limit(25)).all()
-    names = {entry.slug: entry.display_name for entry in GAMES}
+    choices = audience_choices()
 
     def audience_label(item):
         # A sent row with no games is a pre-desk letter (core/tribune/pre_desk.py).
-        return (' + '.join(names[slug] for slug in item.audience_list)
+        return (' + '.join(audience_labels(item.audience_list, choices))
                 or ('Audience not recorded' if item.is_sent else 'No games picked'))
 
     return render_template(
         'admin/announce.html',
         announcement=announcement, form_data=values, preview=preview,
-        audiences=list(names.items()), audience_label=audience_label,
+        audiences=choices, audience_label=audience_label,
         when=format_deadline_short, cta_menu=CTA_MENU, board_menu=BOARD_MENU,
         drafts=drafts, sent=sent,
     )

@@ -21,12 +21,12 @@ from types import SimpleNamespace
 from typing import Any, Literal
 
 from flask import current_app
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from extensions import db
-from games.golf.models import GolfPick
+from games.golf.models import GolfEnrollment, GolfPick
 from games.golf.services.enrollment import enrollments_for
-from games.golf.services.leagues import house_league
+from games.golf.services.leagues import house_league, leagues
 from games.golf.services.reads import (
     next_tournament,
     season_enrollments,
@@ -35,7 +35,13 @@ from games.golf.services.reads import (
     tournament_picks,
     tournament_results,
 )
-from games.golf.services.sheet import build_sheet, event_clock, live_event, week_lines
+from games.golf.services.sheet import (
+    build_sheet,
+    competition_ranks,
+    event_clock,
+    live_event,
+    week_lines,
+)
 from games.golf.utils import format_lock, get_current_time, the_event
 
 GolfLoungeState = Literal['pre', 'live', 'post']
@@ -84,7 +90,12 @@ def build_lounge_context(user: Any, state: GolfLoungeState | None) -> dict:
 
     The panel shows one league (ADR-075): the viewer's lowest-ordinal line's,
     else the house league. ``league`` is its slug, for the panel's links
-    (the lounge is outside the room, so every league url_for names it).
+    (the lounge is outside the room, so every league url_for names it); the
+    door into the room (``golf.room``) follows the league cookie instead.
+    ``total_enrolled`` is the club's number, every golf seat this season;
+    the board and ``mine`` are the panel's league. A member of more than
+    one league gets ``other_lines``: each other line's banked money and
+    place, one query per line, never per row.
     """
     season_year = _season()
     tournaments = season_tournaments(season_year)
@@ -92,7 +103,8 @@ def build_lounge_context(user: Any, state: GolfLoungeState | None) -> dict:
     enrollment = lines[0] if lines else None
     league = enrollment.league if enrollment is not None else house_league()
     enrollments = season_enrollments(season_year, league.id)
-    total_enrolled = len(enrollments)
+    total_enrolled = db.session.scalar(
+        select(func.count()).select_from(GolfEnrollment).filter_by(season_year=season_year))
     if state is None:
         return {
             'season_year': season_year,
@@ -106,11 +118,13 @@ def build_lounge_context(user: Any, state: GolfLoungeState | None) -> dict:
     ctx = {
         'season_year': season_year,
         'league': league.slug,
+        'league_name': league.name,
         'enrollment': enrollment,
         'is_enrolled': is_enrolled,
         'viewer_mode': 'member' if is_enrolled else 'view',
         'display_name': user.get_display_name(),
         'total_enrolled': total_enrolled,
+        'other_lines': [_other_line(line, season_year) for line in lines[1:]],
         'archived_tiles': [],
     }
     if state == 'pre':
@@ -122,10 +136,25 @@ def build_lounge_context(user: Any, state: GolfLoungeState | None) -> dict:
     return ctx
 
 
+def _other_line(line, season_year: int) -> dict:
+    """The viewer's line on another league's sheet: the banked money and the
+    place among that league's enrollees (stored totals, no live pencil)."""
+    totals = sorted((e.total_points or 0 for e in season_enrollments(season_year, line.league_id)),
+                    reverse=True)
+    mine = line.total_points or 0
+    place = competition_ranks(totals)[totals.index(mine)][1]
+    return {
+        'name': line.league.name, 'slug': line.league.slug,
+        'place': place, 'field': len(totals), 'money': _money(mine), 'word': 'banked',
+    }
+
+
 def _context_pre(tournaments) -> dict:
-    """Before the first lock: the opening event and when it locks."""
+    """Before the first lock: the opening event and when it locks, and the
+    sheets' names as their rows hold them (a rename follows)."""
     first = tournaments[0] if tournaments else None
     return {
+        'sheet_names': [league.name for league in leagues()],
         'court_line': 'One golfer a week · spent once',
         'game_tile_label': (f'OPENS · {first.start_date:%b %-d}'.upper()
                             if first is not None else 'PRESEASON'),

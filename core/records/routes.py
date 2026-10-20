@@ -10,19 +10,19 @@ from core.records import records_bp
 from games.registry import get_entry
 from models.records import champions, finishes_for, seasons_on_record
 
-# The room's own archive of a season, by endpoint name so this module never
-# imports a game: a bare endpoint, or ``(endpoint, kwargs)`` for a page that
-# needs URL arguments (the Pay Sheet's Record Room: its league in the path,
-# the season as ``?season=``). A
-# season with no entry simply shows no link. Only a PUBLIC page pinned to
+# The room's own archive of a board, keyed (game, season_year, division) and
+# by endpoint name so this module never imports a game: a bare endpoint, or
+# ``(endpoint, kwargs)`` for a page that needs URL arguments (the Pay Sheet's
+# Record Room: its league in the path, the season as ``?season=``). A board
+# with no entry simply shows no link. Only a PUBLIC page pinned to
 # that season belongs here: this page is public, and a live room page (the
 # Docket's ledger is members-only and always the current season) would send
 # a visitor to a join page or to the wrong year. The Docket's entry waits for
 # a public page pinned to one season.
 SEASON_ARCHIVES = {
-    ('cfb', 2025): 'cfb.history',
-    ('worldcup', 2026): 'worldcup.leaderboard',
-    ('golf', 2026): ('golf.record_room', {'league': 'handicap', 'season': 2026}),
+    ('cfb', 2025, ''): 'cfb.history',
+    ('worldcup', 2026, ''): 'worldcup.leaderboard',
+    ('golf', 2026, 'handicap'): ('golf.record_room', {'league': 'handicap', 'season': 2026}),
 }
 
 
@@ -57,17 +57,20 @@ def _row(finish) -> dict:
 def index():
     roll = [
         {**_row(row), 'game': row.game, 'season_year': row.season_year,
-         'game_name': _game_name(row.game)}
+         'game_name': _game_name(row.game), 'division': row.division,
+         'division_name': row.division_name}
         for row in champions()
     ]
     boards = []
-    for game, season_year in seasons_on_record():
-        archive = SEASON_ARCHIVES.get((game, season_year))
+    for game, season_year, division, division_name in seasons_on_record():
+        archive = SEASON_ARCHIVES.get((game, season_year, division))
         boards.append({
             'game': game,
             'season_year': season_year,
+            'division': division,
+            'division_name': division_name,
             'game_name': _game_name(game),
-            'rows': [_row(row) for row in finishes_for(game, season_year)],
+            'rows': [_row(row) for row in finishes_for(game, season_year, division=division)],
             'archive_url': archive_url(archive) if archive else None,
         })
     return render_template('records/index.html', roll=roll, boards=boards)
