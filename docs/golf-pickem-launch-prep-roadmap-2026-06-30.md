@@ -315,7 +315,8 @@ starts ~mid-Sep 2026 once CFB/Docket launch week settles.
       names differ from `TOURNAMENTS_2026`).
 - [ ] Prod runbook: scp the archive DB to `/home/deploy/` (outside the checkout) → deploy (the ADR-075
       migrations apply: `32cd68a3e8ea` seeds both leagues, `e79308879acb` files the record's existing
-      rows under division `''`; `flask golf league list` shows both rows; fees via `flask golf league set
+      rows by game: golf's under division `handicap` (prod has closed no golf season, so none),
+      every other game's under `''`; `flask golf league list` shows both rows; fees via `flask golf league set
       SLUG --entry-fee N`) → read-only row count (expect 0) → `import-legacy … --league handicap --dry-run`
       (5 attach / 13 create / 1 collision / 0 diffs; every import is `--league handicap`, ADR-075) → Brad resolves
       `brockhusk` (`--link` or `--rename`) → real run → `verify-legacy` → re-run for 0 created / 0

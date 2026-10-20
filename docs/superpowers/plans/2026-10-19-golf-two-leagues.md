@@ -344,7 +344,7 @@ Branch `golf-two-leagues-c` from `main` after PR B.
 - Test: `tests/test_golf_design_doc.py`, `tests/test_design_*.py`
 
 - [x] **Step 1:** Write the rows and sections; run `tests/test_golf_design_doc.py`; PASS. **Step 2:** Commit: `docs: ADR-075 two golf leagues; DESIGN.md §9; CLAUDE.md`.
-- [ ] **Step 3:** Open PR C; CodeRabbit clean; merge. Deploy with `./deploy.sh` (pre-migrate dump runs; `32cd68a3e8ea` seeds both leagues into empty golf tables, `e79308879acb` files the record's existing rows under division `''`); post-deploy: `systemctl status`, journal scan, `ps -o args= -C gunicorn`, then `flask golf league list` on the box shows both rows.
+- [ ] **Step 3:** Open PR C; CodeRabbit clean; merge. Deploy with `./deploy.sh` (pre-migrate dump runs; `32cd68a3e8ea` seeds both leagues into empty golf tables, `e79308879acb` files the record's existing golf rows under division `handicap` (prod has none) and every other game's under `''`); post-deploy: `systemctl status`, journal scan, `ps -o args= -C gunicorn`, then `flask golf league list` on the box shows both rows.
 
 ### Verification (end to end)
 
