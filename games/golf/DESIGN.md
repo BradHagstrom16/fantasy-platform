@@ -1001,13 +1001,14 @@ lounge says the same money the room does; the roster floor is the shared `ROSTER
 **Two leagues, one seat (ADR-075):** the panel is the viewer's lowest-ordinal line (a member of
 both reads the Handicap panel), the house league for everyone else; the seat count on the
 conversion card is every golf seat, the club's number; the league's name rides the live and post
-panels as a `.summons-meta` line; every league link in the panels names the league, while the door
-(the panel head, "Enter the Room", "Full sheet") is `/golf/`, which follows the league cookie. A
+panels as a `.summons-meta` line; every league link in the panels names the league, and "Full
+sheet" under the board opens the board's own league, while the door (the panel head, "Enter the
+Room") is `/golf/`, which follows the league cookie. A
 member of more than one league reads, under their own line, one `.field-impact` line per other
 line (`_other_lines.html`: "On the Pollyanna Pay Sheet: $500,000 banked · 2 of 12." with the gold
 `.route-link` "That sheet ›" into it), the only place the lounge names a second league; the pre
-panel names both sheets once ("Two sheets this year: the Handicap and the Pollyanna. Take a seat on
-either.") and keeps its one ask. With
+panel names both sheets once to a viewer without a seat while the seat is open ("Two sheets this
+year: the Handicap and the Pollyanna. Take a seat on either.") and keeps its one ask. With
 three headliners the bill takes `.hl-duo--trio`: three equal columns from 1100px on two gold
 hairlines and no seal, one stacked column below, never two-and-one (the lounge bills every headliner
 as an equal).

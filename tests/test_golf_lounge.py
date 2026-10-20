@@ -301,6 +301,8 @@ def test_lounge_links_carry_the_league(app, monkeypatch, golf_leagues):
         for href in hrefs:
             assert href == '/golf/' or href.startswith('/golf/handicap/'), (state, href)
         assert '/golf/' in hrefs, state
+        if state != 'pre':
+            assert '/golf/handicap/' in hrefs, state   # "Full sheet" opens the board's own league
 
 
 def test_total_enrolled_counts_every_seat(app, monkeypatch, golf_leagues):
@@ -326,9 +328,12 @@ def test_pre_panel_names_both_sheets(app, golf_leagues):
     visitor.set_password('pw')
     db.session.add(visitor)
     db.session.commit()
+    line = 'Two sheets this year: the Handicap and the Pollyanna. Take a seat on either.'
     html = _render(app, '_panel_pre', build_lounge_context(visitor, 'pre'), join_open=True)
-    assert 'Two sheets this year: the Handicap and the Pollyanna. Take a seat on either.' in html
-    assert html.count('class="hl-cta"') == 1
+    assert line in html and html.count('class="hl-cta"') == 1
+    seated = _member(app.config['SEASON_YEAR'], 'seated', league_id=golf_leagues['handicap'].id)
+    assert line not in _render(app, '_panel_pre', build_lounge_context(seated, 'pre'), join_open=True)
+    assert line not in _render(app, '_panel_pre', build_lounge_context(visitor, 'pre'), join_open=False)
 
 
 # ============================================================================

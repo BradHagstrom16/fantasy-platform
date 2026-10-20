@@ -319,7 +319,10 @@ starts ~mid-Sep 2026 once CFB/Docket launch week settles.
       (5 attach / 13 create / 1 collision / 0 diffs; every import is `--league handicap`, ADR-075) → Brad resolves
       `brockhusk` (`--link` or `--rename`) → real run → `verify-legacy` → re-run for 0 created / 0
       changed → `SEASON_YEAR=2027` in `.env` + restart (so 19 imported members don't get a navbar link
-      into a `coming_soon` room) → one imported member logs in with their old password.
+      into a `coming_soon` room) → one imported member logs in with their old password. Before
+      `flask records close golf 2026`: confirm Pollyanna holds no 2026 line (`flask golf league list`
+      counts, or the Roster), since a league whose every line banked $0 would close with everyone
+      at place 1 and each wearing the trophy.
 
 ## Phase U — UI elevation to the DESIGN.md bar  *(starts ~mid-Sep 2026; one session per cluster)*
 

@@ -25,7 +25,7 @@
   <div class="hl-standings">
     <div class="sec-head">
       <div class="t">The final sheet</div>
-      <a class="more" href="{{ url_for(h.entry.blueprint_index) }}">Full sheet &rsaquo;</a>
+      <a class="more" href="{{ url_for('golf.index', league=g.league) }}">Full sheet &rsaquo;</a>
     </div>
     <div class="rolls">
       {%- for row in g.top -%}
