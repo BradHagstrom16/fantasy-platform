@@ -310,8 +310,8 @@ Branch `golf-two-leagues-c` from `main` after PR B.
 - `SEASON_ARCHIVES` keys become `(game, year, division)`: `('cfb', 2025, '')`, `('worldcup', 2026, '')`, `('golf', 2026, 'handicap')`.
 - `/records`: a fold per (game, year, division) headed `game_name` + `division_name` when set; anchors `#board-{game}-{year}` gain `-{division}` when set; the roll of champions shows the division name under the game.
 
-- [ ] **Step 1:** Failing tests: `test_close_golf_writes_one_board_per_league` (two place-1 rows, both trophies via `reigning_champion_user_ids`); `test_records_show_prints_both_divisions` (review G3); `test_a_league_with_no_enrollee_is_skipped_and_named`; `test_check_board_validates_per_division` (Brad at place 1 in both divisions passes; the same user twice in one division fails); `test_records_page_folds_each_league` and the archive link `/golf/handicap/stats?season=2026`; the migration backfill asserted on Postgres (`@pytest.mark.postgres`).
-- [ ] **Step 2:** FAIL. **Step 3:** Implement; `migration-reviewer` on the migration; Postgres migration chain. **Step 4:** PASS; full suite both engines. **Step 5:** Commit: `records: a division per board (golf's two leagues)`
+- [x] **Step 1:** Failing tests: `test_close_golf_writes_one_board_per_league` (two place-1 rows, both trophies via `reigning_champion_user_ids`); `test_records_show_prints_both_divisions` (review G3); `test_a_league_with_no_enrollee_is_skipped_and_named`; `test_check_board_validates_per_division` (Brad at place 1 in both divisions passes; the same user twice in one division fails); `test_records_page_folds_each_league` and the archive link `/golf/handicap/stats?season=2026`; the migration backfill asserted on Postgres (`@pytest.mark.postgres`).
+- [x] **Step 2:** FAIL. **Step 3:** Implement; `migration-reviewer` on the migration; Postgres migration chain. **Step 4:** PASS; full suite both engines. **Step 5:** Commit: `records: a division per board (golf's two leagues)`
 
 ### Task C2: The lounge
 

@@ -19381,6 +19381,15 @@ body.game-docket .back-link:focus-visible {
   color: var(--text-secondary);
 }
 .records-year { color: var(--gold-dark); font-weight: 600; font-variant-numeric: tabular-nums; }
+/* A season with more than one board (golf's leagues): the board's name under the game. */
+.records-division {
+  display: block;
+  margin-top: .1rem;
+  font-family: var(--font-news);
+  font-size: .9rem;
+  line-height: 1.3;
+  color: var(--text-secondary);
+}
 .records-champion-name {
   display: block;
   margin: .2rem 0 .25rem;

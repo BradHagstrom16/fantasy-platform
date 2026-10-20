@@ -4,9 +4,10 @@
 {% block content %}
 {# The Record (direction contract in .impeccable/surfaces/): the roll of
    champions first, newest season first, each name the door into its board;
-   the boards folded under it, the newest open. Read straight from the
-   season_finishes ledger; the recorded name always, the current name only
-   when it differs. #}
+   the boards folded under it, the newest open. A game with more than one
+   board a season (golf's leagues) folds each under its own name and anchor.
+   Read straight from the season_finishes ledger; the recorded name always,
+   the current name only when it differs. #}
 <div class="container records-wrap">
   <header class="records-masthead">
     <h1 class="records-title">The Record</h1>
@@ -19,8 +20,9 @@
     <ol class="records-roll-list">
       {% for c in roll %}
       <li class="records-champion">
-        <a class="records-champion-link" href="#board-{{ c.game }}-{{ c.season_year }}">
+        <a class="records-champion-link" href="#board-{{ c.game }}-{{ c.season_year }}{% if c.division %}-{{ c.division }}{% endif %}">
           <span class="records-line"><span class="records-year">{{ c.season_year }}</span><span class="records-game">{{ c.game_name }}</span></span>
+          {% if c.division_name %}<span class="records-division">{{ c.division_name }}</span>{% endif %}
           <span class="records-champion-name">{% if c.avatar %}<span class="records-avatar" aria-hidden="true">{{ c.avatar }}</span>{% endif %}{{ c.name }}</span>
           <span class="records-finish">{% if c.detail %}{{ c.detail }}{% endif %}{% if c.now %}{% if c.detail %} · {% endif %}now {{ c.now }}{% endif %}</span>
         </a>
@@ -32,9 +34,9 @@
   <section class="records-boards" aria-labelledby="records-boards-head">
     <h2 id="records-boards-head" class="records-head">The boards</h2>
     {% for b in boards %}
-    <details class="records-board" id="board-{{ b.game }}-{{ b.season_year }}"{% if loop.first %} open{% endif %}>
+    <details class="records-board" id="board-{{ b.game }}-{{ b.season_year }}{% if b.division %}-{{ b.division }}{% endif %}"{% if loop.first %} open{% endif %}>
       <summary class="records-board-summary">
-        <span class="records-board-title">{{ b.game_name }} {{ b.season_year }}</span>
+        <span class="records-board-title">{{ b.game_name }} {{ b.season_year }}{% if b.division_name %} · {{ b.division_name }}{% endif %}</span>
         <span class="records-board-count">{{ b.rows|length }} finisher{{ '' if b.rows|length == 1 else 's' }}<i class="bi bi-chevron-down records-board-chevron" aria-hidden="true"></i></span>
       </summary>
       <ol class="records-rows">

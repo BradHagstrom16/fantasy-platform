@@ -82,25 +82,68 @@ def test_linked_rows_carry_the_avatar_and_the_current_name_only_when_it_differs(
     assert 'now brad' not in page
 
 
-def _board(page, game, year):
-    start = page.index(f'id="board-{game}-{year}"')
+def _board(page, game, year, division=''):
+    anchor = f'board-{game}-{year}' + (f'-{division}' if division else '')
+    start = page.index(f'id="{anchor}"')
     return page[start:page.index('</details>', start)]
 
 
 def test_each_board_links_the_room_archive(client, app):
     _seed()
     record_season('docket', 2026, [FinishDraft(None, 'Docket Winner', 1, None, None)])
-    record_season('golf', 2026, [FinishDraft(None, 'Golf Winner', 1, 'champion', '$1')])
+    record_season('golf', 2026, [FinishDraft(None, 'Golf Winner', 1, 'champion', '$1',
+                                             division='handicap',
+                                             division_name='Handicap Pay Sheet')])
     page = client.get('/records').data.decode()
     with app.test_request_context():
         from flask import url_for
         assert url_for('cfb.history') in _board(page, 'cfb', 2025)
         assert url_for('worldcup.leaderboard') in _board(page, 'worldcup', 2026)
         # The Pay Sheet's archive is the Record Room pinned to that season.
-        assert url_for('golf.record_room', league='handicap', season=2026) in _board(page, 'golf', 2026)
+        assert url_for('golf.record_room', league='handicap', season=2026) in _board(
+            page, 'golf', 2026, 'handicap')
     # The Docket keeps no public archive of a season yet: its ledger is
     # members-only and always the current season, so its board links nowhere.
     assert 'records-archive-link' not in _board(page, 'docket', 2026)
+
+
+def test_records_page_folds_each_league(client, app):
+    """Golf's two leagues close as one season and read as two boards: each
+    fold headed by the game and the league, its own anchor, the house league
+    first, and the roll naming the league under the game."""
+    record_season('golf', 2026, [
+        FinishDraft(None, 'Hank Handicap', 1, 'champion', '$4,200,000',
+                    division='handicap', division_name='Handicap Pay Sheet'),
+        FinishDraft(None, 'Second H', 2, None, '$10', division='handicap',
+                    division_name='Handicap Pay Sheet'),
+        FinishDraft(None, 'Polly Pollyanna', 1, 'champion', '$900,000',
+                    division='pollyanna', division_name='Pollyanna Pay Sheet'),
+    ])
+    page = client.get('/records').data.decode()
+
+    handicap = _board(page, 'golf', 2026, 'handicap')
+    pollyanna = _board(page, 'golf', 2026, 'pollyanna')
+    assert 'Golf 2026 · Handicap Pay Sheet' in handicap and '2 finishers' in handicap
+    assert 'Golf 2026 · Pollyanna Pay Sheet' in pollyanna and '1 finisher<' in pollyanna
+    assert 'Hank Handicap' in handicap and 'Polly Pollyanna' not in handicap
+    assert 'Polly Pollyanna' in pollyanna and 'Hank Handicap' not in pollyanna
+    assert page.index('id="board-golf-2026-handicap"') < page.index('id="board-golf-2026-pollyanna"')
+    assert 'id="board-golf-2026"' not in page
+
+    roll = page[page.index('records-roll-list'):page.index('records-boards')]
+    assert roll.count('class="records-champion"') == 2
+    assert 'href="#board-golf-2026-handicap"' in roll
+    assert 'href="#board-golf-2026-pollyanna"' in roll
+    assert 'Handicap Pay Sheet' in roll and 'Pollyanna Pay Sheet' in roll
+    assert roll.index('Hank Handicap') < roll.index('Polly Pollyanna')
+
+    with app.test_request_context():
+        from flask import url_for
+        archive = url_for('golf.record_room', league='handicap', season=2026)
+    assert archive == '/golf/handicap/stats?season=2026'
+    assert archive in handicap
+    # Pollyanna's 2026 season keeps no archive entry: its fold links nowhere.
+    assert 'records-archive-link' not in pollyanna
 
 
 def test_every_season_archive_is_a_public_page(client, app, golf_leagues):

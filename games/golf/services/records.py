@@ -7,12 +7,20 @@ share and gap, ``services/sheet.py::competition_ranks``), the champion(s) at
 place 1. A season is closed once it has a schedule and every event on it is
 banked (``results_finalized``); until then the seam says what is still open.
 
+Each league is its own board (ADR-075): one close of a golf year writes a
+board per league with a line on it, each ranked on its own and tagged with
+the league's slug and name (``FinishDraft.division`` / ``division_name``), so
+both league champions reign. A league nobody joined that year is skipped and
+named.
+
 Like the Docket's seam and unlike Survivor's, the builder takes any year: the
 2026 season closes from a box whose configured season is 2027. The import
 created a real User for every 2026 member, so every row is linked and there
 is no link map.
 """
-from games.golf.services.leagues import house_league
+import click
+
+from games.golf.services.leagues import leagues
 from games.golf.services.reads import season_enrollments, season_tournaments
 from games.golf.services.sheet import competition_ranks
 from models.records import FinishDraft, SeasonNotClosed
@@ -29,9 +37,24 @@ def season_finishes(season_year: int) -> list[FinishDraft]:
             f'The Pay Sheet {season_year}: {len(open_events)} of {len(tournaments)} '
             f'events not yet banked ({names})')
 
+    drafts = []
+    for league in leagues():
+        enrollments = season_enrollments(season_year, league.id)
+        if not enrollments:
+            # `flask records close` is this seam's only caller
+            # (games/registry.py), and the record may not import a game, so
+            # the seam itself names the league it leaves off the record.
+            click.echo(f'{league.name}: nobody on the sheet in {season_year}, skipped',
+                       err=True)
+            continue
+        drafts.extend(_league_board(league, enrollments))
+    return drafts
+
+
+def _league_board(league, enrollments) -> list[FinishDraft]:
+    """One league's board: its lines by money, in its own competition rank."""
     lines = sorted(
-        # The house league's board for now; the record learns the league (C1).
-        season_enrollments(season_year, house_league().id),
+        enrollments,
         key=lambda e: (-(e.total_points or 0), e.user.get_display_name().casefold()),
     )
     ranks = competition_ranks([e.total_points or 0 for e in lines])
@@ -42,6 +65,8 @@ def season_finishes(season_year: int) -> list[FinishDraft]:
             place=rank,
             outcome='champion' if rank == 1 else None,
             detail=f'${e.total_points or 0:,}',
+            division=league.slug,
+            division_name=league.name,
         )
         for e, (rank, _label) in zip(lines, ranks, strict=True)
     ]

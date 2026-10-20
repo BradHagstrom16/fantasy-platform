@@ -168,6 +168,26 @@ def test_reigning_champion_gets_trophy_regardless_of_choice(app):
     assert u.get_avatar() == TROPHY
 
 
+def test_each_golf_league_champion_wears_the_trophy(app):
+    """Golf closes one board per league (ADR-075): both league champions
+    reign for the same season, and the runner-up of either does not."""
+    from models.records import FinishDraft, record_season
+    handicap = _make_user(app, 'handicap_champ', avatar_emoji=BASEBALL)
+    pollyanna = _make_user(app, 'pollyanna_champ')
+    runner_up = _make_user(app, 'runner_up')
+    record_season('golf', 2026, [
+        FinishDraft(handicap, 'H', 1, 'champion', None, division='handicap',
+                    division_name='Handicap Pay Sheet'),
+        FinishDraft(runner_up, 'R', 2, None, None, division='handicap',
+                    division_name='Handicap Pay Sheet'),
+        FinishDraft(pollyanna, 'P', 1, 'champion', None, division='pollyanna',
+                    division_name='Pollyanna Pay Sheet'),
+    ])
+    assert db.session.get(User, handicap).get_avatar() == TROPHY
+    assert db.session.get(User, pollyanna).get_avatar() == TROPHY
+    assert db.session.get(User, runner_up).get_avatar() == DEFAULT
+
+
 def test_only_the_latest_closed_season_reigns(app):
     """A past champion hands the trophy on when the game's next season closes."""
     old = _make_user(app, 'old')

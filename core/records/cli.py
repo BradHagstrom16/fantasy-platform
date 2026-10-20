@@ -30,6 +30,18 @@ def _print_board(rows):
         click.echo(f'{row.place:>3}  {row.name}{detail}{linked}')
 
 
+def _print_boards(rows, suffix=''):
+    """A season's rows, one board per division under its name; a game with
+    one board (a blank division) prints it bare."""
+    boards = {}
+    for row in rows:
+        boards.setdefault(row.division, []).append(row)
+    for division, board in boards.items():
+        if division:
+            click.echo(f'{board[0].division_name}: {len(board)} finishers{suffix}')
+        _print_board(board)
+
+
 @records_cli.command('close')
 @click.argument('game', type=click.Choice([entry.slug for entry in GAMES]))
 @click.argument('year', type=int)
@@ -39,8 +51,10 @@ def close(game, year, force):
 
     Refuses while the game says the season still runs, a board the record
     will not hold (empty, not a competition rank, a name or member twice),
-    and a season already on record unless --force. Survivor 2025 reads the
-    frozen archive plus games/cfb/data/season_2025_links.json. Both games'
+    and a season already on record unless --force. A game with more than
+    one board a season (golf's leagues) closes every one of them at once,
+    and --force rewrites them all. Survivor 2025 reads the frozen archive
+    plus games/cfb/data/season_2025_links.json. Both games'
     live reads are season-scoped (ADR-069), so a past season closes from
     its own rows.
     """
@@ -57,7 +71,7 @@ def close(game, year, force):
         click.echo(f'{exc}. Pass --force to rewrite it.', err=True)
         sys.exit(1)
     click.echo(f'{entry.display_name} {year}: {len(rows)} finishers on record.')
-    _print_board(rows)
+    _print_boards(rows, suffix=' on record')
     unlinked = [row.name for row in rows if row.user_id is None]
     if unlinked:
         click.echo(f'{len(unlinked)} names without an account: {", ".join(unlinked)}')
@@ -77,16 +91,17 @@ def show(game, year):
         if not seasons:
             click.echo('Nothing on record yet.')
             return
-        for slug, season_year in seasons:
-            count = len(finishes_for(slug, season_year))
-            click.echo(f'{slug} {season_year}: {count} finishers')
+        for slug, season_year, division, _division_name in seasons:
+            count = len(finishes_for(slug, season_year, division=division))
+            board = f' {division}' if division else ''
+            click.echo(f'{slug} {season_year}{board}: {count} finishers')
         return
     rows = finishes_for(game, year)
     if not rows:
         click.echo(f'{get_entry(game).display_name} {year}: nothing on record.')
         return
     click.echo(f'{get_entry(game).display_name} {year}: {len(rows)} finishers.')
-    _print_board(rows)
+    _print_boards(rows)
 
 
 def register_records_cli(app):

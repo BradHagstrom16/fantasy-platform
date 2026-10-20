@@ -301,27 +301,28 @@ def refresh_tournament_states():
 # Helpers
 # ============================================================================
 
-def _champions(season_year, fallback):
-    """The season's champion(s) for the fold, once every event is banked.
+def _champions(season_year, fallback, division):
+    """The league's champion(s) for the fold, once every event is banked.
 
-    From the club's record when the Commish has closed the season (the
-    linked place-1 rows, one query), else ``fallback``: the page's own
-    leaders, with ``on_record`` False so the fold says the record is still
-    open. Each champion is {user, name, figure}. Not yet league-scoped: the
-    record learns the league in PR C (C1), before any golf season closes.
+    From the club's record when the Commish has closed the season (this
+    league's place-1 rows, ``division`` its slug, one query), else
+    ``fallback``: the page's own leaders, with ``on_record`` False so the
+    fold says the record is still open. Each champion is {user, name, figure}.
     """
-    on_record = [row for row in finishes_for('golf', season_year) if row.place == 1]
+    on_record = [row for row in finishes_for('golf', season_year, division=division)
+                 if row.place == 1]
     if on_record:
         return [{'user': row.user, 'name': row.name, 'figure': row.detail}
                 for row in on_record], True
     return fallback, False
 
 
-def _champion_line(on_record, season_year, open_text, open_url, open_link):
-    """The fold's pencil sentence and its link."""
+def _champion_line(on_record, season_year, division, open_text, open_url, open_link):
+    """The fold's pencil sentence and its link (to this league's board)."""
     if on_record:
         return ('On the club’s record.',
-                url_for('records.index') + f'#board-golf-{season_year}', 'The Record')
+                url_for('records.index') + f'#board-golf-{season_year}-{division}',
+                'The Record')
     return open_text, open_url, open_link
 
 
@@ -407,9 +408,9 @@ def index():
     champions, on_record = (_champions(season_year, [
         {'user': row.user, 'name': row.user.get_display_name(), 'figure': f'${row.total:,.0f}'}
         for row in sheet.rows if row.rank == 1
-    ]) if final and sheet.rows else ([], False))
+    ], league.slug) if final and sheet.rows else ([], False))
     champion_line = _champion_line(
-        on_record, season_year, 'The season is banked.',
+        on_record, season_year, league.slug, 'The season is banked.',
         url_for('golf.record_room'), 'The Record Room')
 
     # Prize pool: the league's entry fees (season-scoped enrollments) + its
@@ -714,9 +715,9 @@ def record_room():
     champions, on_record = (_champions(season_year, [
         {'user': room[s['user_id']], 'name': s['name'], 'figure': f"${s['final']:,}"}
         for s in race['series'] if s['is_leader']
-    ]) if final and race['series'] else ([], False))
+    ], league.slug) if final and race['series'] else ([], False))
     champion_line = _champion_line(
-        on_record, season_year,
+        on_record, season_year, league.slug,
         'The season is banked and not on the club’s record yet; the Commish closes it.',
         url_for('golf.index'), 'The Sheet')
     return render_template('golf/record_room.html',
