@@ -32,7 +32,8 @@ from games.cfb.services.announce_blocks import BOARDS as SURVIVOR_BOARDS
 from games.docket.models import DocketEnrollment
 from games.docket.services.announce_blocks import BOARDS as DOCKET_BOARDS
 from games.docket.services.weeks import SEASON_YEAR as DOCKET_SEASON_YEAR
-from games.golf.models import GolfEnrollment
+from games.golf.models import GolfEnrollment, GolfLeague
+from games.golf.services.leagues import leagues as golf_leagues
 from games.registry import GAMES
 from games.worldcup.constants import SEASON_YEAR as WC_SEASON_YEAR
 from games.worldcup.models import WorldCupEnrollment
@@ -113,8 +114,8 @@ def _cfb_recipients(active_only):
     ]
 
 
-def _golf_recipients(active_only):
-    """Golf recipients for the current season.
+def _golf_recipients(active_only, league_slug=None):
+    """Golf recipients for the current season: one league's, or every league's.
 
     Golf has no elimination/withdrawal concept, so active == enrolled and
     ``active_only`` is accepted but ignored.
@@ -125,6 +126,9 @@ def _golf_recipients(active_only):
         .filter_by(season_year=season)
         .options(joinedload(GolfEnrollment.user))
     )
+    if league_slug is not None:
+        stmt = stmt.join(GolfLeague, GolfEnrollment.league_id == GolfLeague.id).where(
+            GolfLeague.slug == league_slug)
     enrollments = db.session.execute(stmt).scalars().all()
     return [
         Recipient(e.user.email, e.user.get_display_name())
@@ -159,22 +163,44 @@ _RESOLVERS = {
 }
 
 
-def resolve_recipients(audiences, active_only):
-    """Resolve (email, name) recipients for the chosen games.
+def audience_choices():
+    """Every audience the desk offers as (key, label), in registry order.
 
-    ``audiences`` is a list of registry slugs; the union is deduplicated by
-    lowercased email, first occurrence wins, in registry order.
+    A game's key is its registry slug; golf adds one ``golf:<league slug>``
+    key per league after the plain ``golf`` (every league).
+    """
+    choices = []
+    for entry in GAMES:
+        choices.append((entry.slug, entry.display_name))
+        if entry.slug == 'golf':
+            choices.extend((f'golf:{league.slug}', league.name)
+                           for league in golf_leagues())
+    return choices
+
+
+def audience_names():
+    return dict(audience_choices())
+
+
+def resolve_recipients(audiences, active_only):
+    """Resolve (email, name) recipients for the chosen audiences.
+
+    ``audiences`` is a list of audience keys (a registry slug, or
+    ``golf:<league slug>``); the union is deduplicated by lowercased email,
+    first occurrence wins, in catalogue order.
     """
     chosen = set(audiences)
     seen = set()
     recipients = []
-    for entry in GAMES:
-        if entry.slug not in chosen:
+    for key, _label in audience_choices():
+        if key not in chosen:
             continue
-        for r in _RESOLVERS[entry.slug](active_only):
-            key = r.email.strip().lower()
-            if key and key not in seen:
-                seen.add(key)
+        slug, _, qualifier = key.partition(':')
+        args = (qualifier,) if qualifier else ()
+        for r in _RESOLVERS[slug](active_only, *args):
+            email = r.email.strip().lower()
+            if email and email not in seen:
+                seen.add(email)
                 recipients.append(r)
     return recipients
 
@@ -260,8 +286,8 @@ def _errors(values, *, complete):
     (``complete``: preview, test and send need a subject, a body, and at
     least one game)."""
     errors = []
-    valid_games = {entry.slug for entry in GAMES}
-    if any(slug not in valid_games for slug in values['audiences']):
+    valid_audiences = audience_names()
+    if any(key not in valid_audiences for key in values['audiences']):
         errors.append('Pick a valid audience.')
     elif complete and not values['audiences']:
         errors.append('Pick at least one game to send to.')
@@ -299,7 +325,7 @@ def _save(announcement, values):
             return None
     chosen = set(values['audiences'])
     announcement.audiences = ','.join(
-        entry.slug for entry in GAMES if entry.slug in chosen)
+        key for key, _label in audience_choices() if key in chosen)
     announcement.recipient_filter = values['recipient_filter']
     announcement.subject = values['subject']
     announcement.headline = values['headline'] or None
@@ -336,7 +362,7 @@ def _page(announcement, values, preview=None):
     sent = db.session.scalars(
         select(Announcement).where(Announcement.sent_at.is_not(None))
         .order_by(Announcement.sent_at.desc()).limit(25)).all()
-    names = {entry.slug: entry.display_name for entry in GAMES}
+    names = audience_names()
 
     def audience_label(item):
         # A sent row with no games is a pre-desk letter (core/tribune/pre_desk.py).

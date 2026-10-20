@@ -331,7 +331,7 @@ Branch `golf-two-leagues-c` from `main` after PR B.
 
 **Interfaces:** `resolve_recipients(audiences, active_only)` accepts `golf:<slug>`; `golf` alone is every league; the Announcement row stores the keys as today (comma-joined); the Tribune files golf issues as before.
 
-- [ ] **Step 1:** Failing test `test_announce_golf_audiences_are_per_league_or_all`. **Step 2:** FAIL. **Step 3:** Implement. **Step 4:** PASS. **Step 5:** Commit: `announce: a golf audience per league`
+- [x] **Step 1:** Failing test `test_announce_golf_audiences_are_per_league_or_all`. **Step 2:** FAIL. **Step 3:** Implement. **Step 4:** PASS. **Step 5:** Commit: `announce: a golf audience per league`
 
 ### Task C4: Docs, ADR, memory
 

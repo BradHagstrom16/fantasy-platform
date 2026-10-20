@@ -507,3 +507,48 @@ def test_markup_error_blocks_preview_and_send(mock_send, app, client):
         assert 'no board called [[nope]]' in data
         assert 'value="send"' not in data
     mock_send.assert_not_called()
+
+
+def test_announce_golf_audiences_are_per_league_or_all(app, client, golf_leagues):
+    """`golf` is every league; `golf:<slug>` is one league's members."""
+    from core.admin.announce import resolve_recipients
+    from core.tribune.routes import _audience_line
+    from models.content import Announcement
+
+    with app.app_context():
+        hc, pol = golf_leagues['handicap'].id, golf_leagues['pollyanna'].id
+        only_hc = _make_user_inline('onlyhc')
+        only_pol = _make_user_inline('onlypol')
+        both = _make_user_inline('both')
+        _enroll_golf(only_hc.id, league_id=hc)
+        _enroll_golf(only_pol.id, league_id=pol)
+        _enroll_golf(both.id, league_id=hc)
+        _enroll_golf(both.id, league_id=pol)
+
+        def emails(audiences):
+            return sorted(r.email for r in resolve_recipients(audiences, False))
+
+        assert emails(['golf:pollyanna']) == ['both@test.com', 'onlypol@test.com']
+        assert emails(['golf:handicap']) == ['both@test.com', 'onlyhc@test.com']
+        everyone = ['both@test.com', 'onlyhc@test.com', 'onlypol@test.com']
+        assert emails(['golf']) == everyone
+        assert emails(['golf:handicap', 'golf:pollyanna']) == everyone
+        admin_id = _make_user(app, 'admin', is_admin=True)
+
+    _login(client, admin_id)
+    resp = client.post('/admin/announce', data=_compose(
+        'save', audiences=['golf:handicap']))
+    assert resp.status_code == 302
+    with app.app_context():
+        row = db.session.scalars(db.select(Announcement)).one()
+        assert row.audiences == 'golf:handicap'
+        assert _audience_line(row) == 'To Handicap Pay Sheet members'
+        page = client.get(resp.location).get_data(as_text=True)
+        assert 'value="golf:handicap" id="audience-golf-handicap"\n' in page
+        assert 'Handicap Pay Sheet' in page
+        checked = page.split('id="audience-golf-handicap"')[1].split('>')[0]
+        assert 'checked' in checked
+
+    for bad in (['golf:nowhere'], ['golf:']):
+        resp = client.post('/admin/announce', data=_compose(audiences=bad))
+        assert 'Pick a valid audience.' in resp.get_data(as_text=True)
