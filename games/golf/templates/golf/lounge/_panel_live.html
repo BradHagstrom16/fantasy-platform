@@ -33,9 +33,11 @@
     <div class="summons-line">Your seat is at the table.</div>
     {% endif %}
     <div class="summons-meta">
+      <span>{{ g.league_name }}</span>
       {% if g.next_lock %}<span>{{ g.next_event }} locks <span class="hl-nowrap">{{ g.next_lock }}.</span></span>{% elif g.next_event %}<span>{{ g.next_event }} is next; the field publishes Tuesday.</span>{% endif %}
       {% if g.leader and not (g.mine and g.mine.leads) %}<span>{{ g.leader.name }}{% if g.leader.tied %} and company{% endif %} lead{% if not g.leader.tied %}s{% endif %} with {{ g.leader.money }}.</span>{% endif %}
     </div>
+    {% include 'golf/lounge/_other_lines.html' %}
     {% if g.pick_wanted %}
     <a class="hl-cta" href="{{ url_for('golf.make_pick', tournament_id=g.next_id, league=g.league) }}">Spend a Golfer</a>
     <div class="commish-echo">No pick is $0 for the week. No penalty, no autopick.</div>

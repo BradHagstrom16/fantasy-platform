@@ -22,6 +22,8 @@
     <div class="summons-line">The schedule posts in January.</div>
     {% endif %}
     <p class="summons-sub">One golfer a week, with a backup. His prize money is yours. Spend him once; the sheet is the season&rsquo;s money.</p>
+    {# Two leagues (ADR-075): the season's two sheets, named once; the join page is where a member chooses. #}
+    <p class="summons-sub">Two sheets this year: the Handicap and the Pollyanna. Take a seat on either.</p>
     {% if g.is_enrolled %}
     <a class="hl-cta" href="{{ url_for(h.entry.blueprint_index) }}">Enter the Room</a>
     {% elif h.join_open %}

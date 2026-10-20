@@ -14,9 +14,11 @@
     <div class="summons-line">The season is banked.</div>
     <p class="summons-sub">{{ g.events }} event{{ '' if g.events == 1 else 's' }}, every line settled.</p>
     {% endif %}
+    <div class="summons-meta"><span>{{ g.league_name }}</span></div>
     <div class="field-impact">
       <a class="route-link" href="{{ url_for('golf.record_room', league=g.league) }}">The Record Room &rsaquo;</a>
     </div>
+    {% include 'golf/lounge/_other_lines.html' %}
   </div>
 
   {% if g.top %}

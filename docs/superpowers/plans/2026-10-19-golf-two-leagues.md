@@ -321,7 +321,7 @@ Branch `golf-two-leagues-c` from `main` after PR B.
 
 **Interfaces:** `build_lounge_context(user, state)` adds `league` (slug of the viewer's league: `enrollments_for` lowest ordinal, else `house_league()`), `league_name`, and `other_lines: list[dict(name, place, money, url)]` for a member of more than one league; `total_enrolled` counts every golf seat (the club's number), the board and `mine` are the viewer's league's. Every `url_for('golf.…')` in the four partials passes `league=g.league`. Pre-panel copy under impeccable names both sheets in one line ("Two sheets this year: the Handicap and the Pollyanna. Take a seat on either."); the ask stays one `.hl-cta` to `golf.join`.
 
-- [ ] **Step 1:** Failing tests: `test_lounge_panel_is_the_viewers_league_and_names_the_other_for_brad`; `test_lounge_links_carry_the_league`; the firewall and CTA parity locks keep passing. **Step 2:** FAIL. **Step 3:** Implement under impeccable (root `DESIGN.md` headliner system + `games/golf/DESIGN.md` §8.24). **Step 4:** PASS. **Step 5:** Commit: `golf lounge: the viewer's sheet, the other sheet named`
+- [x] **Step 1:** Failing tests: `test_lounge_panel_is_the_viewers_league_and_names_the_other_for_brad`; `test_lounge_links_carry_the_league`; the firewall and CTA parity locks keep passing. **Step 2:** FAIL. **Step 3:** Implement under impeccable (root `DESIGN.md` headliner system + `games/golf/DESIGN.md` §8.24). **Step 4:** PASS. **Step 5:** Commit: `golf lounge: the viewer's sheet, the other sheet named`
 
 ### Task C3: Announce audiences per league
 
