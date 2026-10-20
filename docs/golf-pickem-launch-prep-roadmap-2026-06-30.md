@@ -313,8 +313,10 @@ starts ~mid-Sep 2026 once CFB/Docket launch week settles.
       never-commits-or-emails.
 - [x] ADR-055; `CLAUDE.md` Commands lines + "never `seed-schedule` 2026 after the import" (3 legacy
       names differ from `TOURNAMENTS_2026`).
-- [ ] Prod runbook: scp the archive DB to `/home/deploy/` (outside the checkout) → deploy → read-only
-      row count (expect 0) → `--dry-run` (5 attach / 13 create / 1 collision / 0 diffs) → Brad resolves
+- [ ] Prod runbook: scp the archive DB to `/home/deploy/` (outside the checkout) → deploy (the two ADR-075
+      migrations seed the leagues; `flask golf league list` shows both rows; fees via `flask golf league set
+      SLUG --entry-fee N`) → read-only row count (expect 0) → `import-legacy … --league handicap --dry-run`
+      (5 attach / 13 create / 1 collision / 0 diffs; every import is `--league handicap`, ADR-075) → Brad resolves
       `brockhusk` (`--link` or `--rename`) → real run → `verify-legacy` → re-run for 0 created / 0
       changed → `SEASON_YEAR=2027` in `.env` + restart (so 19 imported members don't get a navbar link
       into a `coming_soon` room) → one imported member logs in with their old password.

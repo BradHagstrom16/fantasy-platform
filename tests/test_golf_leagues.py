@@ -5,11 +5,9 @@ Pollyanna. Each league is a row in ``golf_league`` carrying its own entry fee
 and penalty; every enrollment, pick and golfer usage belongs to exactly one.
 """
 import re
-from contextlib import contextmanager
 from datetime import UTC, datetime, timedelta
 
 import pytest
-from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
 from extensions import db
@@ -31,14 +29,14 @@ from games.golf.services.leagues import (
     seed_leagues,
 )
 from models.user import User
-
-
-def _user(username):
-    user = User(username=username, email=f'{username}@example.com')
-    user.set_password('x')
-    db.session.add(user)
-    db.session.commit()
-    return user
+from tests._golf_helpers import (
+    _line_of,
+    _member,
+    _platform_admin,
+    _season_event,
+    _user,
+    _viewer,
+)
 
 
 def test_seed_leagues_is_idempotent_and_ordered(app):
@@ -288,22 +286,6 @@ def test_the_other_leagues_picks_never_reach_a_leagues_aggregates(app, golf_leag
 
 # --- Task A4: sync, letters and the import learn the league ------------------
 
-def _season_event(app, name, *, status='complete', deadline_in=None):
-    """An event in the configured season; ``deadline_in`` puts its lock that far
-    ahead in league wall clock (the reminder pass reads it as CT)."""
-    from games.golf.utils import GOLF_LEAGUE_TZ
-    now = datetime.now(GOLF_LEAGUE_TZ).replace(tzinfo=None)
-    deadline = now + deadline_in if deadline_in is not None else now - timedelta(days=4)
-    event = GolfTournament(
-        api_tourn_id=f'A4-{name}'[:20], name=name, season_year=app.config['SEASON_YEAR'],
-        start_date=deadline, end_date=deadline + timedelta(days=3),
-        pick_deadline=deadline, purse=10_000_000, status=status,
-    )
-    db.session.add(event)
-    db.session.commit()
-    return event
-
-
 def _line(user, league, app, total=0):
     line = GolfEnrollment(user_id=user.id, league_id=league.id,
                           season_year=app.config['SEASON_YEAR'], total_points=total)
@@ -546,40 +528,6 @@ def test_league_set_cli_changes_the_fee(app, golf_leagues):
 
 
 # --- Task A5: the league in the URL, the resolver, every route scoped --------
-
-def _member(username, *lines, app, admin_in=None, display_name=None):
-    """A user with a line in each of ``lines`` this season (``admin_in`` is
-    the league whose line carries the commissioner flag); returns the id."""
-    user = User(username=username, email=f'{username}@example.com',
-                display_name=display_name or username)
-    user.set_password('x')
-    db.session.add(user)
-    db.session.flush()
-    for league in lines:
-        db.session.add(GolfEnrollment(
-            user_id=user.id, league_id=league.id, season_year=app.config['SEASON_YEAR'],
-            is_admin=league is admin_in))
-    db.session.commit()
-    return user.id
-
-
-@contextmanager
-def _viewer(app, user_id=None):
-    """A fresh client for one viewer, inside its own app context.
-
-    Flask-Login caches the loaded user on ``g``, and every request under the
-    fixture's app context shares that ``g``, so a test that reads as several
-    viewers gives each its own context (tests/test_cfb_player_card.py::_page).
-    The nested teardown removes its session, which is why callers pass ids.
-    """
-    client = app.test_client()
-    with app.app_context():
-        if user_id is not None:
-            with client.session_transaction() as sess:
-                sess['_user_id'] = db.session.get(User, user_id).auth_id
-                sess['_fresh'] = True
-        yield client
-
 
 def _lands(resp, path):
     return resp.status_code == 302 and resp.headers['Location'].endswith(path)
@@ -1296,18 +1244,6 @@ def _queries(client, path):
 
 
 # --- Task B4: the Roster's controls and the Back Office scope -----------------
-
-def _platform_admin(username):
-    user = _user(username)
-    user.is_admin = True
-    db.session.commit()
-    return user.id
-
-
-def _line_of(user_id, league):
-    return db.session.scalar(select(GolfEnrollment).where(
-        GolfEnrollment.user_id == user_id, GolfEnrollment.league_id == league.id))
-
 
 def test_platform_admin_appoints_and_removes_a_commissioner(app, golf_leagues):
     """The Roster's commissioner toggle (platform admin only): make and remove

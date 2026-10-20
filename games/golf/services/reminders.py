@@ -858,7 +858,9 @@ def run_reminder_check():
     # exists to prevent (audit §6). A transiently-failed recipient still receives
     # the next tier (24h→12h→1h); true per-recipient delivery tracking (the fully
     # correct fix) is a deferred enhancement, matching the recap-email trade-off.
-    # gstack-shortcut(dec-6e3392bc): per-tournament latch, upgrade when a duplicate letter lands
+    # gstack-shortcut(dec-6e3392bc): per-tournament latch (D2, ADR-075). The realistic failure
+    # is a LOST league letter, never a duplicate: a league whose every send failed is latched
+    # with the rest and never retried (warned above). Upgrade to a per-league latch if one is lost.
     # One tier flag for the tournament, written after the loop over every
     # league once any send succeeded; a league that got none is warned above.
     if success_count > 0:

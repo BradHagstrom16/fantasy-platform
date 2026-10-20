@@ -108,7 +108,16 @@ One cumulative season total; competition rank (ties share); no weekly winner, no
 
 ## 3. The Room and the Lounge
 
-The room lives under `/golf/`, scoped by `body.game-golf`. The lounge (`/`) stays the club's purple
+The room lives under `/golf/`, scoped by `body.game-golf`. Since ADR-075 (2026-10-19) the room holds
+two leagues, the Handicap Pay Sheet (the house league) and the Pollyanna Pay Sheet, and **the URL
+carries the league**: every league page is `/golf/<league>/...` (the sheet, the board, the scorecard,
+the Record Room, the pick, the Back Office); the shared pages stay at `/golf/schedule` and
+`/golf/join`; `/golf/` is the door that resolves to the viewer's league (one line: theirs; two: the
+`golf_league` cookie, else the house league; nobody: the house league; a shared page honors a
+`?league=` hint so the step off a league page keeps its stamp). An unknown slug is the club 404. The
+league is a stamp on the room, never a second room: one paper, one pen, the league's name in the
+sub-nav's small line and the page titles (§7.11), and nothing of one league on another's pages.
+The lounge (`/`) stays the club's purple
 and gold; The Pay Sheet enters it only through content, copy and its accent signature (the
 `--lounge-golf-*` pair and the `.hl-panel--golf` / `.join--golf` mapping, root `DESIGN.md` §5), never
 through this room's paper, pen variables or `.golf-*` classes (`tests/test_lounge_accent_firewall.py`).
@@ -119,7 +128,9 @@ Lounge integration is built (U7) and sits behind the flip: the registry entry ca
 renders on `/` until Phase L sets `status='open'` and `is_featured=True` together; until then the
 registry shows the coming-soon tile. The seat stays open all season while the game is open: the
 golf entry sets no `join_open`, so status alone decides and the lounge's ask retires only when the
-registry closes the game (Brad, 2026-10-06). The panels (§8.24) are the lounge's own primitives
+registry closes the game (Brad, 2026-10-06). One seat for two leagues (ADR-075): the panel is the
+viewer's lowest-ordinal line, with one line naming each other line they hold (§8.24); the join page
+is where the sheet is chosen. The panels (§8.24) are the lounge's own primitives
 and nothing else, the firewall in both directions: no `.golf-*` class, no room hex and no
 `--golf-*` variable reaches them, and the money on the bill is a figure with its word ("$1,240,000
 projected", "banked"), never the room's pencil or ink. The pen reaches the lounge only as the
@@ -291,7 +302,8 @@ No side-stripes, the pen bracket excepted (§6.10); `.row-current-user` override
 Gradient text is retired. `--text-muted` is for dark substrates only (this room uses
 `--text-secondary` = pencil). Every `/static/*` URL carries `?v={{ asset_version }}`. Country flags
 are self-hosted SVG. Touch targets ≥ 44px, body ≥ 16px, `prefers-reduced-motion` honored, no
-color-only state. Settle the Tab is the platform partial (superseded by ADR-075 PR B: the room draws its own `.golf-leaf`, §7.14; the reconciliation is PR C's C4).
+color-only state. Settle the Tab is the room's own leaf (§7.14), never the platform partial
+(`templates/_settle_tab.html` is a gold rule over a card, which §6.10 bans in the room).
 
 ### 6.12 Named rules
 - **Pencil-and-Ink Rule:** a projected figure is never drawn in ink; a banked figure is never drawn
@@ -426,7 +438,12 @@ and no state word; "TBD" when unknown. The facts follow under a hairline, a `<dl
 value (Newsreader 500, 1.05rem, tabular; `.golf-facts-note` is the pencil qualifier): Picks lock
 (`.golf-facts-lead`, its own line on a phone), Golfers used ("11 this season"), Yours to spend ("71
 of 82 in the field"; absent until the field publishes). Two columns on a phone, three across from
-576px.
+576px. Under the facts, for a member of more than one league, **the other sheet**
+(`.golf-other-sheets`, one `.golf-pick-line.golf-other-sheet` per other line, ADR-075): what this
+week holds on each other sheet, in the facts' own register, with its one text action: "On the
+Pollyanna Pay Sheet: **Scheffler**, backup **Morikawa** · change" or "Nothing filed on the Pollyanna
+Pay Sheet yet · pick there", each an `a.golf-tap` to that league's pick page. One query per other
+line, never per golfer; it is the whole mix-up guard, so it never folds.
 
 ### 7.9 The tiles — `.golf-tiles`, `.golf-tiles--pair`, `.golf-tiles-note`
 Scorecard tiles, a `<dl>`: a 2px ink top rule, a hairline below, hairline cells (`.75rem` padding,
@@ -457,19 +474,30 @@ accounts for runs last with an empty week. A fold never holds lines of the sheet
 
 ### 7.11 Sub-nav — `.subnav-golf`
 Background `#0F110D`, `--subnav-accent #2439C8`, `--subnav-accent-rgb 36, 57, 200`. Label "THE PAY
-SHEET" with "Golf One & Done · {{ season_year }}" as its small line, behind the platform's ⛳ glyph:
+SHEET" with the league's name beside the season as its small line ("Handicap Pay Sheet · 2027",
+ADR-075; the label alone on the unknown-league 404), behind the platform's ⛳ glyph:
 that glyph is the sub-nav lockup every room shares (⚽ 🏈 ⚖️), the collapsed mark on phones where the
 text hides, and `aria-hidden` beside an `aria-label` on the link; it is navigation chrome, not a
 room icon, so §6.10's emoji ban does not reach it. Pills: Standings · Schedule · Results · Stats
 (the Record Room, `/golf/stats`) · My Scorecard (the member's own scorecard, `/golf/member/<id>`,
 shown to a member with a line; active only on that member's own card, never on another's) · Admin
 (golf admins; the pill opens The Back Office, §8.20, and stays active across every `golf.admin*`
-endpoint). As built: Standings · Schedule · Results · Stats · My Scorecard · Admin, in that order.
-`/golf/my-picks` redirects to the member's scorecard. The platform scroll-fade applies.
+endpoint). As built: Standings · Schedule · Results · Stats · My Scorecard · Admin, in that order,
+every pill inside `/golf/<league>/` but Schedule, which is shared and carries `?league=<slug>` so
+the bar keeps the page's league on the step off. A member of more than one league gets one more
+pill at the end, **the switch** (`.subnav-pill--switch`): the other league's name in pen-bright
+behind a hairline, the one control that changes sheets, and it keeps its width on a phone where the
+other pills shrink. `/golf/my-picks` redirects to the member's scorecard. The platform scroll-fade
+applies.
 
 ### 7.12 Join page
-Platform shape (`page-hero` in the pen family, the How It Works list in the thesis's words, the
-current display name under `#join-current-name`, `.btn-game` "Take a seat"); collects no name.
+Platform shape (`page-hero` in the pen family, the rules as a four-term `<dl>`
+(`.golf-join-rules`: Every week, Once only, The backup, The pot) in the thesis's words, the current
+display name under `#join-current-name`); collects no name. **Two sheets (ADR-075):** one page lists
+every league in ordinal order, each with its blurb (`constants.LEAGUE_BLURBS` by slug, Brad's words)
+and its own `.btn-game` "Take a seat on the {league name}" (`name="league"`); a league the member
+already holds reads "You're on this sheet." with a link to that sheet instead of the button, and a
+member on every sheet still sees the page. The POST seats one league and lands on its sheet.
 
 ### 7.13 Empty states
 Reward participation, in `.golf-empty` (§7.21): "Nobody has a line yet. The first member to take a
@@ -477,11 +505,18 @@ seat is the sheet's first line." / "Nobody spent a golfer on this one." / "No pi
 Every pick stays hidden until the lock." Before a field exists: "The field publishes Tuesday. Picks
 open then."
 
-### 7.14 Settle the Tab — `.settle-tab`
-The platform partial, room surfaces only; the pot's unpaid penalties ride the same card.
-(Superseded by ADR-075 PR B, 2026-10-19: The Sheet carries a `.golf-leaf.golf-settle` of the
-room's own under your line, this league's fee only, the Unpaid chip the one red word, the rails as
-a sentence; the platform partial does not enter the room. PR C's C4 rewrites this section.)
+### 7.14 Settle the Tab — `.golf-leaf.golf-settle`
+The room's own leaf (§8.10) on The Sheet, under your line, for a member whose seat on this league is
+unpaid (`services/payment.py::payment_nudge_for(line, is_platform_admin)`: hidden for platform
+admin, for that league's commissioner, for a paid line, with no line, or when either rail is blank;
+ADR-056 as amended by ADR-075 D4). The `.golf-label` "Settle the tab" as the `<h2>` with the
+`.golf-chip--deduction` "Unpaid" beside it, the one red word (§6.12); the lead names the league and
+its own fee ("Your seat on the Pollyanna Pay Sheet is **$25**. The Commish collects it and marks
+your seat paid."); the rails as one sentence (`.golf-settle-rails`): the Venmo link as an
+`a.golf-tap` with the amount, or Zelle with the selectable number (`.golf-settle-zelle`) "with your
+name and the {league} in the memo", so a member of both sheets is never ambiguous. The entry fee
+only: penalties stay on The Tab and the scorecard's pair tile. The platform partial never enters the
+room (§6.10). The picks-open letter carries the same facts as its fee strip, naming the league.
 
 ### 7.15 JS hooks (preserve)
 `#primary_player_id`, `#backup_player_id`, form names `primary_player_id` / `backup_player_id`;
@@ -815,7 +850,11 @@ is `.golf-book-here`, ink 500, `aria-current="page"`, unlinked. Below 1100px and
 is one 720px column: a ledger is read top to bottom, never side by side. Every leaf keeps the sheet,
 the chips, the folds and the text actions of §7; the pages carry no card, no Bootstrap badge, no
 icon font, no inline style but a share the server computed, and no eyebrow
-(`tests/test_golf_admin_pages.py`).
+(`tests/test_golf_admin_pages.py`). The book is the league's (ADR-075): every leaf lives under
+`/golf/<league>/admin/` and lists that league's lines. Platform admin holds every league's book of
+five leaves; a **league commissioner** (the league enrollment's `is_admin`) holds a four-leaf book,
+Settle the Book missing from the contents line, and their dashboard is the tab alone (To settle and
+The reads are platform admin's, and the context line's reads count with them).
 
 The dashboard ("The Back Office") is three ledgers in the order they need doing, each a
 `.golf-leaf` (§8.10) with its `.golf-label` as the `<h2>` and `.golf-leaf-aside` (pencil, .95rem,
@@ -837,7 +876,10 @@ Process on a complete event, "On the course", or "Upcoming". **The Roster** (`us
 `.golf-sheet--plain` of this season's enrollees: avatar, name (quiet link to the scorecard), the
 Commish chip for an admin, the email on the pick line (`.golf-email`, `overflow-wrap: anywhere`, so
 an address breaks before the row does), the banked money in ink, and the entry-fee check
-(`.golf-sheet-fee`, §8.21). **The Tab** (`payments.html`): the same three tiles, then "Line by line"
+(`.golf-sheet-fee`, §8.21). For platform admin only, **the Roster's controls** (ADR-075) sit on the
+member's line as `.golf-linkbtn` POST forms: "Make commish" / "Remove commish" (the pen for this
+sheet) and "Move to the {other league}", which the route refuses while the line holds a pick or the
+member already holds the other line, and which clears the pen. The Roster never adds a member. **The Tab** (`payments.html`): the same three tiles, then "Line by line"
 (the unpaid count as the aside): every enrollee with the check, and under a member who owes a
 penalty the penalty line (§8.21). **The Commish's Pen** (`override_pick.html`, §8.22). Each page's
 empty state is a sentence in `.golf-empty` ("Nobody has a seat yet, so there is no tab.").
@@ -911,11 +953,14 @@ rule: the season is banked). No band, no fill, no gold, no enlargement: the room
 (§2.5 No podium holds; the fold is a section of the page, not a marked row).
 
 Two sources (`routes.py::_champions`): once the Commish has closed the season (`flask records close
-golf YEAR`), the club's record's place-1 rows for the game and year (`finishes_for`, one query), the
+golf YEAR`, one board per league), the club's record's place-1 rows for the game, year and this
+league's division (`finishes_for(..., division=league.slug)`, one query; a closed Handicap board never
+crowns the Pollyanna pages), the
 name and the stored `detail` figure; before that, the page's own leaders: on The Sheet the rows at
 rank 1 of the sheet it just built, in the Record Room the race's `is_leader` series. Two sentences
 (`_champion_line`), one `.golf-line` under the list with its link: on the record, "On the club's
-record." with "The Record" (to `/records#board-golf-{year}`); not yet, The Sheet says "The season
+record." with "The Record" (to `/records#board-golf-{year}-{league}`, this league's board); not
+yet, The Sheet says "The season
 is banked." with "The Record Room", and the Record Room says "The season is banked and not on the
 club's record yet; the Commish closes it." with "The Sheet". The fold never renders with no champion
 or before the last event banks.
@@ -952,7 +997,17 @@ cool saturated blue on purple). Every action is the solid `.hl-cta` (ADR-052): "
 `services/lounge.py` is the registry-bound pair: `golf_lounge_state()` reads the season's schedule
 (no events: pre; every event banked: post; a lock passed: live) and `build_lounge_context` builds
 the per-state data from the sheet's own builder (`services/sheet.py`) over rows loaded once, so the
-lounge says the same money the room does; the roster floor is the shared `ROSTER_COUNT_FLOOR`. With
+lounge says the same money the room does; the roster floor is the shared `ROSTER_COUNT_FLOOR`.
+**Two leagues, one seat (ADR-075):** the panel is the viewer's lowest-ordinal line (a member of
+both reads the Handicap panel), the house league for everyone else; the seat count on the
+conversion card is every golf seat, the club's number; the league's name rides the live and post
+panels as a `.summons-meta` line; every league link in the panels names the league, while the door
+(the panel head, "Enter the Room", "Full sheet") is `/golf/`, which follows the league cookie. A
+member of more than one league reads, under their own line, one `.field-impact` line per other
+line (`_other_lines.html`: "On the Pollyanna Pay Sheet: $500,000 banked · 2 of 12." with the gold
+`.route-link` "That sheet ›" into it), the only place the lounge names a second league; the pre
+panel names both sheets once ("Two sheets this year: the Handicap and the Pollyanna. Take a seat on
+either.") and keeps its one ask. With
 three headliners the bill takes `.hl-duo--trio`: three equal columns from 1100px on two gold
 hairlines and no seal, one stacked column below, never two-and-one (the lounge bills every headliner
 as an equal).
@@ -974,6 +1029,23 @@ the rule, never around it.
   `results_finalized`. `tests/test_golf_cleanup.py`.
 - **Every read is season-scoped** (`season_year` on enrollment, tournaments, usage); the scorecard
   and the Record Room take a season. `tests/test_season_scoping.py` pattern.
+- **Every league read is league-scoped (ADR-075):** enrollments, picks and usage carry `league_id`,
+  `services/reads.py` takes the league after the season, and nothing of one league reaches another's
+  sheet, board, scorecard, Record Room, Back Office, letter or record. The usage key is per league: the
+  same golfer spent on both sheets the same week is two usage rows, neither dropped.
+  `tests/test_golf_leagues.py`.
+- **The URL is the league:** `g.golf_league` comes from the path (`url_value_preprocessor`), never from
+  the session; the cookie only picks where `/golf/` lands; an unknown slug is the club 404; a league
+  endpoint built bare outside the room is a `BuildError`, never a silent house league.
+  `tests/test_golf_leagues.py`.
+- **The commissioner is the league enrollment:** `GolfEnrollment.is_admin` reaches that league's
+  Roster, Tab and Pen only; Settle the Book, the API meter, the Roster's controls and the move are
+  platform admin's (`golf_platform_admin_required`). A Pollyanna commissioner POSTing to a Handicap
+  admin route is redirected with the flash and nothing is written. `tests/test_golf_leagues.py`,
+  `tests/test_golf_admin_route_matrix.py`.
+- **The record is per division:** `season_finishes(year)` returns every league's board tagged with its
+  slug and name; an empty league is named on stderr and skipped; the Sheet and the Record Room crown
+  from their own league's board only. `tests/test_golf_records.py`.
 - **Reminders de-dup on the sent flag, never on cadence** (`last_reminder_type`,
   `utils/reminders.py::tier_already_sent`). `tests/test_golf_automation.py`.
 - **The `golf-*` timer cadence is the API budget** (free SlashGolf tier, ~115 of 250 calls a month).
@@ -1073,9 +1145,11 @@ the rule, never around it.
   hook. `tests/test_golf_admin_pages.py`.
 - **The record seam:** `services/records.py::season_finishes(year)` closes any year whose every
   event is banked (`results_finalized`; a season with no schedule or an open event raises
-  `SeasonNotClosed`), ranked by the stored season total in competition rank (ties share and gap),
-  every row linked to its user, the champion outcome at place 1 (tied leaders are both champions);
-  a past season closes from its own rows. Wired through the registry's `season_finishes`.
+  `SeasonNotClosed`), one board per league with an enrollee (`division` = the slug, the name frozen
+  beside it), each ranked by the stored season total in competition rank (ties share and gap),
+  every row linked to its user, the champion outcome at place 1 (tied leaders are both champions;
+  every league's place 1 reigns); a past season closes from its own rows. Wired through the
+  registry's `season_finishes`.
   `tests/test_golf_records.py`.
 - **The champion fold's two sources and the Pre line:** the fold renders only once every event is
   banked, from the record's place-1 rows when the season is closed and from the page's own leaders
@@ -1093,4 +1167,8 @@ the rule, never around it.
 - **Enrollment is explicit:** pick and override paths never create `GolfEnrollment` rows.
   `tests/test_golf_auto_enroll_removed.py`.
 - **The name:** registry `display_name` "The Pay Sheet", `short_name='Golf'` (string-locked),
-  `launch_label='2027'`; the sub-nav carries "Golf One & Done · {season}" and never a literal year.
+  `launch_label='2027'`; the league names are the seeded constants (`constants.LEAGUE_SEED`:
+  "Handicap Pay Sheet", "Pollyanna Pay Sheet"; a rename is `flask golf league set --name`, never a
+  re-seed), every stamp on the room is the league's full name (the sub-nav's small line "{league} ·
+  {season}", the titles, the join buttons, the letters' headlines, the lounge's meta line, the Zelle
+  memo), and the sub-nav never carries a literal year.
