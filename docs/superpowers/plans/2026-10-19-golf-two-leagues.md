@@ -286,7 +286,7 @@ Copy: one block per league in ordinal order with its name, its fee from the row,
 
 - [x] **Step 1:** Failing tests: `test_nudge_shows_for_an_unpaid_line_in_that_league_only` (Brad unpaid in Pollyanna, paid in Handicap: the Pollyanna sheet carries the card with Pollyanna's fee, the Handicap sheet does not); `test_nudge_hides_for_admins_commissioners_and_blank_rails`; `test_picks_open_letter_carries_the_leagues_fee_strip` (+ `test_no_member_self_mark_control`).
 - [x] **Step 2:** FAIL. **Step 3:** Implement under impeccable (the gate takes the line, `payment_nudge_for(line, is_platform_admin)`, the CFB/Docket shape; the card is a `.golf-leaf` of the room's own, not the platform partial; `tab_block` gained `name=` so the strip names the league). **Step 4:** PASS; full suite + ruff; the D3 assertion audit in the PR body. **Step 5:** Commit: `golf: Settle the Tab per league`.
-- [x] **Step 6:** Smoke the sheet, the four Back Office pages and the card on 5099 (done 2026-10-19 via /browse; report `.gstack/browse-reports/2026-10-19-1741-golf-prb/`, local, not committed); open PR B (draft). CodeRabbit clean; merge: Brad's.
+- [x] **Step 6:** Smoke the sheet, the four Back Office pages and the card on 5099 (done 2026-10-19 via /browse; report `.gstack/browse-reports/2026-10-19-1741-golf-prb/`, local, not committed); open PR B (draft). CodeRabbit clean; merged 2026-10-19 as db3cf0e (#271).
 
 ---
 
