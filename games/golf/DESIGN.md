@@ -1008,7 +1008,8 @@ member of more than one league reads, under their own line, one `.field-impact` 
 line (`_other_lines.html`: "On the Pollyanna Pay Sheet: $500,000 banked · 2 of 12." with the gold
 `.route-link` "That sheet ›" into it), the only place the lounge names a second league; the pre
 panel names both sheets once to a viewer without a seat while the seat is open ("Two sheets this
-year: the Handicap and the Pollyanna. Take a seat on either.") and keeps its one ask. With
+year: the Handicap Pay Sheet and the Pollyanna Pay Sheet. Take a seat on either.", the names read
+from the league rows) and keeps its one ask. With
 three headliners the bill takes `.hl-duo--trio`: three equal columns from 1100px on two gold
 hairlines and no seal, one stacked column below, never two-and-one (the lounge bills every headliner
 as an equal).

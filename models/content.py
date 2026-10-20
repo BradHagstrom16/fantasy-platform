@@ -123,7 +123,8 @@ class Announcement(db.Model):
     # The inbox preview line (Letter.preheader); None means none.
     preheader = db.Column(db.String(200), nullable=True)
     cta = db.Column(db.String(16), nullable=False, default='lounge')
-    # Registry slugs, comma-joined ('cfb,docket'), deduplicated at send.
+    # Audience keys (core/audiences.py: a registry slug or golf:<league>), comma-joined
+    # in catalogue order; the desk refuses a set that overflows the column.
     audiences = db.Column(db.String(64), nullable=False, default='')
     recipient_filter = db.Column(db.String(8), nullable=False, default='all')
     # The announcement markup (utils/letter_markup.py).

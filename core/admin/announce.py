@@ -26,7 +26,7 @@ from sqlalchemy.orm import joinedload
 
 from core.admin import admin_bp
 from core.admin.routes import admin_required
-from core.audiences import audience_choices, audience_names
+from core.audiences import audience_choices, audience_labels
 from extensions import db, limiter
 from games.cfb.models import CfbEnrollment
 from games.cfb.services.announce_blocks import BOARDS as SURVIVOR_BOARDS
@@ -52,6 +52,7 @@ logger = logging.getLogger(__name__)
 
 MAX_SUBJECT = 200   # also the headline and inbox-preview cap (String(200))
 MAX_BODY = 10_000
+_AUDIENCES_LENGTH = Announcement.audiences.type.length   # String(64): every key ticked today is 53
 
 _VALID_FILTERS = ('all', 'active')
 
@@ -267,11 +268,15 @@ def _errors(values, *, complete):
     (``complete``: preview, test and send need a subject, a body, and at
     least one game)."""
     errors = []
-    valid_audiences = audience_names()
+    choices = audience_choices()
+    valid_audiences = dict(choices)
     if any(key not in valid_audiences for key in values['audiences']):
         errors.append('Pick a valid audience.')
     elif complete and not values['audiences']:
         errors.append('Pick at least one game to send to.')
+    elif len(_stored_audiences(values['audiences'], choices)) > _AUDIENCES_LENGTH:
+        errors.append('Too many audiences to store: pick The Pay Sheet, which is every golf league, '
+                      'rather than the leagues one by one.')
     if values['recipient_filter'] not in _VALID_FILTERS:
         errors.append('Pick a valid recipient filter.')
     if values['cta'] not in ANNOUNCEMENT_CTAS:
@@ -289,6 +294,13 @@ def _errors(values, *, complete):
     return errors
 
 
+def _stored_audiences(keys, choices) -> str:
+    """The keys as ``Announcement.audiences`` holds them: comma-joined in
+    catalogue order, each once."""
+    chosen = set(keys)
+    return ','.join(key for key, _label in choices if key in chosen)
+
+
 def _save(announcement, values):
     """Store the composer's values on a draft (a new one when ``None``).
 
@@ -304,9 +316,7 @@ def _save(announcement, values):
         if announcement.is_sent:
             db.session.rollback()
             return None
-    chosen = set(values['audiences'])
-    announcement.audiences = ','.join(
-        key for key, _label in audience_choices() if key in chosen)
+    announcement.audiences = _stored_audiences(values['audiences'], audience_choices())
     announcement.recipient_filter = values['recipient_filter']
     announcement.subject = values['subject']
     announcement.headline = values['headline'] or None
@@ -343,17 +353,17 @@ def _page(announcement, values, preview=None):
     sent = db.session.scalars(
         select(Announcement).where(Announcement.sent_at.is_not(None))
         .order_by(Announcement.sent_at.desc()).limit(25)).all()
-    names = audience_names()
+    choices = audience_choices()
 
     def audience_label(item):
         # A sent row with no games is a pre-desk letter (core/tribune/pre_desk.py).
-        return (' + '.join(names.get(slug, slug) for slug in item.audience_list)
+        return (' + '.join(audience_labels(item.audience_list, choices))
                 or ('Audience not recorded' if item.is_sent else 'No games picked'))
 
     return render_template(
         'admin/announce.html',
         announcement=announcement, form_data=values, preview=preview,
-        audiences=list(names.items()), audience_label=audience_label,
+        audiences=choices, audience_label=audience_label,
         when=format_deadline_short, cta_menu=CTA_MENU, board_menu=BOARD_MENU,
         drafts=drafts, sent=sent,
     )

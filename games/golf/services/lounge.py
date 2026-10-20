@@ -26,7 +26,7 @@ from sqlalchemy import func, select
 from extensions import db
 from games.golf.models import GolfEnrollment, GolfPick
 from games.golf.services.enrollment import enrollments_for
-from games.golf.services.leagues import house_league
+from games.golf.services.leagues import house_league, leagues
 from games.golf.services.reads import (
     next_tournament,
     season_enrollments,
@@ -150,9 +150,11 @@ def _other_line(line, season_year: int) -> dict:
 
 
 def _context_pre(tournaments) -> dict:
-    """Before the first lock: the opening event and when it locks."""
+    """Before the first lock: the opening event and when it locks, and the
+    sheets' names as their rows hold them (a rename follows)."""
     first = tournaments[0] if tournaments else None
     return {
+        'sheet_names': [league.name for league in leagues()],
         'court_line': 'One golfer a week · spent once',
         'game_tile_label': (f'OPENS · {first.start_date:%b %-d}'.upper()
                             if first is not None else 'PRESEASON'),

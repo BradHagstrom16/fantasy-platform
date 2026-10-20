@@ -328,9 +328,16 @@ def test_pre_panel_names_both_sheets(app, golf_leagues):
     visitor.set_password('pw')
     db.session.add(visitor)
     db.session.commit()
-    line = 'Two sheets this year: the Handicap and the Pollyanna. Take a seat on either.'
+    line = ('Two sheets this year: the Handicap Pay Sheet and the Pollyanna Pay Sheet. '
+            'Take a seat on either.')
     html = _render(app, '_panel_pre', build_lounge_context(visitor, 'pre'), join_open=True)
     assert line in html and html.count('class="hl-cta"') == 1
+    golf_leagues['pollyanna'].name = 'Pollyanna Sheet'   # a rename follows the row
+    db.session.commit()
+    renamed = _render(app, '_panel_pre', build_lounge_context(visitor, 'pre'), join_open=True)
+    assert 'the Handicap Pay Sheet and the Pollyanna Sheet.' in renamed
+    golf_leagues['pollyanna'].name = 'Pollyanna Pay Sheet'
+    db.session.commit()
     seated = _member(app.config['SEASON_YEAR'], 'seated', league_id=golf_leagues['handicap'].id)
     assert line not in _render(app, '_panel_pre', build_lounge_context(seated, 'pre'), join_open=True)
     assert line not in _render(app, '_panel_pre', build_lounge_context(visitor, 'pre'), join_open=False)

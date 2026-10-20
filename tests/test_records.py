@@ -199,6 +199,22 @@ def test_check_board_validates_per_division(app):
     assert finishes_for('golf', 2027) == []
 
 
+def test_check_board_refuses_a_division_named_two_ways_or_not_at_all(app):
+    """/records folds by (division, division_name): a division under two
+    names would print its board twice under one anchor."""
+    with pytest.raises(InvalidBoard, match=r"golf 2027 handicap: division named \['A', 'B'\]"):
+        record_season('golf', 2027, [*_league_drafts('handicap', 'A', ('X', 1)),
+                                     *_league_drafts('handicap', 'B', ('Y', 2))])
+    with pytest.raises(InvalidBoard, match=r"golf 2027 handicap: division named \[''\]"):
+        record_season('golf', 2027, _league_drafts('handicap', '', ('X', 1)))
+    with pytest.raises(InvalidBoard, match=r"cfb 2027: division named \['Stray'\]"):
+        record_season('cfb', 2027, _league_drafts('', 'Stray', ('X', 1)))
+    with pytest.raises(InvalidBoard, match='golf 2027: an unnamed board beside the leagues'):
+        record_season('golf', 2027, [*_league_drafts('handicap', 'Handicap Pay Sheet', ('X', 1)),
+                                     *_league_drafts('', '', ('Y', 1))])
+    assert finishes_for('golf', 2027) == [] and finishes_for('cfb', 2027) == []
+
+
 def test_finishes_for_reads_one_division_or_every_one(app):
     record_season('golf', 2026, [
         *_league_drafts('handicap', 'Handicap Pay Sheet', ('H', 1)),

@@ -62,7 +62,9 @@ class SeasonAlreadyOnRecord(Exception):
 
 class InvalidBoard(Exception):
     """A board the record will not hold: empty, places that are not a
-    competition rank, a name or a member twice, or (Survivor 2025) a link map
+    competition rank, a name or a member twice, a division under two names
+    (or a league unnamed, or a single board named, or the two mixed in one
+    season), or (Survivor 2025) a link map
     that names a stranger or a name the archive never had."""
 
 
@@ -111,8 +113,8 @@ class SeasonFinish(db.Model):
 
 def seasons_on_record() -> list[tuple[str, int, str, str]]:
     """Every board on record as (game, season_year, division, division_name),
-    newest season first, then game, then division ('' before any league, and
-    'handicap' before 'pollyanna': the house league first)."""
+    newest season first, then game, then division alphabetically by slug (''
+    first; for golf today that puts the house league first)."""
     rows = db.session.execute(
         select(SeasonFinish.game, SeasonFinish.season_year, SeasonFinish.division,
                SeasonFinish.division_name).distinct()
@@ -185,12 +187,20 @@ def _check_board(game: str, season_year: int, drafts: list[FinishDraft]) -> None
     refuse what the trophy and the page cannot read. Each division is its own
     board, checked on its own: competition rank means every place is 1 + the
     count placed strictly better, so a board without a place 1 fails here
-    too, and one member may win two divisions but stand once in each."""
+    too, and one member may win two divisions but stand once in each. A
+    division carries one name (the page folds by the pair), a league is
+    named and the single board is not, and a season is one or the other."""
     if not drafts:
         raise InvalidBoard(f'{game} {season_year}: the board is empty')
-    for division, board in _boards(drafts).items():
-        _check_division(f'{game} {season_year}' + (f' {division}' if division else ''),
-                        board)
+    boards = _boards(drafts)
+    if '' in boards and len(boards) > 1:
+        raise InvalidBoard(f'{game} {season_year}: an unnamed board beside the leagues')
+    for division, board in boards.items():
+        label = f'{game} {season_year}' + (f' {division}' if division else '')
+        names = sorted({d.division_name for d in board})
+        if len(names) > 1 or bool(names[0]) != bool(division):
+            raise InvalidBoard(f'{label}: division named {names}')
+        _check_division(label, board)
 
 
 def _check_division(label: str, drafts: list[FinishDraft]) -> None:

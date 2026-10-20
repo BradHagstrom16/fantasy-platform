@@ -489,6 +489,17 @@ def test_league_set_cli_changes_the_fee(app, golf_leagues):
     assert len(lines) == 2
     assert lines[0].split()[0] == 'handicap' and 'Handicap Pay Sheet' in lines[0]
     assert lines[1].split()[0] == 'pollyanna'
+    season = app.config['SEASON_YEAR']
+    assert lines[1].endswith(f'lines {season} 0')
+
+    polly = golf_leagues['pollyanna']
+    uid = _member('polly1', polly, app=app)
+    db.session.add(GolfEnrollment(user_id=uid, league_id=polly.id, season_year=season - 1))
+    db.session.commit()
+    counted = runner.invoke(args=['golf', 'league', 'list']).output.strip().splitlines()
+    assert counted[0].endswith(f'lines {season} 0') and counted[1].endswith(f'lines {season} 1')
+    earlier = runner.invoke(args=['golf', 'league', 'list', '--season', str(season - 1)])
+    assert earlier.output.strip().splitlines()[1].endswith(f'lines {season - 1} 1')
 
     done = runner.invoke(args=['golf', 'league', 'set', 'pollyanna', '--entry-fee', '30'])
     assert done.exit_code == 0, done.output
