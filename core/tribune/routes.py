@@ -12,7 +12,7 @@ from flask import abort, render_template
 from flask_login import login_required
 from markupsafe import Markup
 
-from core.admin.announce import audience_choices
+from core.audiences import audience_choices
 from core.tribune import tribune_bp
 from core.tribune.services import (
     filed_week,
@@ -23,10 +23,11 @@ from core.tribune.services import (
 )
 
 
-def _audience_line(announcement) -> str:
-    """'To CFB Survivor Pool and The Docket members' (registry order)."""
+def _audience_line(announcement, choices) -> str:
+    """'To CFB Survivor Pool and The Docket members' (catalogue order);
+    ``choices`` is the catalogue, built once per request."""
     chosen = set(announcement.audience_list)
-    names = [label for key, label in audience_choices() if key in chosen]
+    names = [label for key, label in choices if key in chosen]
     if not names:
         return 'To the club'
     joined = names[0] if len(names) == 1 else ', '.join(names[:-1]) + ' and ' + names[-1]
@@ -54,13 +55,14 @@ def _issues():
     audience line and week for the templates."""
     rows = sent_issues()
     total = len(rows)
+    choices = audience_choices()
     return [{
         'id': row.id,
         'number': total - index,
         'headline': row.headline or row.subject,
         'deck': _deck(row),
         'date': issue_date(row),
-        'audience': _audience_line(row),
+        'audience': _audience_line(row, choices),
         'week': _week_of(row),
         'row': row,
     } for index, row in enumerate(rows)]

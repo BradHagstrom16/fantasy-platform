@@ -26,6 +26,7 @@ from sqlalchemy.orm import joinedload
 
 from core.admin import admin_bp
 from core.admin.routes import admin_required
+from core.audiences import audience_choices, audience_names
 from extensions import db, limiter
 from games.cfb.models import CfbEnrollment
 from games.cfb.services.announce_blocks import BOARDS as SURVIVOR_BOARDS
@@ -33,7 +34,6 @@ from games.docket.models import DocketEnrollment
 from games.docket.services.announce_blocks import BOARDS as DOCKET_BOARDS
 from games.docket.services.weeks import SEASON_YEAR as DOCKET_SEASON_YEAR
 from games.golf.models import GolfEnrollment, GolfLeague
-from games.golf.services.leagues import leagues as golf_leagues
 from games.registry import GAMES
 from games.worldcup.constants import SEASON_YEAR as WC_SEASON_YEAR
 from games.worldcup.models import WorldCupEnrollment
@@ -161,25 +161,6 @@ _RESOLVERS = {
     'docket': _docket_recipients,
     'golf': _golf_recipients,
 }
-
-
-def audience_choices():
-    """Every audience the desk offers as (key, label), in registry order.
-
-    A game's key is its registry slug; golf adds one ``golf:<league slug>``
-    key per league after the plain ``golf`` (every league).
-    """
-    choices = []
-    for entry in GAMES:
-        choices.append((entry.slug, entry.display_name))
-        if entry.slug == 'golf':
-            choices.extend((f'golf:{league.slug}', league.name)
-                           for league in golf_leagues())
-    return choices
-
-
-def audience_names():
-    return dict(audience_choices())
 
 
 def resolve_recipients(audiences, active_only):
@@ -366,7 +347,7 @@ def _page(announcement, values, preview=None):
 
     def audience_label(item):
         # A sent row with no games is a pre-desk letter (core/tribune/pre_desk.py).
-        return (' + '.join(names[slug] for slug in item.audience_list)
+        return (' + '.join(names.get(slug, slug) for slug in item.audience_list)
                 or ('Audience not recorded' if item.is_sent else 'No games picked'))
 
     return render_template(

@@ -512,6 +512,7 @@ def test_markup_error_blocks_preview_and_send(mock_send, app, client):
 def test_announce_golf_audiences_are_per_league_or_all(app, client, golf_leagues):
     """`golf` is every league; `golf:<slug>` is one league's members."""
     from core.admin.announce import resolve_recipients
+    from core.audiences import audience_choices
     from core.tribune.routes import _audience_line
     from models.content import Announcement
 
@@ -542,7 +543,7 @@ def test_announce_golf_audiences_are_per_league_or_all(app, client, golf_leagues
     with app.app_context():
         row = db.session.scalars(db.select(Announcement)).one()
         assert row.audiences == 'golf:handicap'
-        assert _audience_line(row) == 'To Handicap Pay Sheet members'
+        assert _audience_line(row, audience_choices()) == 'To Handicap Pay Sheet members'
         page = client.get(resp.location).get_data(as_text=True)
         assert 'value="golf:handicap" id="audience-golf-handicap"\n' in page
         assert 'Handicap Pay Sheet' in page
@@ -552,3 +553,17 @@ def test_announce_golf_audiences_are_per_league_or_all(app, client, golf_leagues
     for bad in (['golf:nowhere'], ['golf:']):
         resp = client.post('/admin/announce', data=_compose(audiences=bad))
         assert 'Pick a valid audience.' in resp.get_data(as_text=True)
+
+
+def test_announce_page_survives_a_stored_audience_no_longer_offered(app, client):
+    """A stored key that left the catalogue prints raw; the desk still opens."""
+    from models.content import Announcement
+    admin_id = _make_user(app, 'admin', is_admin=True)
+    with app.app_context():
+        db.session.add(Announcement(
+            created_by_id=admin_id, audiences='golf:gone', subject='s', body='b'))
+        db.session.commit()
+    _login(client, admin_id)
+    resp = client.get('/admin/announce')
+    assert resp.status_code == 200
+    assert 'golf:gone' in resp.get_data(as_text=True)

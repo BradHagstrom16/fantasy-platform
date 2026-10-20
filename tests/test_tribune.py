@@ -344,3 +344,28 @@ def test_backfill_cli_reports_the_count(app, member):
     assert result.exit_code == 0, result.output
     assert '1 issue' in result.output
     assert 'Skipped' not in result.output
+
+
+def test_the_calendar_reads_the_golf_leagues_once(app, client, member, golf_leagues):
+    from sqlalchemy import event
+
+    from extensions import db
+    with app.app_context():
+        t0 = datetime(2026, 9, 8, 14, 0, tzinfo=UTC)
+        for n in range(3):
+            issue_id = _issue(member, f'Golf {n}', 'Body.',
+                              sent_at=t0 + timedelta(days=n))
+            db.session.get(Announcement, issue_id).audiences = 'golf:handicap'
+        db.session.commit()
+    seen = []
+
+    def count(conn, cursor, statement, parameters, context, executemany):
+        # the catalogue read, not the nav's golf_enrollment join
+        if 'FROM golf_league' in statement and 'golf_enrollment' not in statement:
+            seen.append(statement)
+    event.listen(db.engine, 'before_cursor_execute', count)
+    try:
+        assert client.get('/tribune').status_code == 200
+    finally:
+        event.remove(db.engine, 'before_cursor_execute', count)
+    assert len(seen) == 1
