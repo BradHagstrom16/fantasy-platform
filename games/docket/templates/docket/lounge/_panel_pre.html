@@ -20,7 +20,6 @@
   </div>
 
   <div class="summons">
-    <div class="summons-eyebrow summons-eyebrow--info">◇ Opening Session</div>
     {# Posted branch (design review 2026-08-19): the room's pre-season
        preview means the docket can already be read — the lounge must not
        promise a post that already happened. The convening date derives
@@ -30,6 +29,7 @@
     {% else %}
     <div class="summons-line">The first docket posts Tuesday, September 1.</div>
     {% endif %}
+    <div class="summons-dateline summons-dateline--info">◇ Opening Session</div>
     {# The sheet's shape, waiting: eight scoring slots and the reserve. #}
     <div class="hl-board" role="img" aria-label="Eight scoring slots and one reserve, all open">
       {% for i in range(1, 9) %}<span class="hl-tile" aria-hidden="true">{{ i }}</span>{% endfor %}

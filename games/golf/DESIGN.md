@@ -301,7 +301,8 @@ The Eyebrow Rule (ADR-066, §6.8). The Two-Color Rule (the pen appears only unde
 No side-stripes, the pen bracket excepted (§6.10); `.row-current-user` overrides the tint only.
 Gradient text is retired. `--text-muted` is for dark substrates only (this room uses
 `--text-secondary` = pencil). Every `/static/*` URL carries `?v={{ asset_version }}`. Country flags
-are self-hosted SVG. Touch targets ≥ 44px, body ≥ 16px, `prefers-reduced-motion` honored, no
+are self-hosted SVG. Touch targets ≥ 44px, body ≥ 16px, `prefers-reduced-motion` honored (movement
+stops, the confirming fade or color change stays; root §4.5, ADR-076), no curve that overshoots, no
 color-only state. Settle the Tab is the room's own leaf (§7.14), never the platform partial
 (`templates/_settle_tab.html` is a gold rule over a card, which §6.10 bans in the room).
 
@@ -627,9 +628,10 @@ Choosing a golfer inks him into the open slot and turns the page back to the slo
 question is the open one. Two things move: the pen frame passes between the slots (border and inset,
 .2s, `cubic-bezier(.16, 1, .3, 1)`), and the page scrolls back to the slots when they are off
 screen. Focus lands on the newly open slot, or on the pick action once both are in, and a polite
-live region says what was chosen and what is next. Under `prefers-reduced-motion` the frame and the
-scroll are instant; the turn still happens. Nothing else on the page moves but the fold caret
-(§7.10).
+live region says what was chosen and what is next. Under `prefers-reduced-motion` the scroll is
+instant and the frame keeps its .2s change of border and inset, which is color, not movement (root
+DESIGN.md §4.5, ADR-076: the confirmation stays); the turn still happens. Nothing else on the page
+moves but the fold caret (§7.10).
 
 ### 7.29 The quiet link: `a.golf-quiet`
 A link that reads as ink until it is pointed at: `color: inherit`, no underline; on hover and
@@ -977,15 +979,18 @@ cool saturated blue on purple). Every action is the solid `.hl-cta` (ADR-052): "
 "Enter the Room", "Spend a Golfer", "Join the Pay Sheet".
 
 - **Pre** (`_panel_pre.html`): the decree seal band ("By Decree of the Commish No 004 · The Pay
-  Sheet '27"), the ◇ "Opening Round" summons (the lounge's own eyebrow, ADR-052; not this room's),
-  "{Sony Open} opens the season. Picks lock {Thu Jan 15 · 9:00 AM CT}." or "The schedule posts in
-  January.", one line of the thesis, and the seat or the door.
-- **Live** (`_panel_live.html`): for a member, "Week 16 · RBC Heritage" over their line as a figure
-  with its word ("$1,240,000 projected · 4th of 19"), this week's golfer and position, then the next
+  Sheet '27"), "{Sony Open} opens the season. Picks lock {Thu Jan 15 · 9:00 AM CT}." or "The
+  schedule posts in January." with the ◇ "Opening Round" dateline under it (the lounge's own label,
+  ADR-052; under the line since ADR-076; not this room's), one line of the thesis, and the seat or
+  the door.
+- **Live** (`_panel_live.html`): for a member, their line as a figure with its word ("$1,240,000
+  projected · 4th of 19") with the "Week 16 · RBC Heritage" dateline under it (ADR-076), this
+  week's golfer and position, then the next
   lock and the leader in the meta line; the one ask is "Spend a Golfer" when the next field is open
   and no pick is in (the echo: "No pick is $0 for the week. No penalty, no autopick."), else "Enter
   the Room". A visitor gets the sell and the leader's figure while the seat is open.
-- **Post** (`_panel_post.html`): "The Sheet Is Banked", the champion or champions by name with the
+- **Post** (`_panel_post.html`): the champion or champions by name with "The Sheet Is Banked" as
+  the dateline under them (ADR-076; a season with no champion says "The season is banked." alone), the
   money across the events, the Record Room as the route link, and the top three of the final sheet
   as the lounge's own `.hl-standings` rolls (the lounge's gold on rank 1 is lounge chrome, §2.5),
   "banked" as each tagline.

@@ -11,9 +11,10 @@ Two locks:
 
 1. **The rooms' templates.** Every `*-eyebrow` element in a CFB, Docket or Pay Sheet (golf)
    room template, and every `.golf-label` (the Pay Sheet's label, games/golf/DESIGN.md
-   §6.8), in those templates, the shared Settle the Tab include and The Wire's
-   `/app` (`core/push/templates`, converted 2026-10-08; the lounge partials are
-   lounge chrome and out of scope), is followed by something
+   §6.8), in those templates, the shared Settle the Tab include, The Wire's
+   `/app` (`core/push/templates`, converted 2026-10-08), The Record, and since
+   ADR-076 (2026-10-29) the lounge (each game's lounge partials, `core/main`),
+   the platform admin and auth, is followed by something
    that is not a heading: not an `<h1>`-`<h6>` and not an element whose class
    names a headline or title. Jinja statements and comments are stripped
    first, so a branch never hides the element that follows. A label set ON a
@@ -31,21 +32,28 @@ import pytest
 from utils.email_layout import Letter, render_letter, render_letter_page
 
 ROOT = Path(__file__).resolve().parent.parent
-# The lounge partials (games/<slug>/templates/<slug>/lounge/) are lounge
-# chrome, not the room: their ◇ summons eyebrows (ADR-052) are out of scope.
+# Since ADR-076 (2026-10-29) the lounge is in scope too: each headliner's
+# lounge partials (games/<slug>/templates/<slug>/lounge/), the lounge shell
+# and the logged-out page (core/main), the platform admin (core/admin) and
+# auth (core/auth). A lounge label over a value (a record, the decree
+# numeral, the meta row) stays; over the summons line it became the dateline
+# under it. The frozen World Cup is never globbed.
 ROOM_TEMPLATES = sorted(
-    p for p in [*(ROOT / 'games/cfb/templates').rglob('*.html'),
-                *(ROOT / 'games/docket/templates').rglob('*.html'),
-                *(ROOT / 'games/golf/templates').rglob('*.html'),
-                *(ROOT / 'core/records/templates').rglob('*.html'),
-                *(ROOT / 'core/push/templates').rglob('*.html'),
-                ROOT / 'templates/_settle_tab.html']
-    if 'lounge' not in p.parts)
+    [*(ROOT / 'games/cfb/templates').rglob('*.html'),
+     *(ROOT / 'games/docket/templates').rglob('*.html'),
+     *(ROOT / 'games/golf/templates').rglob('*.html'),
+     *(ROOT / 'core/records/templates').rglob('*.html'),
+     *(ROOT / 'core/push/templates').rglob('*.html'),
+     *(ROOT / 'core/main/templates').rglob('*.html'),
+     *(ROOT / 'core/admin/templates').rglob('*.html'),
+     *(ROOT / 'core/auth/templates').rglob('*.html'),
+     ROOT / 'templates/_settle_tab.html'])
 
 EYEBROW = re.compile(r'class="[^"]*\b(?:[a-z-]*eyebrow|golf-label)\b')
 TAG = re.compile(r'<(/?)([a-zA-Z][a-zA-Z0-9]*)\b([^>]*)>')
+# `summons-line` is the lounge's 2rem headline-sized line (ADR-076).
 HEADING_CLASS = re.compile(
-    r'class="[^"]*(?:headline|title|settle-tab-lead|champion-name)')
+    r'class="[^"]*(?:headline|title|settle-tab-lead|champion-name|summons-line)')
 
 
 def _strip_jinja(source: str) -> str:
@@ -96,6 +104,15 @@ def test_detector_catches_an_eyebrow_above_a_heading():
     assert not eyebrows_above_headings(
         '<h2 class="golf-label" id="f">The field<span data-q></span></h2>'
         '<span class="golf-field-count">71 of 82</span><ul class="golf-field"></ul>')
+    # The lounge (ADR-076): a label over the summons line is over a heading;
+    # over a record it is over a value; a dateline under the line is fine.
+    assert eyebrows_above_headings(
+        '<div class="summons-eyebrow">◇ Week 4</div><div class="summons-line">Your sheet is complete.</div>')
+    assert not eyebrows_above_headings(
+        '<div class="summons-eyebrow">◇ Week 4</div><div class="hl-record">5-3</div>')
+    assert not eyebrows_above_headings(
+        '<div class="summons-line">Your sheet is complete.</div>'
+        '<div class="summons-dateline">◇ Week 4</div><p class="summons-sub">x</p>')
 
 
 @pytest.mark.parametrize('path', ROOM_TEMPLATES, ids=lambda p: str(p.relative_to(ROOT)))

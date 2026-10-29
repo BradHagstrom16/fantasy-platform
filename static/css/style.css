@@ -523,8 +523,11 @@ html[data-app-state="subscribed"] .app-panel[data-state="subscribed"] {
   from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: none; }
 }
+/* Reduced motion keeps the confirmation and drops the rise (ADR-076). */
 @media (prefers-reduced-motion: reduce) {
-  html[data-app-state="subscribed"] .app-panel[data-state="subscribed"] { animation: none; }
+  html[data-app-state="subscribed"] .app-panel[data-state="subscribed"] {
+    animation: fade-in var(--motion-feedback) var(--ease-out) both;
+  }
 }
 
 /* --- The Notification Preview (ADR-074, PR B). The member's real next
@@ -713,12 +716,16 @@ html[data-app-state="tab"] .app-card { margin-bottom: 4.5rem; }
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
   text-decoration: none;
-  transition: transform .25s cubic-bezier(.34,1.56,.64,1), box-shadow .25s;
+  transition: transform .25s var(--ease-out), box-shadow .25s var(--ease-out);
 }
 .admin-action:hover,
 .admin-action:focus-visible {
-  transform: translateY(-3px);
+  transform: translateY(-2px);
   box-shadow: var(--shadow-md);
+}
+@media (prefers-reduced-motion: reduce) {
+  .admin-action:hover,
+  .admin-action:focus-visible { transform: none; }
 }
 .admin-action i {
   display: block;
@@ -1659,6 +1666,10 @@ body.game-golf {
 @media (min-width: 768px) {
   .home-shell .out-title { font-size: 3.5rem; }
 }
+/* ADR-076: the tagline sits under the headline. Scoped to that order, so the
+   frozen WC out page (tagline still above its h1) keeps its spacing. */
+.home-shell .out-title + .out-eyebrow { margin: 1.1rem 0 0; text-wrap: balance; }
+.home-shell .out-title + .out-eyebrow + .out-sub { margin-top: 1rem; }
 .home-shell .out-sub {
   font-family: var(--font-news);
   font-size: 1.05rem;
@@ -1892,6 +1903,9 @@ body.game-golf {
 @media (min-width: 768px) {
   .home-shell .out-registry-title { font-size: 2.6rem; }
 }
+/* ADR-076: the label sits under the heading (scoped to that order; the
+   frozen WC out page keeps its label above). */
+.home-shell .out-registry-title + .out-registry-eyebrow { margin: 0.6rem 0 0; }
 .home-shell .out-registry-grid {
   display: grid;
   grid-template-columns: 1fr;
@@ -2401,7 +2415,9 @@ body.game-golf {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .home-shell .cta-seal,
+  /* The lift and the arrow's slide drop; the gold glow still answers the
+     pointer (ADR-076: reduced motion keeps non-spatial feedback). */
+  .home-shell .cta-seal { transition: box-shadow 0.18s var(--ease-out); }
   .home-shell .cta-seal-label i { transition: none; }
   .home-shell .cta-seal:hover { transform: none; }
   .home-shell .cta-seal:hover .cta-seal-label i { transform: none; }
@@ -3129,36 +3145,6 @@ body.game-golf {
   color: var(--bone-mute);
 }
 
-/* Polish (Critique 2026-05-15) — live-dot on the active game tile
-   during live state. Visual differentiation from the coming-soon
-   tiles so the running tournament reads as the one a user can act
-   on. Subtle pulse mirrors the platform's broader live-indicator
-   register (no glow stacks, no neon — just a 6px red dot with a
-   soft 1.6s breathing cycle). */
-.home-shell .cg--live .p {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  width: auto;
-  margin: 0.25rem auto 0;
-}
-.home-shell .cg-live-dot {
-  display: inline-block;
-  width: 0.42rem;
-  height: 0.42rem;
-  border-radius: 50%;
-  background: var(--live-red, #E63946);
-  box-shadow: 0 0 0 2px rgba(230,57,70,.18);
-  animation: cg-live-pulse 1.6s ease-in-out infinite;
-}
-@keyframes cg-live-pulse {
-  0%, 100% { opacity: 1; box-shadow: 0 0 0 2px rgba(230,57,70,.18); }
-  50%      { opacity: 0.65; box-shadow: 0 0 0 4px rgba(230,57,70,.10); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .home-shell .cg-live-dot { animation: none; }
-}
-
 /* --- The farewell ledger strip (CFB-era pre state, C1 §3.5) ---
    One full-width Informational strip in the handoff composition: the
    archived season's one-line ledger, the viewer's finish fragment, and
@@ -3326,8 +3312,26 @@ body.game-golf {
   color: var(--gold);
 }
 .home-shell .summons-eyebrow--info { color: var(--bone-mute); }
+/* The dateline (ADR-076): the label's own voice, set UNDER the summons line
+   so the headline speaks first. A label over a value (a record, the decree
+   numeral, the meta row) stays a .summons-eyebrow above it. */
+.home-shell .summons-dateline {
+  font-family: var(--font-teko);
+  font-weight: 500;
+  font-size: 0.85rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin: -0.15rem 0 0.35rem;
+}
+.home-shell .summons-dateline--info { color: var(--bone-mute); }
+.home-shell .summons > .summons-line:first-child,
+.home-shell .summons > .state-chip + .summons-line { margin-top: 0; }
 .home-shell .state-chip {
   float: right;
+  /* Since ADR-076 the chip floats beside the 2rem summons line, not the
+     small label: keep the headline's words off it. */
+  margin: 0.25rem 0 0.4rem 0.75rem;
   font-family: var(--font-teko);
   font-weight: 500;
   font-size: 0.78rem;
@@ -5354,8 +5358,9 @@ body.game-golf {
 .home-shell .hl-signin a { color: var(--gold-light); }
 
 @media (prefers-reduced-motion: reduce) {
-  .home-shell .hl-cta,
-  .home-shell .hl-cta:hover { transition: none; transform: none; }
+  /* The lift drops; the brightening still answers the pointer (ADR-076). */
+  .home-shell .hl-cta { transition: filter .15s ease-out; }
+  .home-shell .hl-cta:hover { transform: none; }
 }
 
 /* --- Polish: print-friendly fallback (just in case) --- */
@@ -5484,9 +5489,6 @@ body.game-cfb .card.settle-tab {
   .settle-venmo {
     width: 100%;
   }
-}
-@media (prefers-reduced-motion: reduce) {
-  .settle-copy { transition: none; }
 }
 
 /* === THE PAY SHEET (golf) === */
@@ -6522,8 +6524,9 @@ section + .golf-fold { border-top: 0; }
   .golf-marks > div { grid-template-columns: 7rem minmax(0, 1fr); }
 }
 
+/* Reduced motion (ADR-076): the pen frame's border and inset are color, not
+   movement, so .golf-slot keeps its transition; the ruling-off draws still. */
 @media (prefers-reduced-motion: reduce) {
-  .golf-slot { transition: none; }
   .golf-hero-figure.golf-hero-figure--banked::after { animation: none; }
   .golf-fold > summary::after { transition: none; }
 }
@@ -7082,9 +7085,10 @@ section + .golf-fold { border-top: 0; }
   }
 }
 
+/* The rows' slide is movement and stops; the names' opacity while scrubbing
+   is not, and stays (ADR-076). */
 @media (prefers-reduced-motion: reduce) {
-  .golf-race-row,
-  .golf-race-name { transition: none; }
+  .golf-race-row { transition: none; }
 }
 
 /* The penalty chip keeps its legacy class (test-locked presence); as a chip
@@ -7587,8 +7591,10 @@ body.game-cfb .page-hero .lead {
 }
 
 /* .card elevation-by-lightness: hover lifts INTO the light (surface -> raised +
-   a brighter hairline), the dark-room substitute for a drop shadow. */
-body.game-cfb .card:hover {
+   a brighter hairline), the dark-room substitute for a drop shadow. Only a
+   card that is a door answers the pointer (ADR-076, as the platform .card). */
+body.game-cfb a.card:hover,
+body.game-cfb .card:has(a.stretched-link):hover {
   background: var(--cfb-raised);
   border-color: var(--cfb-hairline-strong);
 }
@@ -7799,10 +7805,11 @@ body.game-cfb .alert-warning { background: rgba(243,239,230,.05); border-color: 
   background-size: 24px 24px;
   pointer-events: none;
 }
-/* Ceremony by reduction (games/cfb/DESIGN.md S4): the lights stay on, the room
+/* Ceremony by composition (games/cfb/DESIGN.md S4, S6.16): the lights stay on, the room
    goes quiet, one survivor remains. The champion's name opens the hero, no
    trophy emoji and no eyebrow above it (ADR-066) -- conclusive, not
-   triumphant, no gold. */
+   triumphant, no gold. Its authored motion moment (S6.14, ADR-076) is the
+   overdrive pass's to build; until then the children fade up on load. */
 .championship-hero .champion-name {
   font-family: 'Teko', sans-serif;
   font-size: clamp(2.4rem, 6vw, 3.5rem);
@@ -8358,9 +8365,11 @@ body.game-cfb .team-pick-card.ineligible .cfb-matchup { color: var(--cfb-bone-mu
 .cfb-empty-slate p { font-family: 'Newsreader', Georgia, serif; color: var(--cfb-bone-muted); }
 
 /* Respect reduced-motion: drop the selected-state expansion (the state still reads
-   through perimeter + glow + weight; motion is never the sole carrier). */
+   through perimeter + glow + weight; motion is never the sole carrier). The
+   fill and the perimeter keep their short transition, so the tap still lands
+   (ADR-076). */
 @media (prefers-reduced-motion: reduce) {
-  body.game-cfb .team-option { transition: none; }
+  body.game-cfb .team-option { transition: background var(--transition), box-shadow var(--transition); }
   body.game-cfb .team-option.selected { transform: none; }
 }
 
@@ -8451,12 +8460,15 @@ body.game-cfb .cfb-verdict.animate-in .cfb-verdict-chip {
   animation: cfb-ack var(--cfb-dur-base) var(--cfb-ease-out) .18s both;
 }
 
+/* Reduced motion (ADR-076): the room's entrance stays off; every moment that
+   answers a tap or lands a state keeps a short opacity fade, without the rise
+   and without the stagger. */
 @media (prefers-reduced-motion: reduce) {
   body.game-cfb .animate-in { animation: none; }
-  #pickConfirmBar.is-arriving { animation: none; }
-  .cfb-confirm-line.is-updated { animation: none; }
-  .cfb-board-rest[open] .team-pick-card { animation: none; }
-  body.game-cfb .cfb-verdict.animate-in .cfb-verdict-chip { animation: none; }
+  #pickConfirmBar.is-arriving { animation: fade-in var(--cfb-dur-fast) var(--cfb-ease-out) both; }
+  .cfb-confirm-line.is-updated { animation: fade-in var(--cfb-dur-fast) var(--cfb-ease-out) both; }
+  .cfb-board-rest[open] .team-pick-card { animation: fade-in var(--cfb-dur-fast) var(--cfb-ease-out) both; animation-delay: 0ms; }
+  body.game-cfb .cfb-verdict.animate-in .cfb-verdict-chip { animation: fade-in var(--cfb-dur-fast) var(--cfb-ease-out) both; }
 }
 
 /* ============================================================
@@ -13127,13 +13139,9 @@ body.game-worldcup .tier-card-5 .tier-card-header { background: linear-gradient(
   50%      { opacity: .35; }
 }
 
-/* Respect prefers-reduced-motion across the board — the .animate-in
-   entrance and the live pulse were unguarded. */
-@media (prefers-reduced-motion: reduce) {
-  .animate-in,
-  .animate-in-scale,
-  .leaderboard-live-dot { animation: none; }
-}
+/* The platform reduced-motion block sits after the .animate-in definitions
+   (section 9), where it can win the cascade: an equal-specificity override
+   placed above the rule it overrides loses to it. */
 
 /* ── 3. Keyframe Animations ─────────────────────────────── */
 @keyframes fadeInUp {
@@ -13151,9 +13159,11 @@ body.game-worldcup .tier-card-5 .tier-card-header { background: linear-gradient(
   to   { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes shimmer {
-  0%   { background-position: -200% center; }
-  100% { background-position:  200% center; }
+/* The reduced-motion confirmation (ADR-076): opacity only, so a member
+   who asked for less motion still sees an action land. */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
 @keyframes pulseGold {
@@ -13771,9 +13781,12 @@ main { flex: 1; }
   0%, 88% { opacity: 1; visibility: visible; }
   100%    { opacity: 0; visibility: hidden; }
 }
+/* Reduced motion: the flash fades in without the drop and stays until
+   dismissed (no auto-fade: a member who asked for less motion gets a stable
+   alert; ADR-076 keeps the fade-in as the confirmation). */
 @media (prefers-reduced-motion: reduce) {
   .alert.alert-success.alert-dismissible {
-    animation: slideDown .25s ease both;
+    animation: fade-in var(--motion-feedback) var(--ease-out) both;
   }
 }
 
@@ -13783,15 +13796,28 @@ main { flex: 1; }
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
   background: var(--bg-card);
-  transition: transform .25s cubic-bezier(.34,1.56,.64,1), box-shadow .25s ease;
+  transition: transform .25s var(--ease-out), box-shadow .25s var(--ease-out);
 }
 
-.card:hover {
-  transform: translateY(-3px);
+/* A card lifts only when it is a door (DESIGN.md §4, ADR-076): a card that
+   holds content answers no pointer, because a lift says "click me". */
+a.card:hover,
+a.card:focus-visible,
+.card:has(a.stretched-link):hover {
+  transform: translateY(-2px);
   box-shadow: var(--shadow-md);
 }
 
-.card:active { transform: translateY(-1px); }
+a.card:active,
+.card:has(a.stretched-link):active { transform: translateY(-1px); }
+
+@media (prefers-reduced-motion: reduce) {
+  a.card:hover,
+  a.card:focus-visible,
+  a.card:active,
+  .card:has(a.stretched-link):hover,
+  .card:has(a.stretched-link):active { transform: none; }
+}
 
 .card-header {
   background: transparent;
@@ -13906,7 +13932,7 @@ main { flex: 1; }
   line-height: 1;
   margin-bottom: 1rem;
   filter: drop-shadow(0 4px 12px rgba(28,10,58,.45));
-  transition: transform .3s cubic-bezier(.34,1.56,.64,1);
+  transition: transform .3s var(--ease-out);
 }
 
 .game-card--featured:hover .featured-icon {
@@ -13969,7 +13995,7 @@ main { flex: 1; }
   line-height: 1;
   display: block;
   margin-bottom: .75rem;
-  transition: transform .3s cubic-bezier(.34,1.56,.64,1);
+  transition: transform .3s var(--ease-out);
 }
 
 .game-card:hover .game-icon {
@@ -14017,12 +14043,6 @@ main { flex: 1; }
   padding: 1.5rem 1rem;
   text-align: center;
   box-shadow: var(--shadow-sm);
-  transition: transform .25s cubic-bezier(.34,1.56,.64,1), box-shadow .25s;
-}
-
-.stat-block:hover {
-  transform: translateY(-3px);
-  box-shadow: var(--shadow-md);
 }
 
 .stat-block .stat-value {
@@ -14681,6 +14701,26 @@ body.game-worldcup .section-heading {
 .stagger-5  { animation-delay: .33s; }
 .stagger-6  { animation-delay: .40s; }
 
+/* Respect prefers-reduced-motion across the board (DESIGN.md §4.5, ADR-076).
+   Entrances that only decorate a page load stop, and so does the live pulse.
+   A menu or a flash that answers the member keeps an opacity fade without
+   the drop. This block must stay below every rule it overrides: until
+   2026-10-29 it sat above .animate-in and lost the cascade, and the page
+   hero, the CFB champion's hero and the auth card had no guard at all. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-in,
+  .animate-in-scale,
+  .leaderboard-live-dot,
+  .page-hero h1,
+  .page-hero .lead,
+  .championship-hero .champion-name,
+  .championship-hero .champion-subtitle,
+  .championship-hero .prize-badge,
+  .auth-card { animation: none; }
+  .navbar .dropdown-menu,
+  .alert { animation: fade-in var(--motion-feedback) var(--ease-out) both; }
+}
+
 /* Text utilities */
 .text-gold     { color: var(--platform-accent) !important; }
 .text-purple   { color: var(--platform-primary) !important; }
@@ -15300,11 +15340,8 @@ a.roster-team-card:focus-visible {
 
 /* --- 18n. Cards — disable hover lift on touch devices --- */
 @media (hover: none) {
-  .card:hover {
-    transform: none;
-    box-shadow: var(--shadow-sm);
-  }
-  .stat-block:hover {
+  a.card:hover,
+  .card:has(a.stretched-link):hover {
     transform: none;
     box-shadow: var(--shadow-sm);
   }
@@ -19544,10 +19581,10 @@ body.game-docket .back-link:focus-visible {
 .ccc-footer-utility .ccc-footer-link { color: inherit; text-decoration: underline; text-underline-offset: .15em; }
 .ccc-footer-utility .ccc-footer-link:hover { color: var(--gold-light, inherit); }
 
+/* The chevron's turn is movement and stops; the names' color change on hover
+   is not, and stays (ADR-076). */
 @media (prefers-reduced-motion: reduce) {
-  .records-board-chevron,
-  .records-champion-name,
-  .records-board-title { transition: none; }
+  .records-board-chevron { transition: none; }
 }
 @media (max-width: 575.98px) {
   .records-wrap { padding-top: 1.5rem; }

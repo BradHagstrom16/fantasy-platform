@@ -80,6 +80,13 @@
   --ccc-nav-h: 56px;
   --ccc-footer-h: 200px;
 
+  /* Motion (DESIGN.md §4.5, ADR-076). The platform's confident ease-out:
+     no curve in the system overshoots. --motion-feedback is the length of
+     the opacity fade that confirms an action under prefers-reduced-motion
+     (the spatial part of the motion drops; the confirmation stays). */
+  --ease-out: cubic-bezier(.16, 1, .3, 1);
+  --motion-feedback: 150ms;
+
   /* Lounge headliner accents (multi-featured lounge, ruled 2026-08-18):
      the ONLY place room-family hues are written for lounge use. The lounge
      consumes them through the .home-shell --hl-* mapping in style.css;

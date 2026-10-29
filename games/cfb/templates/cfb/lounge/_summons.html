@@ -1,26 +1,31 @@
 {# The Summons — the lounge's signature surface (C1 §3.1): one identity
    across the four beats. OPEN/HELD wear the Ceremonial recipe;
    LOCKED/VERDICT the Informational. Internal order per §8.9: state
-   (chip + eyebrow) → decisive sentence (or the verdict word) → lives +
+   (chip) → decisive sentence + its dateline (or the labelled verdict word) → lives +
    deadline meta → one action. It never carries the slate, spreads, or
    team choices — those are the room's.
 
    CTA (ADR-052): every lounge action wears the game's own SOLID accent.
    The OPEN action is a crimson .hl-cta; the HELD review is the crimson
    accent outline (.hl-cta--outline), genuinely secondary. Gold is chrome
-   only. ◈ still marks the OPEN eyebrow (and the post-state champion
-   banner) — the glyph is ceremony, not a button. #}
+   only. ◈ still marks the OPEN dateline (and the post-state champion
+   banner) — the glyph is ceremony, not a button. Since ADR-076 the label
+   sits under the sentence it used to sit over; it stays above the verdict
+   word, a value. #}
 {% from 'cfb/lounge/_pips.html' import pips %}
 {% set s = g.summons %}
 <div class="summons{% if s.beat in ('locked', 'verdict') %} summons--info{% endif %}">
   <span class="state-chip{% if s.beat == 'open' %} state-chip--open{% endif %}">{{ s.chip }}</span>
-  <div class="summons-eyebrow{% if s.beat != 'open' %} summons-eyebrow--info{% endif %}">{% if s.beat == 'open' %}◈{% else %}◇{% endif %} The Summons &middot; {{ s.week_label }}</div>
 
+  {# The verdict word is a value, so its label stays above it; the sentence is
+     the headline, so its label becomes the dateline under it (ADR-076). #}
   {% if s.beat == 'verdict' %}
+  <div class="summons-eyebrow summons-eyebrow--info">◇ The Summons &middot; {{ s.week_label }}</div>
   <div class="verdict-word {{ s.verdict_class }}">{{ s.verdict_word }}</div>
   <p class="summons-sub">{{ s.sentence }}</p>
   {% else %}
   <div class="summons-line">{{ s.sentence }}</div>
+  <div class="summons-dateline{% if s.beat != 'open' %} summons-dateline--info{% endif %}">{% if s.beat == 'open' %}◈{% else %}◇{% endif %} The Summons &middot; {{ s.week_label }}</div>
   {% if s.support %}<p class="summons-sub">{{ s.support }}</p>{% endif %}
   {% endif %}
 

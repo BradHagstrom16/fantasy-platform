@@ -382,7 +382,7 @@ Hard requirements:
 
 When animation, color, or live-state systems are introduced, they must:
 
-- Respect `prefers-reduced-motion`
+- Respect `prefers-reduced-motion` by keeping the confirmation and dropping the movement: translation, scaling, smooth scrolling and loops stop, while the short opacity or color change that says an action landed stays (DESIGN.md §4.5, ADR-076). Reduced motion is fewer and gentler animations, never no feedback.
 - Avoid color-only state communication (live, eliminated, winning)
 - Pair state color with icons, labels, or structure
 - Preserve readability during live updates

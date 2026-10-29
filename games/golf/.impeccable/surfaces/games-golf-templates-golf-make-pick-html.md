@@ -23,7 +23,7 @@ FORM: One question at a time, position 7 of the seven structures considered (the
 
 FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance.
 
-Signature interaction: the leaf turn. Choosing a golfer inks him into the open slot and returns the member to the slots, where the next question is the open one; every open row's action word turns from "Primary" to "Backup" with it. Motion grammar: the slot's pen frame moves between slots and the page scrolls back to them, instant under reduced motion; nothing else moves except the fold caret.
+Signature interaction: the leaf turn. Choosing a golfer inks him into the open slot and returns the member to the slots, where the next question is the open one; every open row's action word turns from "Primary" to "Backup" with it. Motion grammar: the slot's pen frame moves between slots and the page scrolls back to them; under reduced motion the scroll is instant and the frame keeps its short color change (ADR-076); nothing else moves except the fold caret.
 
 Decisions carried from planning: Tom Select is replaced by the native list (the admin override page keeps it until U6). The burn share's denominator is the season's enrollees. A GET before the field is published renders the facts and the empty state; a POST there writes nothing. Past the lock the page redirects to that week's Board. After "Lock it in" the member lands on The Sheet. With a saved pick and no change, the pick action stands down and a pencil line says the pick is in. "Used golfers (N)" lists every golfer the member has spent, by week.
 

@@ -320,7 +320,9 @@ def test_pi4_reduced_motion_disables_auto_fade():
 
     The auto-fade is a courtesy for users who don't want flashes hovering;
     users with motion sensitivity disabled get a stable, persistent alert
-    they can dismiss manually.
+    they can dismiss manually. Since ADR-076 the entrance they get is the
+    opacity-only `fade-in` (the confirmation without the drop), not
+    `slideDown`.
     """
     css = STYLE_CSS.read_text()
     # The reduced-motion block must override `.alert-success.alert-dismissible`
@@ -329,16 +331,16 @@ def test_pi4_reduced_motion_disables_auto_fade():
     assert re.search(
         r'@media\s*\(prefers-reduced-motion:\s*reduce\)\s*\{\s*'
         r'\.alert\.alert-success\.alert-dismissible\s*\{\s*'
-        r'animation:\s*slideDown[^;]+;',
+        r'animation:\s*fade-in[^;]+;',
         css,
     ), (
         '`@media (prefers-reduced-motion: reduce)` must reset the success '
-        'flash animation to the entrance-only `slideDown` (S6.1.3 PI-4, '
-        'Group E PI-B).'
+        'flash animation to the entrance-only `fade-in` (S6.1.3 PI-4, '
+        'Group E PI-B; ADR-076).'
     )
     # And the auto-fade must NOT leak into the reduced-motion override —
     # `[^;]+` in the regex above traverses commas, so a hypothetical
-    # `animation: slideDown ..., ccc-flash-success-fade ...;` would
+    # `animation: fade-in ..., ccc-flash-success-fade ...;` would
     # false-pass the positive assertion. Extract the specific reduced-
     # motion rule body for `.alert.alert-success.alert-dismissible` and
     # assert the fade keyframe name isn't inside it. (`[^}]+` keeps the
