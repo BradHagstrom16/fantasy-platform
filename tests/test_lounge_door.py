@@ -87,8 +87,21 @@ def test_the_opt_in_needs_script_and_motion():
 def test_door_durations_are_tokens_and_the_exit_is_faster():
     door_in = int(re.search(r'--door-in:\s*(\d+)ms', TOKENS).group(1))
     door_out = int(re.search(r'--door-out:\s*(\d+)ms', TOKENS).group(1))
-    # DESIGN.md §4.5: a view transition runs 300-500ms; exits run faster.
-    assert 300 <= door_out < door_in <= 500
+    # DESIGN.md §4.5: the way in is an authored entrance (500-800ms), the way
+    # out a view transition (300-500ms); exits run faster.
+    assert 500 <= door_in <= 800
+    assert 300 <= door_out <= 500
+    assert door_out < door_in
+
+
+def test_door_runs_on_its_own_curve():
+    # --ease-out front-loads the travel (95% in the first 43% of the time),
+    # which made the door read as a cut; every door rule eases on --ease-door.
+    assert re.search(r'--ease-door:\s*cubic-bezier\(\.33,\s*1,\s*\.68,\s*1\)', TOKENS)
+    start = STYLE.index("@view-transition")
+    block = STYLE[start:STYLE.index("@keyframes door-fade-out", start)]
+    assert 'var(--ease-out)' not in block
+    assert 'var(--ease-door)' in block
 
 
 # ── 2. The scoper ────────────────────────────────────────────────────────

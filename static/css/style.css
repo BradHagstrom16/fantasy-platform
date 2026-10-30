@@ -5116,11 +5116,11 @@ html:active-view-transition-type(door-in, door-out)::view-transition-new(ccc-nav
    way back the room closes into it over the waiting lounge. */
 html:active-view-transition-type(door-in)::view-transition-old(root) { animation: none; }
 html:active-view-transition-type(door-in)::view-transition-new(root) {
-  animation: door-open var(--door-in) var(--ease-out) both;
+  animation: door-open var(--door-in) var(--ease-door) both;
 }
 html:active-view-transition-type(door-out)::view-transition-old(root) {
   z-index: 1;
-  animation: door-close var(--door-out) var(--ease-out) both;
+  animation: door-close var(--door-out) var(--ease-door) both;
 }
 html:active-view-transition-type(door-out)::view-transition-new(root) { animation: none; }
 
@@ -5130,7 +5130,7 @@ html:active-view-transition-type(door-out)::view-transition-new(root) { animatio
 html:active-view-transition-type(door-in, door-out)::view-transition-group(door) {
   overflow: clip;
   z-index: 1;
-  animation-timing-function: var(--ease-out);
+  animation-timing-function: var(--ease-door);
 }
 html:active-view-transition-type(door-in)::view-transition-group(door) { animation-duration: var(--door-in); }
 html:active-view-transition-type(door-out)::view-transition-group(door) { animation-duration: var(--door-out); }
@@ -5154,7 +5154,7 @@ html:active-view-transition-type(door-out)::view-transition-new(door) {
    name up to five times its size. */
 html:active-view-transition-type(door-in, door-out)::view-transition-group(door-words) {
   z-index: 2;
-  animation-timing-function: var(--ease-out);
+  animation-timing-function: var(--ease-door);
 }
 html:active-view-transition-type(door-in, door-out)::view-transition-old(door-words),
 html:active-view-transition-type(door-in, door-out)::view-transition-new(door-words) {
@@ -5165,11 +5165,11 @@ html:active-view-transition-type(door-in)::view-transition-group(door-words) { a
 html:active-view-transition-type(door-out)::view-transition-group(door-words) { animation-duration: var(--door-out); }
 html:active-view-transition-type(door-in)::view-transition-old(door-words) { animation: door-fade-out 160ms linear both; }
 html:active-view-transition-type(door-in)::view-transition-new(door-words) {
-  animation: fade-in calc(var(--door-in) - 140ms) var(--ease-out) 140ms both;
+  animation: fade-in calc(var(--door-in) - 140ms) var(--ease-door) 140ms both;
 }
 html:active-view-transition-type(door-out)::view-transition-old(door-words) { animation: door-fade-out 120ms linear both; }
 html:active-view-transition-type(door-out)::view-transition-new(door-words) {
-  animation: fade-in calc(var(--door-out) - 110ms) var(--ease-out) 110ms both;
+  animation: fade-in calc(var(--door-out) - 110ms) var(--ease-door) 110ms both;
 }
 
 /* The Pay Sheet's words are the first item of its context line, whose dot

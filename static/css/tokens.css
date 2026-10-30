@@ -86,9 +86,15 @@
      (the spatial part of the motion drops; the confirmation stays). */
   --ease-out: cubic-bezier(.16, 1, .3, 1);
   --motion-feedback: 150ms;
-  /* The Door (ADR-077): the lounge -> room view transition, and its faster exit. */
-  --door-in: 450ms;
-  --door-out: 320ms;
+  /* The Door (ADR-077): the lounge -> room view transition, and its faster exit.
+     The way in is the club's one authored entrance (§4.5's 500-800ms band);
+     the way out is a view transition (300-500ms). Its own ease-out (cubic)
+     spreads the movement across the run: on --ease-out the window covers
+     95% of its travel in the first 43% of the time, so at 450ms the door
+     still read as a cut. Not overshooting, like every curve in the system. */
+  --door-in: 800ms;
+  --door-out: 500ms;
+  --ease-door: cubic-bezier(.33, 1, .68, 1);
 
   /* Lounge headliner accents (multi-featured lounge, ruled 2026-08-18):
      the ONLY place room-family hues are written for lounge use. The lounge

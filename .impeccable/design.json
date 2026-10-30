@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-09-25T00:00:00Z",
+  "generatedAt": "2026-10-30T00:00:00Z",
   "title": "Design System: Corrupt Commish Club",
   "extensions": {
     "colorMeta": {
@@ -351,6 +351,21 @@
         "name": "motion-feedback",
         "value": "150ms",
         "purpose": "Length of the opacity-only fade-in that confirms an action under prefers-reduced-motion (--motion-feedback): the movement stops, the confirmation stays."
+      },
+      {
+        "name": "door-in",
+        "value": "800ms",
+        "purpose": "The Door's way in (--door-in, ADR-077): the room opens out of the lounge panel's rectangle. The club's one authored entrance, so it sits in the 500-800ms band, not the 300-500ms view-transition band."
+      },
+      {
+        "name": "door-out",
+        "value": "500ms",
+        "purpose": "The Door's way back (--door-out): the room shuts up into the panel's top edge. Exits run faster than entrances."
+      },
+      {
+        "name": "ease-door",
+        "value": "cubic-bezier(.33, 1, .68, 1)",
+        "purpose": "The Door's own ease-out (--ease-door), a cubic: it spreads the travel across the run. On --ease-out the window covered 95% of its travel in the first 43% of the time, so the door read as a cut. Door rules only; never overshoots."
       }
     ],
     "breakpoints": [
