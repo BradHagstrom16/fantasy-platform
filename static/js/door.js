@@ -39,8 +39,13 @@
     return null;
   }
 
+  // Seen means inside the window and below the sticky navbar: a panel
+  // scrolled up under the bar is out of sight, so the walk is a plain load.
   function inView(rect) {
-    return rect.bottom > 0 && rect.top < window.innerHeight && rect.width > 0;
+    var nav = document.querySelector('.navbar');
+    var top = nav ? Math.max(0, nav.getBoundingClientRect().bottom) : 0;
+    return Math.min(rect.bottom, window.innerHeight) > Math.max(rect.top, top) &&
+           Math.min(rect.right, window.innerWidth) > Math.max(rect.left, 0);
   }
 
   // Every element this file named. A page restored from the back/forward
