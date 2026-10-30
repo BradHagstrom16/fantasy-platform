@@ -5091,6 +5091,108 @@ body.game-golf {
   color: var(--bone-mute);
   text-align: right;
 }
+/* === THE DOOR (lounge <-> room, ADR-077; DESIGN.md §4.5) ===
+   The walk from a headliner panel into its room is one cross-document view
+   transition: the room opens out of the panel's own rectangle (a clip-path
+   window, never an opacity blend, so the dark lounge and a light room never
+   mix into a muddy middle), the panel head becomes the room's masthead, and
+   the panel's name travels into its H1, fading through. Back closes the room
+   into the panel. static/js/door.js names the pairs and stands every other
+   navigation down; every rule below waits for its door-in / door-out type.
+   No script or reduced motion: the at-rule is never declared, so every
+   navigation is a plain load (the page itself is the confirmation), as in
+   Firefox. */
+@media (scripting: enabled) and (prefers-reduced-motion: no-preference) {
+  @view-transition { navigation: auto; }
+}
+
+/* The navbar holds still: one group, no movement, the new bar at once. */
+html:active-view-transition-type(door-in, door-out) .navbar { view-transition-name: ccc-nav; }
+html:active-view-transition-type(door-in, door-out)::view-transition-group(ccc-nav) { animation: none; z-index: 3; }
+html:active-view-transition-type(door-in, door-out)::view-transition-old(ccc-nav) { display: none; }
+html:active-view-transition-type(door-in, door-out)::view-transition-new(ccc-nav) { animation: none; }
+
+/* The page: the lounge holds while the room opens out of the panel; on the
+   way back the room closes into it over the waiting lounge. */
+html:active-view-transition-type(door-in)::view-transition-old(root) { animation: none; }
+html:active-view-transition-type(door-in)::view-transition-new(root) {
+  animation: door-open var(--door-in) var(--ease-out) both;
+}
+html:active-view-transition-type(door-out)::view-transition-old(root) {
+  z-index: 1;
+  animation: door-close var(--door-out) var(--ease-out) both;
+}
+html:active-view-transition-type(door-out)::view-transition-new(root) { animation: none; }
+
+/* The masthead: a window that grows from the panel head to the masthead's
+   place. Both images keep their natural size, so the band is uncovered,
+   never stretched. */
+html:active-view-transition-type(door-in, door-out)::view-transition-group(door) {
+  overflow: clip;
+  z-index: 1;
+  animation-timing-function: var(--ease-out);
+}
+html:active-view-transition-type(door-in)::view-transition-group(door) { animation-duration: var(--door-in); }
+html:active-view-transition-type(door-out)::view-transition-group(door) { animation-duration: var(--door-out); }
+html:active-view-transition-type(door-in, door-out)::view-transition-old(door),
+html:active-view-transition-type(door-in, door-out)::view-transition-new(door) {
+  inline-size: auto;
+  block-size: auto;
+}
+html:active-view-transition-type(door-in)::view-transition-old(door) { animation: door-fade-out 160ms linear both; }
+html:active-view-transition-type(door-in)::view-transition-new(door) { animation: none; }
+html:active-view-transition-type(door-out)::view-transition-old(door) {
+  animation: door-fade-out 140ms linear calc(var(--door-out) - 140ms) both;
+}
+html:active-view-transition-type(door-out)::view-transition-new(door) {
+  animation: fade-in 140ms linear calc(var(--door-out) - 140ms) both;
+}
+
+/* The words fade through as they travel: the old name is gone before the
+   new one arrives, so no frame holds both. They scale by line height, not
+   by width: an H1 is a full-width block, and width scaling blew the panel
+   name up to five times its size. */
+html:active-view-transition-type(door-in, door-out)::view-transition-group(door-words) {
+  z-index: 2;
+  animation-timing-function: var(--ease-out);
+}
+html:active-view-transition-type(door-in, door-out)::view-transition-old(door-words),
+html:active-view-transition-type(door-in, door-out)::view-transition-new(door-words) {
+  inline-size: auto;
+  block-size: 100%;
+}
+html:active-view-transition-type(door-in)::view-transition-group(door-words) { animation-duration: var(--door-in); }
+html:active-view-transition-type(door-out)::view-transition-group(door-words) { animation-duration: var(--door-out); }
+html:active-view-transition-type(door-in)::view-transition-old(door-words) { animation: door-fade-out 160ms linear both; }
+html:active-view-transition-type(door-in)::view-transition-new(door-words) {
+  animation: fade-in calc(var(--door-in) - 140ms) var(--ease-out) 140ms both;
+}
+html:active-view-transition-type(door-out)::view-transition-old(door-words) { animation: door-fade-out 120ms linear both; }
+html:active-view-transition-type(door-out)::view-transition-new(door-words) {
+  animation: fade-in calc(var(--door-out) - 110ms) var(--ease-out) 110ms both;
+}
+
+/* The Pay Sheet's words are the first item of its context line, whose dot
+   hangs in a margin the line clips. Lifted into its own snapshot the item
+   escapes that clip, so the dot hides for the walk (visibility keeps the
+   line where it lands). */
+html:active-view-transition-type(door-in, door-out) .golf-context-items > :first-child::before {
+  visibility: hidden;
+}
+
+@keyframes door-open {
+  from { clip-path: inset(var(--door-t) var(--door-r) var(--door-b) var(--door-l) round 14px); }
+  to { clip-path: inset(0 round 0); }
+}
+/* The room shuts up into the panel's top edge (--door-shut puts the bottom
+   inset there): the closing edge uncovers the lounge panel pixel for pixel,
+   never a dissolve, which blended a light room into the dark panel. */
+@keyframes door-close {
+  from { clip-path: inset(0 round 0); }
+  to { clip-path: inset(var(--door-t) var(--door-r) var(--door-shut) var(--door-l) round 14px); }
+}
+@keyframes door-fade-out { to { opacity: 0; } }
+
 /* Panels own their interior spacing; interior cards lose their outer card
    chrome inside a panel (the panel is the card). */
 .home-shell .hl-panel .summons,

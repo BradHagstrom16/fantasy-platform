@@ -139,6 +139,12 @@ projected", "banked"), never the room's pencil or ink. The pen reaches the loung
 The lounge owns orientation (what is this game, when does it lock, take a seat); the room owns
 participation and inspection (the pick, the sheet, the board, the scorecard, the record room).
 
+The walk in from the lounge is The Door (root §4.5, ADR-077), seated with the panel at Phase L.
+The room has no hero band, so the door lands on `.golf-context`, the first line of every room page,
+and "The Pay Sheet" travels into the league's name at its head. The paper opens out of the
+panel's rectangle and nothing dark lands in the room (§6.10). `.golf-title` was refused as the
+landing, because on the Sheet it sits under Your line and often below a phone's fold.
+
 ## 4. Product State Model
 
 ### 4.1 Tournament states
