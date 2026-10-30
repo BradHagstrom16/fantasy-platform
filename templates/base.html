@@ -41,6 +41,10 @@
     <!-- Platform CSS — cache-busted per deploy via `?v={{ asset_version }}` -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v={{ asset_version }}">
 
+    <!-- The Door (ADR-077): the lounge <-> room view transition. Render-blocking
+         on purpose: pagereveal must be registered before the first render. -->
+    <script src="{{ url_for('static', filename='js/door.js') }}?v={{ asset_version }}"></script>
+
     {% block head %}{% endblock %}
 </head>
 <body class="{% block body_class %}{{ body_class|default('') }}{% endblock %}" data-vapid-key="{{ vapid_public_key }}">

@@ -181,6 +181,8 @@ The room is operational: act, compare, inspect, verify. The lounge is orienting 
 
 The canonical CFB landing page is the standings/home experience. It is not merely a leaderboard. It answers, in order: *Am I alive? How many lives do I have? Have I made this week's pick? When does the decision lock? What is happening to the field? Where do I go to act?* When the active player has not made a pick, their card outranks the standings. Returning must feel immediately useful even when no new pick is required.
 
+The walk in from the lounge is The Door (root §4.5, ADR-077): the room opens out of the Survivor panel's rectangle, the panel head grows into the crimson `.page-hero` band and "CFB Survivor" travels into the H1. It plays into every player page that opens on the band, and Back plays it in reverse. Midnight opens out of the lounge's dark, so this room's door is the quietest of the three.
+
 ### 3.3 The lounge owns orientation
 
 The lounge summarizes: survival status, lives, pick status, time until lock, aggregate field health, recent eliminations or verdicts, commissioner voice, and the route to the next meaningful action. It may include compact standings. It answers: *Does the club need me? Am I still alive? Have I done what this week requires? How is the field changing? What happened since I last looked? Where should I go next?* It makes the competition feel present even when no action is required. It does not attempt to become the complete evidence surface.

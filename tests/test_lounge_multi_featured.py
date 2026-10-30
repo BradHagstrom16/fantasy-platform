@@ -429,8 +429,8 @@ def test_panel_header_names_link_to_each_room(app, client):
     heads = re.findall(r'<header class="hl-panel-head">(.*?)</header>', text, re.S)
     assert len(heads) == 2
     cfb_head, docket_head = heads
-    assert '<a class="hl-panel-link" href="/cfb/">' in cfb_head
-    assert '<a class="hl-panel-link" href="/docket/">' in docket_head
+    assert '<a class="hl-panel-link" href="/cfb/" data-door-slug="cfb">' in cfb_head
+    assert '<a class="hl-panel-link" href="/docket/" data-door-slug="docket">' in docket_head
     for head in heads:
         # The name sits inside the link; the court line stays outside it.
         link = head[head.index('<a '):head.index('</a>')]

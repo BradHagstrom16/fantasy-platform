@@ -51,7 +51,8 @@ RULES = _rules(STYLE)
 
 
 def _in_reduced(context) -> bool:
-    return any(REDUCED in p for p in context)
+    # `reduce`, not `no-preference`: The Door's opt-in sits under the latter.
+    return any(re.search(REDUCED + r'\s*:\s*reduce', p) for p in context)
 
 
 def _selectors(prelude: str) -> set[str]:

@@ -83,7 +83,7 @@ def test_authed_joined_nothing_sees_three_panels_and_the_fourth_decree(app, clie
     heads = re.findall(r'<header class="hl-panel-head">(.*?)</header>', text, re.S)
     assert len(heads) == 3
     assert 'hl-panel-name">The Pay Sheet</span>' in heads[2]
-    assert '<a class="hl-panel-link" href="/golf/">' in heads[2]
+    assert '<a class="hl-panel-link" href="/golf/" data-door-slug="golf">' in heads[2]
     golf_panel = text[text.index('hl-panel--golf'):text.index('_lounge_ledger') if '_lounge_ledger' in text else None]
     assert 'By Decree of the Commish' in golf_panel and 'No 004' in golf_panel
     assert 'The Pay Sheet &rsquo;26' in golf_panel
