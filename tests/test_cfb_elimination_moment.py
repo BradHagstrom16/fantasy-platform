@@ -458,6 +458,21 @@ def test_the_script_holds_offscreen_and_records_with_the_token():
     assert "indexOf('cfb-run-')" in SCRIPT and 'IntersectionObserver' in SCRIPT
     # A part that began before the deferred script listened still counts.
     assert "playState === 'finished'" in SCRIPT and 'getTiming().delay' in SCRIPT
+    # But only once the card has been seen: a turn that ran offscreen before
+    # the observer looked is rewound and held, then recorded when it plays.
+    assert 'if (seen || !watching) { record(); }' in SCRIPT
+    assert 'animation.currentTime = 0;' in SCRIPT
+
+
+def test_the_parts_never_wait_on_the_script():
+    # A page whose script never arrives still ends on the still state, so the
+    # one hold in the CSS is The Door's; the offscreen hold is the script's.
+    _at, motion = _moment_block(MOTION)
+    motion = re.sub(r'/\*.*?\*/', '', motion, flags=re.S)
+    holds = re.findall(r'([^{}]+)\{\s*animation-play-state:\s*paused;\s*\}', motion)
+    assert len(holds) == 1
+    selectors = [s.strip() for s in holds[0].split(',')]
+    assert all(s.startswith('html:active-view-transition ') for s in selectors), selectors
 
 
 # ── The migration's backfill (Postgres; CI runs the chain separately) ─────
