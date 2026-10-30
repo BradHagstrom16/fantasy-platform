@@ -53,7 +53,8 @@ from tests._cfb_fixtures import (
 ROOT = Path(__file__).resolve().parent.parent
 CSS = (ROOT / 'static/css/style.css').read_text(encoding='utf-8')
 SCRIPT = (ROOT / 'static/js/cfb-run-end.js').read_text(encoding='utf-8')
-SEEN_URL = '/cfb/moment/elimination/seen'
+SEEN_PATH = '/cfb/moment/elimination/seen'
+SEEN_URL = f'{SEEN_PATH}?week=3'   # the card names the week it showed
 LINE = 'Your run ends at Week 3. The pool plays on.'
 FOOT = f'<p class="cfb-run-end"><span class="cfb-run-end-text">{LINE}</span></p>'
 
@@ -267,6 +268,19 @@ def test_the_post_records_the_week_once(app, client):
         assert db.session.get(CfbEnrollment, ana_e.id).elimination_seen_week == 3
 
 
+def test_a_page_showing_another_week_records_nothing(app, client):
+    # A page left open across a re-grade that moved the run's end still names
+    # the week it showed; the server files only the week due, so the new end
+    # is never marked seen unshown.
+    with app.app_context():
+        _week, ana, ana_e = _out_with_a_survivor(app)
+        _login(client, ana)
+        for url in (f'{SEEN_PATH}?week=2', SEEN_PATH):
+            assert client.post(url).status_code == 204
+        db.session.refresh(ana_e)
+        assert ana_e.elimination_seen_week is None
+
+
 def test_a_get_writes_nothing(app, client):
     with app.app_context():
         _week, ana, ana_e = _out_with_a_survivor(app)
@@ -294,7 +308,7 @@ def test_a_survivor_records_nothing(app, client):
 
 def test_mark_takes_no_enrollment_quietly(app):
     with app.app_context():
-        mark_elimination_seen(None)
+        mark_elimination_seen(None, 3)
 
 
 # ── 3. The pages ──────────────────────────────────────────────────────────
@@ -364,6 +378,7 @@ def test_the_landing_lead_carries_it_while_the_week_is_unfinished(app, client):
         # LOCKED: the rule and the ramp still belong to the unfinished week.
         assert 'is-pending' in card and 'is-ended' not in card
         assert 'data-moment="elimination"' in card
+        assert f'data-moment-seen="{SEEN_URL}"' in card
         assert FOOT in html
         # The card ends on the line, after the lives (a phone wraps the aside).
         assert html.index(FOOT) > html.index('cfb-week-lead-aside')
@@ -461,11 +476,21 @@ def test_the_script_holds_offscreen_and_records_with_the_token():
     # But only while the card is seen: the record waits for a part to begin
     # in view, and a card that leaves first is rewound and held to play whole.
     assert 'if (begun()) { record(); observer.disconnect(); return; }' in SCRIPT
+    # The hold is the stylesheet's and the rewind a seek: play() or pause()
+    # would take the parts from CSS for good, The Door's pause with them.
+    assert "card.setAttribute('data-moment-held', '')" in SCRIPT
+    assert "card.removeAttribute('data-moment-held')" in SCRIPT
     assert 'animation.currentTime = 0;' in SCRIPT
+    assert '.pause()' not in SCRIPT and '.play()' not in SCRIPT
     # Seen is the visible share, never isIntersecting (true at a one-pixel
     # sliver whatever the threshold), with a floor for a card too tall for it.
     assert 'entry.intersectionRatio >= 0.6' in SCRIPT and 'isIntersecting' not in SCRIPT
     assert 'entry.intersectionRect.height >= 0.6 * entry.rootBounds.height' in SCRIPT
+    # The observer calls only on a step, and a tall card's share stops at
+    # the plateau: steps every 5% land a call past the floor for a card up
+    # to eight viewports tall.
+    assert 'for (var i = 0; i <= 20; i++) { steps.push(i / 20); }' in SCRIPT
+    assert '{ threshold: steps }' in SCRIPT
 
 
 def test_the_parts_never_wait_on_the_script():
@@ -477,6 +502,17 @@ def test_the_parts_never_wait_on_the_script():
     assert len(holds) == 1
     selectors = [s.strip() for s in holds[0].split(',')]
     assert all(s.startswith('html:active-view-transition ') for s in selectors), selectors
+    # The script's offscreen hold sits outside both media blocks and keys on
+    # the attribute only the script sets, so it too never waits on the script.
+    bare = re.sub(r'/\*.*?\*/', '', CSS, flags=re.S)
+    held = [sels for sels in re.findall(
+        r'([^{}]+)\{\s*animation-play-state:\s*paused;\s*\}', bare)
+        if 'data-moment-held' in sels]
+    assert len(held) == 1
+    selectors = [s.strip() for s in held[0].split(',')]
+    assert len(selectors) == 7
+    assert all(s.startswith('[data-moment="elimination"][data-moment-held]')
+               for s in selectors), selectors
 
 
 # ── The migration's backfill (Postgres; CI runs the chain separately) ─────

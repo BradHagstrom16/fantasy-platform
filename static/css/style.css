@@ -9147,6 +9147,20 @@ body.game-cfb {
   }
 }
 
+/* The script's offscreen hold (cfb-run-end.js): a pause, never
+   animation: none, so a half-visible held card shows the turn's first frame
+   rather than a card half turned. Only the script sets the attribute, so a
+   page without it never waits. */
+[data-moment="elimination"][data-moment-held] .cfb-run-pip,
+[data-moment="elimination"][data-moment-held] .cfb-run-pip::before,
+[data-moment="elimination"][data-moment-held] .cfb-run-was,
+[data-moment="elimination"][data-moment-held] .cfb-run-now,
+[data-moment="elimination"][data-moment-held] .cfb-run-end-text,
+[data-moment="elimination"][data-moment-held].is-ended::before,
+[data-moment="elimination"][data-moment-held].is-ended::after {
+  animation-play-state: paused;
+}
+
 /* Conference accordion -- dark-tuned off the Bootstrap white/blue active island
    (the named A2 debt). EVERY JS hook is preserved (#conferenceAccordion,
    data-bs-toggle/-target/-parent, the #confCollapse* ids); only color + the

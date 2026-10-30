@@ -105,12 +105,14 @@ def elimination_moment_due(enrollment, run_end=_UNREAD):
     return week
 
 
-def mark_elimination_seen(enrollment):
-    """Record that the moment played. Idempotent; the server names the week,
-    never the page."""
+def mark_elimination_seen(enrollment, week_number):
+    """Record that the moment played on the card for ``week_number``, the
+    week the page showed. Only while that is still the week due: a page left
+    open across a re-grade that moved the run's end never files the new
+    week as seen. Idempotent."""
     week = elimination_moment_due(enrollment)
-    if week is not None:
-        enrollment.elimination_seen_week = week.week_number
+    if week is not None and week.week_number == week_number:
+        enrollment.elimination_seen_week = week_number
         db.session.commit()
 
 

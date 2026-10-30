@@ -48,7 +48,7 @@
     {% set my_entry = current_user_pick or current_user_nopick %}
     {% if current_user.is_authenticated and my_entry %}
     {% set my_game = game_results.get(current_user_pick.team_id) if current_user_pick else none %}
-    <div class="cfb-verdict animate-in {% if current_user_pick and (current_user_pick.is_correct == True or current_user_pick.is_no_contest) %}is-survived{% elif current_user_pick and current_user_pick.is_correct == None %}is-pending{% else %}is-lost{% endif %}{% if run_end_line %} is-ended{% endif %}"{% if run_moment %} data-moment="elimination" data-moment-seen="{{ url_for('cfb.elimination_moment_seen') }}"{% endif %}>
+    <div class="cfb-verdict animate-in {% if current_user_pick and (current_user_pick.is_correct == True or current_user_pick.is_no_contest) %}is-survived{% elif current_user_pick and current_user_pick.is_correct == None %}is-pending{% else %}is-lost{% endif %}{% if run_end_line %} is-ended{% endif %}"{% if run_moment %} data-moment="elimination" data-moment-seen="{{ url_for('cfb.elimination_moment_seen', week=week.week_number) }}"{% endif %}>
         <div class="cfb-verdict-main">
             <span class="cfb-eyebrow">Your Verdict</span>
             <div class="cfb-verdict-team">

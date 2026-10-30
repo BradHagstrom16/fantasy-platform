@@ -1059,8 +1059,10 @@ def make_pick(week_number):
 @enrollment_required('cfb')
 def elimination_moment_seen():
     """The Observer's Seat started on the member's screen (ADR-078): record
-    it so it never plays again. The page names no week; the server does."""
-    mark_elimination_seen(get_enrollment(current_user.id))
+    it so it never plays again. The card's URL carries the week it showed,
+    and the server records it only while that is the week due."""
+    mark_elimination_seen(
+        get_enrollment(current_user.id), request.args.get('week', type=int))
     return '', 204
 
 

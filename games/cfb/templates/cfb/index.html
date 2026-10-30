@@ -193,7 +193,7 @@
                the Observer's Seat (6.14, ADR-078): .is-ended, data-moment
                plays it once, the still state is its end. #}
             {% if lead_card %}
-            <div class="cfb-week-lead is-{{ lead_card.tone }}{% if lead_card.ended %} is-ended{% endif %} mb-4 animate-in stagger-1"{% if lead_card.moment %} data-moment="elimination" data-moment-seen="{{ url_for('cfb.elimination_moment_seen') }}"{% endif %}>
+            <div class="cfb-week-lead is-{{ lead_card.tone }}{% if lead_card.ended %} is-ended{% endif %} mb-4 animate-in stagger-1"{% if lead_card.moment %} data-moment="elimination" data-moment-seen="{{ url_for('cfb.elimination_moment_seen', week=lead_week.week_number) }}"{% endif %}>
                 <div class="cfb-week-lead-main">
                     <div class="cfb-week-lead-headline">{{ lead_card.headline }}</div>
                     {% if lead_card.derivation %}
