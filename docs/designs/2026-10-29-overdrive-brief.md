@@ -5,20 +5,29 @@ The ready-to-paste prompt for the first `/impeccable overdrive` pass, and the `/
 ## Before you paste
 
 - **Pick one target.** Overdrive does one moment, well. The options, best first:
-  1. **The walk from the lounge into a room** (recommended). A cross-document View Transition: a headliner panel's mark and name (`.hl-panel-link`, `core/main/templates/main/_hl_panel_head.html`) morph into the room's masthead. It is one moment, it uses a browser feature the Club has never used (only `/app` uses View Transitions, and only same-document ones), it degrades to an ordinary page load in Firefox, and it turns the dark lounge / light room split into the motion itself: you step through a door. It touches the lounge and all three rooms' mastheads, so it reads all four DESIGN.md files.
+  1. **The walk from the lounge into a room** (recommended; Brad's pick 2026-10-29). A cross-document View Transition: a headliner panel's head (`.hl-panel-link`, `core/main/templates/main/_hl_panel_head.html`) becomes the room's masthead (CFB `.page-hero.cfb-hero`, Docket `.page-hero.docket-hero`, golf `.golf-title`). It is a morph of the block, not of the words: the mark is the registry emoji, which no masthead carries, and the panel name is not the room's h1 ("Survivor" vs "The Survivors"), so the words crossfade inside the moving block. It is one moment, it uses a browser feature the Club has never used (only `/app` uses View Transitions, and only same-document ones), it degrades to an ordinary page load in Firefox, and it turns the dark lounge / light room split into the motion itself: you step through a door. It touches the lounge and all three rooms' mastheads, so it reads all four DESIGN.md files.
   2. **The CFB terminal moments**, newly open under ADR-076: the champion (`.championship-hero`, `games/cfb/templates/cfb/index.html`; the lounge's `.champ-banner`), the member's own elimination, the CFP reset. The champion may use particles or confetti in crimson and bone. Rare by nature: one champion a season, so verify with `CFB_FAKE_NOW` and the sandbox.
   3. **The Docket week turning graded**: the lounge board's tiles lighting as verdicts land (`.hl-board` / `.hl-tile`), or the ledger's movement (§8.12).
 - **Decide nothing else in advance.** Overdrive proposes two or three directions and waits for your pick.
 
 ## The prompt
 
-Replace the two `<...>` lines, then paste everything in the block.
+Replace the two `<...>` lines (and keep or drop the lounge-to-room block under them), then paste everything in the block.
 
 ```
 /impeccable overdrive --target <path, e.g. core/main/templates/main/ or games/cfb/templates/cfb/>
 
 TARGET: <the surface and the one moment, e.g. "the walk from a lounge headliner panel into its room:
-a cross-document View Transition from the panel's .hl-panel-link mark and name to the room's masthead">
+a cross-document View Transition in which the panel head (.hl-panel-link) becomes the room's masthead block,
+the words crossfading inside it (no masthead carries the panel's emoji mark or its exact name)">
+
+<for the lounge-to-room target, keep these four lines too>
+- Scope it: @view-transition { navigation: auto } opts in every same-origin navigation both pages share. Only
+  lounge <-> room may transition (view transition types, or pageswap / pagereveal); every other link stays a plain load.
+- Author the root: the default crossfade from the dark lounge to a light room passes through a muddy middle.
+- The back button (room to lounge) plays it in reverse; the navbar holds still throughout.
+- If a direction prerenders the room (Speculation Rules), say what that does to each blueprint's before_request
+  hook, which would then run before the member has clicked.
 
 REQUIRED READING before proposing. The loader drops the root doc under --target, so read all of these yourself:
 - DESIGN.md (root): §4.5 Motion (ADR-076, the binding motion doctrine), §6 Do's and Don'ts, §1.6 Lounge and rooms,
