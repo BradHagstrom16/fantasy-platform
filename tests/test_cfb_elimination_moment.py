@@ -458,10 +458,14 @@ def test_the_script_holds_offscreen_and_records_with_the_token():
     assert "indexOf('cfb-run-')" in SCRIPT and 'IntersectionObserver' in SCRIPT
     # A part that began before the deferred script listened still counts.
     assert "playState === 'finished'" in SCRIPT and 'getTiming().delay' in SCRIPT
-    # But only once the card has been seen: a turn that ran offscreen before
-    # the observer looked is rewound and held, then recorded when it plays.
-    assert 'if (seen || !watching) { record(); }' in SCRIPT
+    # But only while the card is seen: the record waits for a part to begin
+    # in view, and a card that leaves first is rewound and held to play whole.
+    assert 'if (begun()) { record(); observer.disconnect(); return; }' in SCRIPT
     assert 'animation.currentTime = 0;' in SCRIPT
+    # Seen is the visible share, never isIntersecting (true at a one-pixel
+    # sliver whatever the threshold), with a floor for a card too tall for it.
+    assert 'entry.intersectionRatio >= 0.6' in SCRIPT and 'isIntersecting' not in SCRIPT
+    assert 'entry.intersectionRect.height >= 0.6 * entry.rootBounds.height' in SCRIPT
 
 
 def test_the_parts_never_wait_on_the_script():

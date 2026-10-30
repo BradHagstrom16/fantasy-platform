@@ -366,6 +366,11 @@
         "name": "ease-door",
         "value": "cubic-bezier(.33, 1, .68, 1)",
         "purpose": "The Door's own ease-out (--ease-door), a cubic: it spreads the travel across the run. On --ease-out the window covered 95% of its travel in the first 43% of the time, so the door read as a cut. Door rules only; never overshoots."
+      },
+      {
+        "name": "ease-moment",
+        "value": "cubic-bezier(.33, 1, .68, 1)",
+        "purpose": "A terminal moment's long parts (--ease-moment, ADR-078): the door's cubic under its own name, so neither can retune the other. CFB's Observer's Seat runs its pip and its rule-and-step on it; on --ease-out the pip's fill was 95% gone at 250ms and read as a blink. Short fades stay on --ease-out or linear; never overshoots."
       }
     ],
     "breakpoints": [
