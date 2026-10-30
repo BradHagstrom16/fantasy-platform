@@ -7594,7 +7594,9 @@ body.game-cfb .page-hero .lead {
    a brighter hairline), the dark-room substitute for a drop shadow. Only a
    card that is a door answers the pointer (ADR-076, as the platform .card). */
 body.game-cfb a.card:hover,
-body.game-cfb .card:has(a.stretched-link):hover {
+body.game-cfb a.card:focus-visible,
+body.game-cfb .card:has(a.stretched-link):hover,
+body.game-cfb .card:has(a.stretched-link:focus-visible) {
   background: var(--cfb-raised);
   border-color: var(--cfb-hairline-strong);
 }
@@ -13803,7 +13805,8 @@ main { flex: 1; }
    holds content answers no pointer, because a lift says "click me". */
 a.card:hover,
 a.card:focus-visible,
-.card:has(a.stretched-link):hover {
+.card:has(a.stretched-link):hover,
+.card:has(a.stretched-link:focus-visible) {
   transform: translateY(-2px);
   box-shadow: var(--shadow-md);
 }
@@ -13816,6 +13819,7 @@ a.card:active,
   a.card:focus-visible,
   a.card:active,
   .card:has(a.stretched-link):hover,
+  .card:has(a.stretched-link:focus-visible),
   .card:has(a.stretched-link):active { transform: none; }
 }
 
@@ -14000,6 +14004,11 @@ a.card:active,
 
 .game-card:hover .game-icon {
   transform: scale(1.1) rotate(-3deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .game-card:hover .game-icon,
+  .game-card--featured:hover .featured-icon { transform: none; }
 }
 
 .game-card .game-title {

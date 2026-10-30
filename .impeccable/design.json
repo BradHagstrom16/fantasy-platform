@@ -498,7 +498,7 @@
       },
       {
         "name": "The Eyebrow Rule",
-        "body": "No eyebrow above a heading: the heading carries its own weight (the impeccable craft floor's one ban no brief earns back). An eyebrow is a label that heads something that is not a heading: a value (\"Picks Lock / in 3d\"), a stamp (\"Filed\"), a list or paragraph, a fold's summary, a desk letter's game section. When a heading needs context (game, week, state, rank), put the fact in the heading (\"Your Week 4 Card\", \"The Docket, Week 3: 5-3\") or in the line under it (the lead, the hero field line), never in a label over it. Where a label is right, reach for the matching Eyebrow primitive (.admin-eyebrow, or the game's variant in its DESIGN.md); don't invent a \"kicker\" or \"subhead\" pattern. Enforced in the CFB and Docket rooms, the Settle the Tab card and every member email (tests/test_eyebrow_above_heading.py). Out of scope: the lounge, whose ◇ summons eyebrows are sanctioned lounge chrome (ADR-052), and the frozen World Cup. Not yet applied: the platform admin masthead, the auth cards and /app; they meet the rule when next reworked, never by a new eyebrow over a heading.",
+        "body": "No eyebrow above a heading: the heading carries its own weight (the impeccable craft floor's one ban no brief earns back). An eyebrow is a label that heads something that is not a heading: a value (\"Picks Lock / in 3d\"), a stamp (\"Filed\"), a list or paragraph, a fold's summary, a desk letter's game section. When a heading needs context (game, week, state, rank), put the fact in the heading (\"Your Week 4 Card\", \"The Docket, Week 3: 5-3\") or in the line under it (the lead, the hero field line), never in a label over it. Where a label is right, reach for the matching Eyebrow primitive (.admin-eyebrow, or the game's variant in its DESIGN.md); don't invent a \"kicker\" or \"subhead\" pattern. Enforced in the CFB, Docket and Pay Sheet rooms, The Record, /app (its 2026-10-08 rework, ADR-074), the Settle the Tab card and every member email, and since ADR-076 (2026-10-29) the lounge, the logged-out page, the platform admin and auth (tests/test_eyebrow_above_heading.py). In the lounge a ◇/◈ label over the 2rem summons line became the dateline under it (.summons-dateline, the label's own type); a label over a value (a record, the decree's countdown numeral, the meta row) stays a .summons-eyebrow above it, and a label that only repeated the line was dropped. The platform admin masthead lost \"The Commish's Desk\" the way the rooms' admin mastheads lost theirs. Out of scope: the frozen World Cup.",
         "section": "typography"
       },
       {
@@ -523,7 +523,7 @@
       },
       {
         "name": "The Lift-At-Rest Rule",
-        "body": "Cards lift slightly (--shadow-sm) at rest, harder on hover (--shadow-md). Flat-at-rest is the wrong elevation philosophy for CCC; the Tribune is a printed object, not a wireframe.",
+        "body": "Cards lift slightly (--shadow-sm) at rest, and a card that is a link lifts harder on hover (--shadow-md). Flat-at-rest is the wrong elevation philosophy for CCC; the Tribune is a printed object, not a wireframe.",
         "section": "elevation"
       },
       {
@@ -537,7 +537,7 @@
       "Do use Teko for every heading, eyebrow, button label, table head, and navbar link.",
       "Do use Newsreader for every paragraph, body text, list item, and editorial caption.",
       "Do reserve the metal-gold gradients (--metal-gold / --metal-gold-flat) for primary CTAs and the active navbar button. Nothing else.",
-      "Do use the brand-tinted shadow scale (--shadow-sm/md/lg/gold) on every elevated surface. Cards lift slightly at rest, harder on hover.",
+      "Do use the brand-tinted shadow scale (--shadow-sm/md/lg/gold) on every elevated surface. Cards lift slightly at rest; a card that is a link lifts harder on hover.",
       "Do scope every non-platform color through a body.game-<slug> class. Game palettes layer on the chrome; they never replace it.",
       "Do use Pressroom Bone (#F3EFE6) as the page background. White (#FFFFFF) is for nested cards only.",
       "Do apply gold dividers (border-top: 2px solid var(--gold)) between major page sections when separation is needed, not colored side-stripes on cards.",
