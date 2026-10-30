@@ -39,10 +39,16 @@
         </div>
     </div>
     {% endif %}
+    {# On the week the viewer's run ended (final, games/cfb/services/
+       moments.py) the verdict is the Observer's Seat (DESIGN.md 6.14,
+       ADR-078): .is-ended steps it down the ramp under an ash rule and the
+       closing line ends it. data-moment plays the turn once; the pip, the
+       label pair and the line are its parts, and the still state is its
+       end. #}
     {% set my_entry = current_user_pick or current_user_nopick %}
     {% if current_user.is_authenticated and my_entry %}
     {% set my_game = game_results.get(current_user_pick.team_id) if current_user_pick else none %}
-    <div class="cfb-verdict animate-in {% if current_user_pick and (current_user_pick.is_correct == True or current_user_pick.is_no_contest) %}is-survived{% elif current_user_pick and current_user_pick.is_correct == None %}is-pending{% else %}is-lost{% endif %}">
+    <div class="cfb-verdict animate-in {% if current_user_pick and (current_user_pick.is_correct == True or current_user_pick.is_no_contest) %}is-survived{% elif current_user_pick and current_user_pick.is_correct == None %}is-pending{% else %}is-lost{% endif %}{% if run_end_line %} is-ended{% endif %}"{% if run_moment %} data-moment="elimination" data-moment-seen="{{ url_for('cfb.elimination_moment_seen', week=week.week_number) }}"{% endif %}>
         <div class="cfb-verdict-main">
             <span class="cfb-eyebrow">Your Verdict</span>
             <div class="cfb-verdict-team">
@@ -76,11 +82,12 @@
             <span class="cfb-verdict-lives">
                 <span class="lives-indicator" aria-hidden="true">
                     {% for i in range(my_entry.lives_after) %}<span class="life"></span>{% endfor %}
-                    {% for i in range(2 - my_entry.lives_after) %}<span class="life lost"></span>{% endfor %}
+                    {% for i in range(2 - my_entry.lives_after) %}<span class="life lost{% if run_moment and loop.first %} cfb-run-pip{% endif %}"></span>{% endfor %}
                 </span>
-                <span class="cfb-verdict-lives-label">{% if my_entry.was_eliminated %}Eliminated{% elif my_entry.lives_after == 1 %}1 life left{% else %}{{ my_entry.lives_after }} lives left{% endif %}</span>
+                <span class="cfb-verdict-lives-label">{% if run_moment %}<span class="cfb-run-label"><span class="cfb-run-was" aria-hidden="true">1 life left</span><span class="cfb-run-now">Eliminated</span></span>{% elif my_entry.was_eliminated %}Eliminated{% elif my_entry.lives_after == 1 %}1 life left{% else %}{{ my_entry.lives_after }} lives left{% endif %}</span>
             </span>
         </div>
+        {% if run_end_line %}<p class="cfb-run-end"><span class="cfb-run-end-text">{{ run_end_line }}</span></p>{% endif %}
     </div>
     {% endif %}
 
@@ -270,4 +277,8 @@
     </section>
     {% endif %}
 </div>
+{% endblock %}
+
+{% block scripts %}
+{% if run_moment %}<script src="{{ url_for('static', filename='js/cfb-run-end.js') }}?v={{ asset_version }}" defer></script>{% endif %}
 {% endblock %}

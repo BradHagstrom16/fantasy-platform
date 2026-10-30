@@ -9004,6 +9004,163 @@ body.game-cfb .cfb-verdict.animate-in .cfb-verdict-chip {
   color: var(--cfb-bone-muted);
 }
 
+/* -- The Observer's Seat (games/cfb/DESIGN.md 6.14, ADR-078) -----------------
+   The card a member's run ended on: their verdict on Results, and the
+   landing's lead card while it is that week's. Its still state is the end of
+   the moment: a step down the ramp (surface, resting hairline), the top rule
+   in ash, the last pip hollow, and the closing line ("Your run ends at Week
+   N. The pool plays on."). The first time the member opens it,
+   [data-moment="elimination"] plays the turn once: the last pip goes out,
+   the word changes, the rule hands lost-red to ash left to right as the
+   card steps down, and the closing line lands. The parts run only with script and no
+   reduced-motion preference, hold while The Door is still running, and
+   static/js/cfb-run-end.js holds them offscreen and records the play
+   (games/cfb/services/moments.py). Locked by
+   tests/test_cfb_elimination_moment.py. */
+body.game-cfb {
+  --cfb-run-start: .65s;   /* the card's .36s entrance, its stagger, a beat */
+  --cfb-run-out: 700ms;    /* the last pip goes out (80% at 290ms, 95% at 440ms) */
+  --cfb-run-turn: 500ms;   /* the rule turns ash and the card steps down */
+  --cfb-run-land: 300ms;   /* the closing line */
+}
+.cfb-verdict.is-ended,
+.cfb-week-lead.is-ended {
+  background: var(--cfb-surface);
+  border-color: var(--cfb-hairline);
+  border-top-color: var(--cfb-eliminated);
+}
+/* The closing line is the card's last row on both surfaces, under its own
+   hairline. The rule is the row's and draws from the first frame; only the
+   words (.cfb-run-end-text) arrive, so the waiting row reads as a ruled
+   slot, never as a gap. */
+.cfb-run-end {
+  flex-basis: 100%;
+  margin: 0;
+  padding-top: .8rem;
+  border-top: 1px solid var(--cfb-hairline);
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: var(--cfb-bone);
+}
+.cfb-run-end-text { display: inline-block; }
+/* The label the pip turns: "1 life left" under "Eliminated" in one cell, so
+   the swap moves nothing. The old word is the moment's alone. */
+.cfb-run-label { display: inline-grid; }
+.cfb-run-label > * { grid-area: 1 / 1; }
+.cfb-run-was { opacity: 0; }
+
+@keyframes cfb-run-pip-ring {
+  from { border-color: var(--cfb-survived); }
+  to   { border-color: var(--cfb-eliminated); }
+}
+@keyframes cfb-run-pip-fill {
+  from { clip-path: circle(50%); }
+  to   { clip-path: circle(0%); }
+}
+@keyframes cfb-run-was  { from { opacity: 1; } to { opacity: 0; } }
+@keyframes cfb-run-now  { from { opacity: 0; } to { opacity: 1; } }
+@keyframes cfb-run-rule {
+  from { clip-path: inset(0 0 0 0); }
+  to   { clip-path: inset(0 0 0 100%); }
+}
+@keyframes cfb-run-step { from { opacity: 1; } to { opacity: 0; } }
+@keyframes cfb-run-line {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+/* The reduced-motion confirmation: fade-in under its own name, so the
+   script can tell the moment started. */
+@keyframes cfb-run-settle { from { opacity: 0; } to { opacity: 1; } }
+
+@media (scripting: enabled) and (prefers-reduced-motion: no-preference) {
+  /* The long parts run on --ease-moment: --ease-out spends 95% of the
+     fill in the first 250ms, which read as a blink rather than a life
+     going out. The steps run in order: pip, word, rule, line. */
+  [data-moment="elimination"] .cfb-run-pip {
+    position: relative;
+    animation: cfb-run-pip-ring var(--cfb-run-out) var(--ease-moment) var(--cfb-run-start) both;
+  }
+  [data-moment="elimination"] .cfb-run-pip::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: var(--cfb-survived);
+    animation: cfb-run-pip-fill var(--cfb-run-out) var(--ease-moment) var(--cfb-run-start) both;
+  }
+  /* One word out, then the other in: overlapped, two words in one cell
+     read as neither. */
+  [data-moment="elimination"] .cfb-run-was {
+    animation: cfb-run-was 120ms linear calc(var(--cfb-run-start) + 400ms) both;
+  }
+  [data-moment="elimination"] .cfb-run-now {
+    animation: cfb-run-now 200ms linear calc(var(--cfb-run-start) + 520ms) both;
+  }
+  /* The card as it arrived, drawn over its still state and taken away:
+     ::before is the lost-red rule (wiped from the left), ::after the raised
+     surface and strong hairline (faded). Both trace the card's border box,
+     so the curve at each corner is the card's own. */
+  [data-moment="elimination"].is-ended { position: relative; isolation: isolate; }
+  [data-moment="elimination"].is-ended::before,
+  [data-moment="elimination"].is-ended::after {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    inset: -2px -1px -1px;
+    border-radius: inherit;
+    pointer-events: none;
+  }
+  [data-moment="elimination"].is-ended::before {
+    border: 1px solid transparent;
+    border-top: 2px solid var(--cfb-lost-life);
+    animation: cfb-run-rule var(--cfb-run-turn) var(--ease-moment) calc(var(--cfb-run-start) + 700ms) both;
+  }
+  [data-moment="elimination"].is-ended::after {
+    border: 1px solid var(--cfb-hairline-strong);
+    border-top: 2px solid transparent;
+    background: var(--cfb-raised) padding-box;
+    animation: cfb-run-step var(--cfb-run-turn) var(--ease-moment) calc(var(--cfb-run-start) + 700ms) both;
+  }
+  [data-moment="elimination"] .cfb-run-end-text {
+    animation: cfb-run-line var(--cfb-run-land) var(--ease-out) calc(var(--cfb-run-start) + 1200ms) both;
+  }
+  /* The Door is still walking the member in from the lounge: the moment
+     waits for it to land (only a browser with the Door matches this). */
+  html:active-view-transition [data-moment="elimination"] .cfb-run-pip,
+  html:active-view-transition [data-moment="elimination"] .cfb-run-pip::before,
+  html:active-view-transition [data-moment="elimination"] .cfb-run-was,
+  html:active-view-transition [data-moment="elimination"] .cfb-run-now,
+  html:active-view-transition [data-moment="elimination"] .cfb-run-end-text,
+  html:active-view-transition [data-moment="elimination"].is-ended::before,
+  html:active-view-transition [data-moment="elimination"].is-ended::after {
+    animation-play-state: paused;
+  }
+}
+
+/* Reduced motion (ADR-076): no turn. The card arrives in its still state and
+   the new word and the closing line confirm it with the fade. */
+@media (scripting: enabled) and (prefers-reduced-motion: reduce) {
+  [data-moment="elimination"] .cfb-run-now,
+  [data-moment="elimination"] .cfb-run-end-text {
+    animation: cfb-run-settle var(--motion-feedback) var(--ease-out) both;
+  }
+}
+
+/* The script's offscreen hold (cfb-run-end.js): a pause, never
+   animation: none, so a half-visible held card shows the turn's first frame
+   rather than a card half turned. Only the script sets the attribute, so a
+   page without it never waits. */
+[data-moment="elimination"][data-moment-held] .cfb-run-pip,
+[data-moment="elimination"][data-moment-held] .cfb-run-pip::before,
+[data-moment="elimination"][data-moment-held] .cfb-run-was,
+[data-moment="elimination"][data-moment-held] .cfb-run-now,
+[data-moment="elimination"][data-moment-held] .cfb-run-end-text,
+[data-moment="elimination"][data-moment-held].is-ended::before,
+[data-moment="elimination"][data-moment-held].is-ended::after {
+  animation-play-state: paused;
+}
+
 /* Conference accordion -- dark-tuned off the Bootstrap white/blue active island
    (the named A2 debt). EVERY JS hook is preserved (#conferenceAccordion,
    data-bs-toggle/-target/-parent, the #confCollapse* ids); only color + the

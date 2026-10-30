@@ -578,7 +578,8 @@ def get_week_user_statuses(week, enrollments, picks):
 
 def get_elimination_weeks(user_ids, before_week_number, season_year=None):
     """The week each player was knocked out, for the season's weeks before
-    this one (``season_year`` None = the configured season).
+    this one (``before_week_number`` None = every week of the season;
+    ``season_year`` None = the configured season).
 
     Reads the CfbWeekOutcome snapshots (the column form of
     ``eliminated_this_week``: is_eliminated AND lost_life). Each player
@@ -596,17 +597,19 @@ def get_elimination_weeks(user_ids, before_week_number, season_year=None):
         return {}
     if season_year is None:
         season_year = _get_season_year()
-    rows = db.session.execute(
+    query = (
         select(CfbWeekOutcome.user_id, CfbWeek)
         .join(CfbWeek, CfbWeekOutcome.week_id == CfbWeek.id)
         .where(
             CfbWeekOutcome.user_id.in_(user_ids),
             CfbWeekOutcome.is_eliminated.is_(True),
             CfbWeekOutcome.lost_life.is_(True),
-            CfbWeek.week_number < before_week_number,
             CfbWeek.season_year == season_year,
         )
-    ).all()
+    )
+    if before_week_number is not None:
+        query = query.where(CfbWeek.week_number < before_week_number)
+    rows = db.session.execute(query).all()
     weeks = {}
     for user_id, week in rows:
         held = weeks.get(user_id)
