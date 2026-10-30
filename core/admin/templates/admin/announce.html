@@ -6,7 +6,6 @@
 {% set form_url = url_for('admin.announce', announcement_id=announcement.id) if announcement else url_for('admin.announce') %}
 <header class="admin-masthead">
   <div class="container">
-    <span class="admin-eyebrow">The Commish&rsquo;s Desk</span>
     <h1 class="admin-page-title">Announce</h1>
     <p class="admin-masthead-sub">
       {%- if is_sent %}The record of what went out. Copy it into a new draft to reuse it.

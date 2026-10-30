@@ -3,8 +3,8 @@
    exile. No pick affordances anywhere. #}
 {% set em = g.eliminated_module %}
 <div class="summons summons--info">
-  <div class="summons-eyebrow summons-eyebrow--info">◇ Your Season</div>
   <div class="summons-line summons-line--dim">{{ em.line }}</div>
+  <div class="summons-dateline summons-dateline--info">◇ Your Season</div>
   {% if em.path %}<p class="summons-sub">{{ em.path }}</p>{% endif %}
   <div class="field-impact">
     {% for r in em.routes %}<a class="route-link" href="{{ url_for(r.endpoint, **r.args) }}">{{ r.label }} &rsaquo;</a>{% if not loop.last %} {% endif %}{% endfor %}

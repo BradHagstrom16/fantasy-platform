@@ -23,4 +23,4 @@ FORM: Ledger-first card in the room's verdict grammar; position 1 of the structu
 
 FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance.
 
-Unresolved: none. Signature interaction: the name-as-door (`.cfb-name-link` underline on hover/focus, crimson focus ring). Motion: the room's `animate-in` entrance on the lead and cards only.
+Unresolved: none. Signature interaction: the name-as-door (`.cfb-name-link` underline on hover/focus, crimson focus ring). Motion: the room's `animate-in` entrance on the lead and cards only (off under reduced motion). A champion or eliminated card is a terminal state and may later carry one authored sequence (games/cfb/DESIGN.md §6.14, ADR-076); none is built yet.

@@ -20,11 +20,11 @@
   </div>
 
   <div class="decree-body">
-    {# ◇ eyebrow, matched to the Docket panel's opening eyebrow (same
-       .summons-eyebrow--info primitive) so the two headliners frame their
-       hero identically; the countdown numeral below is CFB's own voice. #}
-    <div class="summons-eyebrow summons-eyebrow--info">◇ First Pick Locks In</div>
+    {# ◇ label over the countdown numeral (a label over a value, ADR-066);
+       the numeral below is CFB's own voice. At zero days the line says it
+       all, so no label sits over it (ADR-076). #}
     {% if g.decree_days > 0 %}
+    <div class="summons-eyebrow summons-eyebrow--info">◇ First Pick Locks In</div>
     <div class="decree-hero" role="text"
          aria-label="{{ g.decree_days }} day{{ '' if g.decree_days == 1 else 's' }} until the first pick locks">
       <div class="decree-hero-num" aria-hidden="true">{{ '%02d'|format(g.decree_days) }}</div>

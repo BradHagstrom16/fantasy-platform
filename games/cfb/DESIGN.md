@@ -157,7 +157,7 @@ Visual intensity does not increase because stakes increase. The strongest endgam
 
 ### 2.9 The champion must feel deliberate
 
-The conclusion reveals the path that produced it: survived every stage, lives remaining, teams used, final pick, how the field narrowed, why no other active player remains. Celebration emerges from evidence, finality, and reduction — never confetti-first.
+The conclusion reveals the path that produced it: survived every stage, lives remaining, teams used, final pick, how the field narrowed, why no other active player remains. Celebration emerges from evidence, finality, and reduction first. Since ADR-076 (2026-10-29) the champion's moment may also move, one authored sequence that may use particles or confetti in the room's crimson and bone (never gold), but it plays over the evidence, never in place of it (§6.14).
 
 ---
 
@@ -224,7 +224,7 @@ The weekly experience is a progression of four canonical states. These labels ar
 - **PRESEASON** — explain the core rules, establish the first deadline, show that everyone starts with two lives. Create anticipation without pretending standings exist.
 - **ACTIVE** — prioritize weekly action, survival status, team availability, field progression.
 - **ELIMINATED** — unambiguous, but not exiled: eliminated players still follow the field, review history, see the champion, participate socially. The interface changes from participation mode to **observation mode** — never keep pick controls actionable.
-- **CHAMPION** — one player remains under the rules. Distinct through clarity, space, and finality; shows the path of survival rather than generic celebration.
+- **CHAMPION** — one player remains under the rules. Distinct through clarity, space, and finality; shows the path of survival rather than generic celebration. May carry the season's one authored motion sequence (§6.14, ADR-076).
 - **COMPLETE WITHOUT SOLE SURVIVOR** — if the season concludes by tiebreak, explain the deciding mechanism plainly. The language must match the rules (§1.10).
 
 ### 4.3 Player states
@@ -275,7 +275,7 @@ The identity is a private, high-stakes Saturday-night competition — most at ho
 
 - **Warm midnight** — dark-first; the darkness feels warm, inhabited, atmospheric: a room after the lights are lowered, a stadium long after the crowd has gone. Never sterile charcoal that reads as developer tooling or a financial terminal; never absolute black across large surfaces. Nocturnal, not empty.
 - **Restrained crimson** — the product's identity color: authorship, focus, tradition, commitment. Never a generic error color (§6.5).
-- **Ceremonial reduction** — important states get stronger through subtraction: fewer competing elements, more whitespace, simpler borders, stronger type hierarchy. A locked pick feels final because fewer actions remain; a champion feels important because the field and interface have been reduced to one. Greater importance never requires more decoration.
+- **Ceremonial reduction** — important states get stronger through subtraction: fewer competing elements, more whitespace, simpler borders, stronger type hierarchy. A locked pick feels final because fewer actions remain; a champion feels important because the field and interface have been reduced to one. Greater importance never requires more decoration. (Composition only: a terminal state's authored motion is §6.14's, ADR-076.)
 
 **Platform fiction.** In CCC's editorial fiction (the Commissioner's Club Tribune), CFB is the Tribune's **survival desk** — the same newsroom as WC's light editorial desk, pointed at gridiron Saturdays and the weekly cut. The two desks' visual identities diverge hard on purpose: the midnight ramp is tinted *warm, toward crimson*, so the CFB room reads as its own night and never as WC's cool navy — two dark-leaning games must not both read "blue-dark." The descent through chrome is continuous: council-purple navbar → near-black sub-nav → midnight-and-crimson hero → midnight body → purple footer cap.
 
@@ -371,7 +371,7 @@ The platform families are canonical and unchanged: **Teko** (display, labels, da
 
 Three registers, each with a distinct job:
 
-- **Ceremonial** — the most consequential moments: section openings, major week titles, lock, verdict, elimination, champion, the final remaining field. Composed, authoritative, spacious. Larger scale, tighter wording, generous spacing. No theatrical effects: no chrome, bevels, outlines, glow, distressed sports lettering, or broadcast compression. Ceremony comes from confidence and reduction.
+- **Ceremonial** — the most consequential moments: section openings, major week titles, lock, verdict, elimination, champion, the final remaining field. Composed, authoritative, spacious. Larger scale, tighter wording, generous spacing. No theatrical effects: no chrome, bevels, outlines, glow, distressed sports lettering, or broadcast compression. Ceremony comes from confidence and reduction. The one exception is a terminal state's authored motion (§6.14, ADR-076); chrome, glow and broadcast styling stay out even there.
 - **Operational** — pick controls, deadlines, table data, team names, spreads, lives, labels, buttons, states. Speed, clarity, compactness, reliable scanning. Legible at mobile sizes. **Tabular figures** where numbers align for comparison: countdowns, spreads, standings, week numbers, cumulative values. All-caps only for short labels (YOUR CARD, LOCKED, VERDICT, WHO'S LEFT, WEEK 8) — never large bodies of information.
 - **Supporting** — explanatory text, secondary status, commissioner notes, helper copy, rule reminders. Quieter than operational but readable: **muted does not mean faint.** Concise, direct sentences — never a wall of instructions.
 
@@ -432,7 +432,7 @@ Canonical labels, used consistently: **YOUR CARD · THE SUMMONS · WHO'S LEFT ·
 
 ### 6.14 Motion and countdowns
 
-Motion is restrained and functional: clarify a state change, a selection, a new lock, an updated verdict. No continuous animation, pulsing countdowns, flashing warnings, or celebratory motion on ordinary actions. An unmade pick is urgent through hierarchy and language, not movement. Terminal states may use a brief transition; ceremony never depends on spectacle. Respect `prefers-reduced-motion`; the product must be fully understandable without animation.
+Motion is restrained and functional: clarify a state change, a selection, a new lock, an updated verdict. No continuous animation, pulsing countdowns, flashing warnings, or celebratory motion on ordinary actions. An unmade pick is urgent through hierarchy and language, not movement. **Terminal moments may be authored** (ADR-076, Brad 2026-10-29, a full rollback of "a brief transition; ceremony never depends on spectacle"): the champion, the member's own elimination and the CFP reset may each carry one authored motion sequence sized to its consequence. The champion's may use particles or confetti, drawn in crimson and bone, never gold and never emoji; the elimination's stays direct and respectful, never celebratory, never punitive; the CFP reset's says the slate is new. One per surface, never looping, never replayed on every visit unless the member asks, and the still state is the complete state. Respect `prefers-reduced-motion` per the platform policy (root DESIGN.md §4.5): the movement stops, the confirming fade stays, and the product is fully understandable without animation.
 
 Countdowns stay calm and precise: clear units, stable alignment (tabular figures), direct deadline copy. Pair relative time with the exact deadline where practical — "Locks in 3h 18m · Saturday, 11:00 AM." No ticking layout shift, oversized digital-clock styling, red flashing numerals, or second-level urgency hours before action is required. Urgency escalates through hierarchy as the deadline approaches (stronger placement, primary action adjacent, nothing competing above it). When the deadline passes, the component immediately becomes lock state — never a stopped "0m" timer.
 
@@ -444,7 +444,7 @@ Do not turn CFB Survivor into any of the following:
 - **Broadcast package** — metallic gradients, 3D logos, lower-thirds, animated score bugs, stadium-light effects, TV clichés. A private competition, not a live broadcast.
 - **Generic fantasy dashboard** — dense KPI rows, arbitrary charts, trend lines without meaning, metric cards for every number, equal-weight modules. CFB has a small number of meaningful states; give them room.
 - **Ops-center / mission-control** — banks of readouts, glowing live panels, telemetry aesthetics. The trap a dark room invites most; refuse it.
-- **Video game** — XP bars, level-up language, glowing achievements, arcade victory effects.
+- **Video game** — XP bars, level-up language, glowing achievements, arcade victory effects. (A terminal moment's authored sequence under §6.14 is not an arcade effect: it is the room's own crimson and bone, sized to a season, never a reward loop.)
 - **Corporate admin tool** — sterile grey tables, generic blue actions, component-library defaults with no atmosphere.
 
 ### 6.16 Named rules
@@ -454,7 +454,7 @@ Do not turn CFB Survivor into any of the following:
 - **The Crimson-Pressure Rule** — crimson is pressure, not atmosphere. When several elements compete for crimson attention, *reduce* usage until emphasis is meaningful again. (The Field's shelf meters are the sanctioned many-crimson surface, §9.15: its conferences fold closed, so the crimson on screen stays one meter per conference until a reader opens one. The late field is the one exception: there the spent conferences open so the names show.)
 - **The Elevation-by-Midnight Rule** — hierarchy through substrate depth before color: a deeper or raised midnight plus the hairline before any accent. Architectural, not dashboard.
 - **The Crimson-Ceremony Rule (no gold in CFB)** — CFB does not adopt gold as a game-level ceremonial organizer; that is WC's move, and a dark room reaching for gold would read as WC. CFB's ceremony is crimson restraint on midnight. Platform gold stays where the platform owns it as *chrome* (the navbar CTA, platform focus rings outside the room, and the lounge's shared frame — the seam, the seal band, the eyebrow glyphs); CFB never introduces gold into its body or ceremonial surfaces — including the champion state, whose strongest signals are space, singularity, finality, and evidence, not color. **Since ADR-052 (2026-08-19) this extends to the CFB lounge panel buttons: "Enter the Room" and "Choose Team" are solid crimson `.hl-cta`, not the former metal-gold `.cta-seal`, so CFB now uses no gold button anywhere — the lounge seal was its last carve-out.** (Shipped and test-locked: the hero dot overlay, admin masthead, and focus rings all went crimson; the lounge CTAs by `tests/test_lounge_cta_parity.py`.)
-- **The Ceremony-by-Reduction Rule** — because the room is already dark, ceremony cannot mean "darker." Endgame moments escalate through reduction: more negative space, less density, concentrated contrast, stiller composition.
+- **The Ceremony-by-Composition Rule** (renamed from Ceremony-by-Reduction by ADR-076, 2026-10-29) — because the room is already dark, ceremony cannot mean "darker." Endgame *composition* escalates through reduction: more negative space, less density, concentrated contrast, fewer modules. Endgame *motion* is no longer held still: a terminal moment may carry one authored sequence (§6.14), and the composition it lands on stays reduced.
 - **The Traffic-Light Ban** — never green=good / yellow=caution / red=bad as the product's semantic system. (§6.6)
 
 ---
@@ -516,13 +516,13 @@ The room's raised information surfaces: `--cfb-raised` substrate, strong hairlin
 
 #### The Cut — `.elimination-alert` + `.cfb-cut-*`
 
-Elimination rendered cold and final: a full-container treatment — full lost-red border over a restrained lost-red tint, bone-white title with a leading lost-red icon (the side-stripe was migrated off; the platform ban holds). Administrative consequence, not spectacle: the emotional target is "your season changed," never an emergency-red alarm, never shame. The Cold-Elimination Rule.
+Elimination rendered cold and final: a full-container treatment — full lost-red border over a restrained lost-red tint, bone-white title with a leading lost-red icon (the side-stripe was migrated off; the platform ban holds). Administrative consequence, not spectacle: the emotional target is "your season changed," never an emergency-red alarm, never shame. The Cold-Elimination Rule. (It governs the weekly cut, the list of who fell. The member's own elimination moment may carry an authored sequence under §6.14, direct and respectful, never punitive.)
 
 #### The ceremonial endpoint — `.championship-hero`
 
 The last-one-standing declaration (analog to WC's `.wc-champion-banner`), single-purpose — never a reusable dark card, feature panel, or weekly-result hero. Its distinction is **ceremony through reduction**: the lights stay on, the room goes quiet, one survivor remains. Composition: expansive negative space, reduced density, strong vertical rhythm, concentrated contrast, minimal chrome; the midnight atmospheric field with crimson-tinted gradient + crimson dot overlay; `.champion-name` (Teko 700 uppercase, `--cfb-white`, clamp within the platform ≤6rem ceiling), final record, `.champion-subtitle` (Newsreader, retrospective), `.prize-badge` (crimson).
 
-**Render gate (strict):** only when the pool has a single survivor — `enrollments|length == 1 and eliminated_enrollments|length > 0` on the standings route. Never speculative, mid-season, or contested. If a tiebreak decided the title, the language must say so ("CHAMPION — wins on cumulative spread"), never "sole survivor." No confetti, trophy overload, gold, particles, or animated spectacle. Victory feels earned, inevitable, slightly lonely.
+**Render gate (strict):** only when the pool has a single survivor — `enrollments|length == 1 and eliminated_enrollments|length > 0` on the standings route. Never speculative, mid-season, or contested. If a tiebreak decided the title, the language must say so ("CHAMPION — wins on cumulative spread"), never "sole survivor." No trophy overload and no gold. Since ADR-076 (Brad 2026-10-29, the full rollback of the old "no confetti, particles, or animated spectacle" line) the declaration may carry one authored motion sequence, and it may use particles or confetti drawn in crimson and bone (never gold, never emoji), sized to the season it ends; under reduced motion it renders still and complete. Victory still feels earned, inevitable, slightly lonely: the motion lands on the evidence, then the room goes quiet.
 
 #### The hero — platform `.page-hero` + the `.cfb-hero` content system
 
@@ -705,7 +705,7 @@ Win tone: relief and continuation, never championship styling. Loss: the life ch
 
 ### 8.9 The Summons (anchor spec)
 
-Near the top, state-transformed, concise enough to scan immediately: **state label → one decisive sentence → one supporting line → one primary action.** It tells the player what is required, what has been done, what is now final, or what the result means. It never reads as an advertisement, and it never becomes a container for every weekly detail. The commissioner's voice may reinforce it ("Miss it and the Commish picks for you") but the system states deadline, status, and consequence directly.
+Near the top, state-transformed, concise enough to scan immediately: **state chip → one decisive sentence, with its dateline (◈/◇ The Summons · Week N) under it → one supporting line → one primary action.** The dateline sits under the sentence because the sentence is the headline (ADR-076, no label above a heading); on the verdict beat the same label stays above the verdict word, a value. It tells the player what is required, what has been done, what is now final, or what the result means. It never reads as an advertisement, and it never becomes a container for every weekly detail. The commissioner's voice may reinforce it ("Miss it and the Commish picks for you") but the system states deadline, status, and consequence directly.
 
 ### 8.10 Who's Left (social anchor spec)
 
@@ -865,7 +865,7 @@ The room must not become a sportsbook, live-score center, generic fantasy dashbo
 - **A spent line.** `.cfb-field-line`: the chip · the meter · the count ("**3** spent · **4** hold", "none hold", Teko tabular, figures in white) · a caret. It is a `<details>`: tap it and the survivors who burned the team open beneath, each a `.cfb-name-link` door to their player card with the week each spent it (`.cfb-field-when`), week order. Eliminated burners are counted apart, never listed: "N of the cut burned it too." A team no survivor still holds is **gone** (`.is-gone`): its chip turns to an ash fill with white text and strikes through, and its meter is all track.
 - **The shelf meter** (`.cfb-field-meter`, 8px): **crimson-bright is what the still-standing hold; the spent share is the empty track**, outlined in the strong hairline so its full length reads, so a team visibly drains as survivors burn it. Crimson here is identity, the game's own inventory (§1.5, §6.5 "selected teams"), never consequence: spending a team is not a loss, and nothing on the board is survivor-state. The meter is `aria-hidden`; the visible count is the one announcement (the first build read every fact twice).
 - **You.** A signed-in survivor's own spent lines carry the sanctioned current-user crimson tint (`rgba(197,5,12,.12)`, bled past the rule's ends by a box-shadow so the line keeps the shared track) and the structural `.cfb-you-tag`, as do their conference summaries and their name in each spenders list (§7.2). An eliminated viewer, like a visitor, gets none: the board lists survivors only.
-- **The late field** (`is-late`, §1.9, §2.8: the phase `build_field` derives). Conferences with any spend and every spent line render open, so the names show without a tap: the board reduces to who burned what (the Ceremony-by-Reduction Rule).
+- **The late field** (`is-late`, §1.9, §2.8: the phase `build_field` derives). Conferences with any spend and every spent line render open, so the names show without a tap: the board reduces to who burned what (the Ceremony-by-Composition Rule).
 - **The folds.** Each summary line states one headline fact beside its eyebrow, so a closed fold still informs. The Cut: "Week 3: 1 cut, 7 remain" (", still in play" while the latest week is unsettled; "nobody cut" when none). Most Backed, **tie-aware**: "Georgia and 4 others, backed 2 times each", or "Georgia, backed 9 times" when one team leads alone.
 - **The Cut, Week by Week** is §7.4's field attrition visualization, built as the 2025 archive's table grammar (`.cfb-archive-table.cfb-field-table`): Week · Alive entering · Lost a life · Cut · Alive after · The field after. The last column is a lives-split bar (`.cfb-field-bar`: two lives in `--cfb-survived`, one life in survived @ .4, out in ash; the same split the lounge's Who's Left attrition bar draws) over a counted key ("7 two · 2 one · 0 out"), `role="img"` labeled. Survivor-state color is legitimate here because the bar states lives (§6.7). A week past deadline and unsettled reads "in play" in `--cfb-pending`.
 - **Most Backed** reuses the pick-distribution list (`.cfb-dist-list`): every pick on the record by team, with the record when backed as the room's result badges (W / L / NC / TBD), ordered by count then name, **never by spread**.
@@ -976,7 +976,7 @@ The primary regression question is not "does this page look correct?" but:
 - **Weekly verdict (VERDICT)** — outcome readability, survivor-state visibility, emotional restraint, season continuity.
 - **Mid-season attrition** — mixed lives + eliminated tail + pending: standings hierarchy, current-user visibility, how much field remains.
 - **Final life** — decision focus, urgency *without* panic styling (pressure from context, not red alarms).
-- **Resolved season** — `.championship-hero` as escalation-by-reduction: earned, quiet, the same room; no redesign, no gold, no spectacle.
+- **Resolved season** — `.championship-hero` as escalation-by-composition: earned, the same room, no redesign, no gold; it may carry one authored motion sequence (§6.14, ADR-076).
 
 **Cross-route continuity.** Pass across STANDINGS → PICK → RESULTS → MY PICKS → JOIN: substrate continuity, typography rhythm, decision hierarchy, component consistency, atmosphere persistence, interaction language, survivor-state consistency. The standard is **"one room, one season, one game"** — and the second standard is **"this is not the WC room."** No route feels imported from another product.
 

@@ -33,11 +33,13 @@ its provenance.
     <img class="out-mark animate-in"
          src="{{ url_for('static', filename='img/logo/mascot-bust.svg') }}?v={{ asset_version }}"
          alt="" width="200" height="200">
-    <div class="out-eyebrow">◈ Fantasy for crooked kings &amp; queens ◈</div>
+    {# The headline speaks first; the club's tagline sits under it (ADR-076:
+       no label above a heading). #}
     <h1 class="out-title">
       <span class="out-title-a">The Fix</span>
       <span class="out-title-b">Is In.</span>
     </h1>
+    <div class="out-eyebrow">◈ Fantasy for crooked kings &amp; queens ◈</div>
     <p class="out-sub">
       Pay tribute. Bend the odds to your will. No honor required.
     </p>
@@ -71,8 +73,8 @@ its provenance.
 <section class="out-registry" aria-labelledby="out-registry-head">
   <div class="container">
     <header class="out-registry-head">
-      <span class="out-registry-eyebrow">◇ The Court This Year</span>
       <h2 id="out-registry-head" class="out-registry-title">Up Next at the Club</h2>
+      <span class="out-registry-eyebrow">◇ The Court This Year</span>
     </header>
 
     <div class="out-registry-grid">

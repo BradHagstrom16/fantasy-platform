@@ -15,12 +15,12 @@
   </div>
 
   <div class="summons">
-    <div class="summons-eyebrow summons-eyebrow--info">◇ Opening Round</div>
     {% if g.first_lock %}
     <div class="summons-line">{{ g.first_event }} opens the season. Picks lock <span class="hl-nowrap">{{ g.first_lock }}.</span></div>
     {% else %}
     <div class="summons-line">The schedule posts in January.</div>
     {% endif %}
+    <div class="summons-dateline summons-dateline--info">◇ Opening Round</div>
     <p class="summons-sub">One golfer a week, with a backup. His prize money is yours. Spend him once; the sheet is the season&rsquo;s money.</p>
     {# Two leagues (ADR-075): the season's two sheets, named from their rows once to a viewer without a seat; the join page is where they choose. "Two" and "either" are the copy's: a third league rewrites the line. #}
     {% if not g.is_enrolled and h.join_open %}

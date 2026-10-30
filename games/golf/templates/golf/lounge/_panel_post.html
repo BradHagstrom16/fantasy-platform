@@ -6,11 +6,12 @@
   {% include 'main/_hl_panel_head.html' %}
 
   <div class="summons summons--info">
-    <div class="summons-eyebrow summons-eyebrow--info">◇ The Sheet Is Banked</div>
     {% if g.champions %}
     <div class="summons-line">Champion{{ 's' if g.champions|length > 1 else '' }} &middot; {% for c in g.champions %}{{ c.name }}{% if not loop.last %} and {% endif %}{% endfor %}</div>
+    <div class="summons-dateline summons-dateline--info">◇ The Sheet Is Banked</div>
     <p class="summons-sub">{{ g.champions[0].money }} across {{ g.events }} event{{ '' if g.events == 1 else 's' }}.</p>
     {% else %}
+    {# The line already says it; no dateline repeats it (ADR-076). #}
     <div class="summons-line">The season is banked.</div>
     <p class="summons-sub">{{ g.events }} event{{ '' if g.events == 1 else 's' }}, every line settled.</p>
     {% endif %}

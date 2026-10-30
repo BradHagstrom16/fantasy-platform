@@ -36,8 +36,8 @@
 
   {% if g.viewer_mode == 'view' %}
   <div class="summons summons--info">
-    <div class="summons-eyebrow summons-eyebrow--info">◇ Week {{ g.week_number }} &middot; The Docket</div>
     <div class="summons-line">Eight picks against frozen lines.</div>
+    <div class="summons-dateline summons-dateline--info">◇ Week {{ g.week_number }}</div>
     <p class="summons-sub">One headliner worth double. Court adjourns Sunday at 12:00 PM CT.</p>
     {% if h.join_open %}
     {# Convert ask → solid garnet .hl-cta, matched to every other join CTA
@@ -48,7 +48,7 @@
 
   {% elif g.beat == 'awaiting' %}
   <div class="summons summons--info">
-    <div class="summons-eyebrow summons-eyebrow--info">◇ Awaiting the Docket</div>
+    {# The line says it; no label repeats it above or below (ADR-076). #}
     <div class="summons-line">This week&rsquo;s docket has not been posted.</div>
     <p class="summons-sub">Sheets post Tuesday. The clerk will call when the lines freeze.</p>
   </div>
@@ -56,13 +56,14 @@
   {% elif g.beat == 'open' %}
   {% set p = g.progress %}
   <div class="summons">
-    <div class="summons-eyebrow summons-eyebrow--info">◇ Week {{ g.week_number }} &middot; Docket Open</div>
-    {% if p.tally %}
-    {{ record(p) }}
-    {% elif p.outstanding %}
-    <div class="summons-line">Your sheet is not finished.</div>
+    {# A label over a value (the record) stays above it; over a line, it
+       becomes the dateline under it (ADR-076). #}
+    {% if not p.tally %}
+    <div class="summons-line">{% if p.outstanding %}Your sheet is not finished.{% else %}Your sheet is complete.{% endif %}</div>
+    <div class="summons-dateline summons-dateline--info">◇ Week {{ g.week_number }} &middot; Docket Open</div>
     {% else %}
-    <div class="summons-line">Your sheet is complete.</div>
+    <div class="summons-eyebrow summons-eyebrow--info">◇ Week {{ g.week_number }} &middot; Docket Open</div>
+    {{ record(p) }}
     {% endif %}
     {{ board(p) }}
     {% if p.outstanding %}
@@ -87,11 +88,12 @@
   {% elif g.beat == 'closed' %}
   {% set p = g.progress %}
   <div class="summons summons--info">
-    <div class="summons-eyebrow summons-eyebrow--info">◇ Week {{ g.week_number }} &middot; Docket Closed</div>
-    {% if p and p.tally %}
-    {{ record(p) }}
-    {% else %}
+    {% if not (p and p.tally) %}
     <div class="summons-line">The docket is closed.</div>
+    <div class="summons-dateline summons-dateline--info">◇ Week {{ g.week_number }}</div>
+    {% else %}
+    <div class="summons-eyebrow summons-eyebrow--info">◇ Week {{ g.week_number }} &middot; Docket Closed</div>
+    {{ record(p) }}
     {% endif %}
     {% if p %}{{ board(p) }}{% endif %}
     <p class="summons-sub">Verdicts land as the scores do.</p>
@@ -106,8 +108,8 @@
   {% else %}
   {% set r = g.result %}
   <div class="summons summons--info">
-    <div class="summons-eyebrow summons-eyebrow--info">◇ Week {{ g.week_number }} &middot; Adjourned</div>
     {% if r and r.tally %}
+    <div class="summons-eyebrow summons-eyebrow--info">◇ Week {{ g.week_number }} &middot; Adjourned</div>
     {{ record(r) }}
     {{ board(r) }}
     <div class="summons-meta">
@@ -115,8 +117,10 @@
     </div>
     {% elif r %}
     <div class="summons-line">Your line: {{ r.points_label }} points, {{ r.wins }} win{{ '' if r.wins == 1 else 's' }}.</div>
+    <div class="summons-dateline summons-dateline--info">◇ Week {{ g.week_number }} &middot; Adjourned</div>
     {% else %}
     <div class="summons-line">The week is adjourned.</div>
+    <div class="summons-dateline summons-dateline--info">◇ Week {{ g.week_number }}</div>
     {% endif %}
     <div class="field-impact">
       <a class="route-link" href="{{ url_for('docket.ledger') }}">The season ledger &rsaquo;</a>

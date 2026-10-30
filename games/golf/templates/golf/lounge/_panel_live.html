@@ -11,8 +11,8 @@
 
   {% if g.viewer_mode == 'view' %}
   <div class="summons summons--info">
-    <div class="summons-eyebrow summons-eyebrow--info">◇ {% if g.week_number %}Week {{ g.week_number }} &middot; {% endif %}The Pay Sheet</div>
     <div class="summons-line">One golfer a week. His prize money is yours.</div>
+    {% if g.week_number %}<div class="summons-dateline summons-dateline--info">◇ Week {{ g.week_number }}</div>{% endif %}
     <p class="summons-sub">Spend each golfer once; the sheet is the season&rsquo;s money.{% if g.leader %} {{ g.leader.name }} leads with {{ g.leader.money }}{% if g.leader.projected %}, projected{% endif %}.{% endif %}</p>
     {% if h.join_open %}
     <a class="hl-cta" href="{{ url_for(h.entry.blueprint_join) }}">Take a Seat</a>
@@ -21,16 +21,18 @@
 
   {% else %}
   <div class="summons">
-    <div class="summons-eyebrow summons-eyebrow--info">◇ {% if g.week_number %}Week {{ g.week_number }} &middot; {% endif %}{{ g.event_name or 'Between events' }}</div>
+    {# The line speaks first; the week's dateline sits under it (ADR-076:
+       no label above a heading). #}
     {% if g.mine %}
     <div class="summons-line">{{ g.mine.money }} {{ g.mine.word }} <span class="hl-nowrap">&middot; {{ g.mine.place }} of {{ g.field }}</span></div>
-    {% if g.mine.this_week %}
-    <p class="summons-sub">This week: {{ g.mine.this_week }}.</p>
-    {% elif g.beat != 'open' %}
-    <p class="summons-sub">No pick on {{ g.event_the }}.</p>
-    {% endif %}
     {% else %}
     <div class="summons-line">Your seat is at the table.</div>
+    {% endif %}
+    <div class="summons-dateline summons-dateline--info">◇ {% if g.week_number %}Week {{ g.week_number }} &middot; {% endif %}{{ g.event_name or 'Between events' }}</div>
+    {% if g.mine and g.mine.this_week %}
+    <p class="summons-sub">This week: {{ g.mine.this_week }}.</p>
+    {% elif g.mine and g.beat != 'open' %}
+    <p class="summons-sub">No pick on {{ g.event_the }}.</p>
     {% endif %}
     <div class="summons-meta">
       <span>{{ g.league_name }}</span>

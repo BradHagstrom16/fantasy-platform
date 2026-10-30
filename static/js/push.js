@@ -165,7 +165,8 @@
   // The moment (ADR-074, PR B): Allow turns the button into the notification.
   // The button and the subscribed panel's card share view-transition-name
   // wire-card, so a browser with view transitions morphs one into the other;
-  // the rest get the plain swap-in, and reduced motion an instant swap.
+  // the rest get the plain swap-in, and reduced motion a short fade with no
+  // morph and no rise (the CSS's reduced-motion rule, ADR-076).
   function morphToSubscribed() {
     if (document.startViewTransition && !reducedMotion()) {
       el.classList.add('app-morph');

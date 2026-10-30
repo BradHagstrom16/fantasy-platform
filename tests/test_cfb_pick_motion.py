@@ -160,10 +160,17 @@ def test_room_entrance_is_operate_tempo():
 
 
 def test_every_new_motion_has_a_reduced_motion_path():
+    # ADR-076: under reduced motion a moment that answers a tap or lands a
+    # state keeps the opacity-only fade-in, without the rise or the stagger;
+    # the room's decorative entrance stays off.
     reduced = CSS[CSS.index('#pickConfirmBar.is-arriving'):]
-    assert re.search(r'@media \(prefers-reduced-motion: reduce\)[^@]*#pickConfirmBar\.is-arriving[^{}]*\{[^}]*animation:\s*none', reduced)
-    assert re.search(r'@media \(prefers-reduced-motion: reduce\)[^@]*\.cfb-confirm-line\.is-updated[^{}]*\{[^}]*animation:\s*none', reduced)
-    assert re.search(r'@media \(prefers-reduced-motion: reduce\)[^@]*\.cfb-board-rest\[open\] \.team-pick-card[^{}]*\{[^}]*animation:\s*none', reduced)
+    for selector in (r'#pickConfirmBar\.is-arriving',
+                     r'\.cfb-confirm-line\.is-updated',
+                     r'\.cfb-board-rest\[open\] \.team-pick-card',
+                     r'body\.game-cfb \.cfb-verdict\.animate-in \.cfb-verdict-chip'):
+        assert re.search(r'@media \(prefers-reduced-motion: reduce\)[^@]*' + selector + r'[^{}]*\{[^}]*animation:\s*fade-in\b', reduced), selector
+    assert re.search(r'@media \(prefers-reduced-motion: reduce\)[^@]*\.cfb-board-rest\[open\] \.team-pick-card[^{}]*\{[^}]*animation-delay:\s*0', reduced)
+    assert re.search(r'@media \(prefers-reduced-motion: reduce\)[^@]*body\.game-cfb \.animate-in[^{}]*\{[^}]*animation:\s*none', reduced)
 
 
 # ── JS: the moments are triggered by the picker, not on load ─────────────

@@ -343,14 +343,14 @@
         "purpose": "Default ease for state transitions on color, border, opacity, box-shadow."
       },
       {
-        "name": "card-hover-curve",
-        "value": ".25s cubic-bezier(0.34, 1.56, 0.64, 1)",
-        "purpose": "Card transform on hover. Slight overshoot (1.56 peak) gives the lift a confident flick."
+        "name": "ease-out",
+        "value": "cubic-bezier(.16, 1, .3, 1)",
+        "purpose": "The platform's confident arrival (--ease-out, tokens.css): a linked card's lift, the admin tiles, feedback fades. No curve in the system overshoots (ADR-076)."
       },
       {
-        "name": "card-shadow-curve",
-        "value": ".25s ease",
-        "purpose": "Card box-shadow on hover. Standard ease while transform overshoots."
+        "name": "motion-feedback",
+        "value": "150ms",
+        "purpose": "Length of the opacity-only fade-in that confirms an action under prefers-reduced-motion (--motion-feedback): the movement stops, the confirmation stays."
       }
     ],
     "breakpoints": [
@@ -397,9 +397,9 @@
       "name": "Default Card (Tribune Light)",
       "kind": "card",
       "refersTo": "card-default",
-      "description": "The default light card on Pressroom Bone pages. White interior, brand-tinted shadow at rest, lift-with-overshoot on hover.",
+      "description": "The default light card on Pressroom Bone pages. White interior, brand-tinted shadow at rest, a 2px lift on the platform ease-out on hover when the card is a link (a content card stays at rest).",
       "html": "<article class=\"ds-card\"><h3 class=\"ds-card-header\">Standings</h3><p class=\"ds-card-body\">You are 3rd of 24, two points behind the leader. Round of 16 begins Saturday.</p></article>",
-      "css": ".ds-card { background: #FFFFFF; color: #1C1730; border: 1px solid #D8DDE8; border-radius: 0.875rem; box-shadow: 0 2px 8px rgba(58, 29, 114, 0.07); padding: 1rem; transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s ease; } .ds-card:hover { transform: translateY(-3px); box-shadow: 0 4px 20px rgba(58, 29, 114, 0.12); } .ds-card-header { font-family: 'Teko', sans-serif; font-weight: 600; font-size: 1.1rem; letter-spacing: 0.05em; text-transform: uppercase; color: #1C1730; margin: 0 0 0.5rem; padding-bottom: 0.5rem; border-bottom: 1px solid #D8DDE8; } .ds-card-body { font-family: 'Newsreader', Georgia, serif; font-size: 1rem; line-height: 1.65; margin: 0; color: #1C1730; }"
+      "css": ".ds-card { background: #FFFFFF; color: #1C1730; border: 1px solid #D8DDE8; border-radius: 0.875rem; box-shadow: 0 2px 8px rgba(58, 29, 114, 0.07); padding: 1rem; transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1); } a.ds-card:hover { transform: translateY(-2px); box-shadow: 0 4px 20px rgba(58, 29, 114, 0.12); } .ds-card-header { font-family: 'Teko', sans-serif; font-weight: 600; font-size: 1.1rem; letter-spacing: 0.05em; text-transform: uppercase; color: #1C1730; margin: 0 0 0.5rem; padding-bottom: 0.5rem; border-bottom: 1px solid #D8DDE8; } .ds-card-body { font-family: 'Newsreader', Georgia, serif; font-size: 1rem; line-height: 1.65; margin: 0; color: #1C1730; }"
     },
     {
       "name": "Tribune-Dark Card (WC)",
@@ -498,7 +498,7 @@
       },
       {
         "name": "The Eyebrow Rule",
-        "body": "No eyebrow above a heading: the heading carries its own weight (the impeccable craft floor's one ban no brief earns back). An eyebrow is a label that heads something that is not a heading: a value (\"Picks Lock / in 3d\"), a stamp (\"Filed\"), a list or paragraph, a fold's summary, a desk letter's game section. When a heading needs context (game, week, state, rank), put the fact in the heading (\"Your Week 4 Card\", \"The Docket, Week 3: 5-3\") or in the line under it (the lead, the hero field line), never in a label over it. Where a label is right, reach for the matching Eyebrow primitive (.admin-eyebrow, or the game's variant in its DESIGN.md); don't invent a \"kicker\" or \"subhead\" pattern. Enforced in the CFB and Docket rooms, the Settle the Tab card and every member email (tests/test_eyebrow_above_heading.py). Out of scope: the lounge, whose ◇ summons eyebrows are sanctioned lounge chrome (ADR-052), and the frozen World Cup. Not yet applied: the platform admin masthead, the auth cards and /app; they meet the rule when next reworked, never by a new eyebrow over a heading.",
+        "body": "No eyebrow above a heading: the heading carries its own weight (the impeccable craft floor's one ban no brief earns back). An eyebrow is a label that heads something that is not a heading: a value (\"Picks Lock / in 3d\"), a stamp (\"Filed\"), a list or paragraph, a fold's summary, a desk letter's game section. When a heading needs context (game, week, state, rank), put the fact in the heading (\"Your Week 4 Card\", \"The Docket, Week 3: 5-3\") or in the line under it (the lead, the hero field line), never in a label over it. Where a label is right, reach for the matching Eyebrow primitive (.admin-eyebrow, or the game's variant in its DESIGN.md); don't invent a \"kicker\" or \"subhead\" pattern. Enforced in the CFB, Docket and Pay Sheet rooms, The Record, /app (its 2026-10-08 rework, ADR-074), the Settle the Tab card and every member email, and since ADR-076 (2026-10-29) the lounge, the logged-out page, the platform admin and auth (tests/test_eyebrow_above_heading.py). In the lounge a ◇/◈ label over the 2rem summons line became the dateline under it (.summons-dateline, the label's own type); a label over a value (a record, the decree's countdown numeral, the meta row) stays a .summons-eyebrow above it, and a label that only repeated the line was dropped. The platform admin masthead lost \"The Commish's Desk\" the way the rooms' admin mastheads lost theirs. Out of scope: the frozen World Cup.",
         "section": "typography"
       },
       {
@@ -523,7 +523,7 @@
       },
       {
         "name": "The Lift-At-Rest Rule",
-        "body": "Cards lift slightly (--shadow-sm) at rest, harder on hover (--shadow-md). Flat-at-rest is the wrong elevation philosophy for CCC; the Tribune is a printed object, not a wireframe.",
+        "body": "Cards lift slightly (--shadow-sm) at rest, and a card that is a link lifts harder on hover (--shadow-md). Flat-at-rest is the wrong elevation philosophy for CCC; the Tribune is a printed object, not a wireframe.",
         "section": "elevation"
       },
       {
@@ -537,7 +537,7 @@
       "Do use Teko for every heading, eyebrow, button label, table head, and navbar link.",
       "Do use Newsreader for every paragraph, body text, list item, and editorial caption.",
       "Do reserve the metal-gold gradients (--metal-gold / --metal-gold-flat) for primary CTAs and the active navbar button. Nothing else.",
-      "Do use the brand-tinted shadow scale (--shadow-sm/md/lg/gold) on every elevated surface. Cards lift slightly at rest, harder on hover.",
+      "Do use the brand-tinted shadow scale (--shadow-sm/md/lg/gold) on every elevated surface. Cards lift slightly at rest; a card that is a link lifts harder on hover.",
       "Do scope every non-platform color through a body.game-<slug> class. Game palettes layer on the chrome; they never replace it.",
       "Do use Pressroom Bone (#F3EFE6) as the page background. White (#FFFFFF) is for nested cards only.",
       "Do apply gold dividers (border-top: 2px solid var(--gold)) between major page sections when separation is needed, not colored side-stripes on cards.",
@@ -558,7 +558,7 @@
       "Don't add a third top-level color outside CCC purple plus gold without scoping it under a game class. WC navy/red, CFB crimson, the Pay Sheet's pen blue only ever appear on body.game-worldcup / body.game-cfb / body.game-golf surfaces.",
       "Don't use match.stage|title in Jinja templates. Use the stage_label SSoT helper. (Documented gotcha in CLAUDE.md; surfaces as a typography slip.)",
       "Don't mock dark mode on light surfaces. The auth pages (Tribunal Black backdrop) plus each game's named ceremonial dark primitive (the World Cup .wc-champion-banner, The Docket's .docket-verdict-banner) are the platform-default first-party dark surfaces; otherwise bone-on-light is the default. Carve-out: a game may establish a *dark room* as its entire body substrate when its games/<slug>/DESIGN.md documents the choice and scopes it under body.game-<slug> only (never a global dark mode) — e.g., CFB Survivor's warm-midnight room (games/cfb/DESIGN.md). What stays banned is an *undocumented* third dark register. New game-scoped dark primitives, or a documented dark room, belong in the game's DESIGN.md.",
-      "Don't use bounce or elastic easing on motion. Card hover is the only deliberately overshooting curve in the system; everywhere else, ease out with cubic-bezier(0.4, 0, 0.2, 1) or steeper exponential curves.",
+      "Don't use bounce or elastic easing on motion. No curve in the system overshoots, card hover included (ADR-076 retired its 1.56 peak); ease out with --ease-out, cubic-bezier(0.4, 0, 0.2, 1) or a steeper exponential curve.",
       "Don't use em dashes (—) or double hyphens (--) in UI copy, error messages, button labels, or any prose generated for CCC surfaces. Replace with commas, colons, semicolons, periods, or parentheses. (Carried from PRODUCT.md's Copy Discipline.)",
       "Don't add a navbar item beyond the joined-games list plus auth links. PRODUCT.md flags \"navigation overload\" as an ESPN/Yahoo anti-reference.",
       "Don't introduce a \"Powered by\" footer, trust badges, marketing-style hero aimed at strangers, or any platform signal. The site belongs to the club, not to a vendor. PRODUCT.md design principle #1."
