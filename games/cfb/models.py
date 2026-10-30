@@ -55,6 +55,10 @@ class CfbEnrollment(db.Model):
     is_admin = db.Column(db.Boolean, default=False)
     has_paid = db.Column(db.Boolean, default=False)
     cumulative_spread = db.Column(db.Float, default=0.0)
+    # The week whose elimination this member has watched end their run (the
+    # Observer's Seat, games/cfb/services/moments.py, ADR-078): a week, not a
+    # flag, so a revival or a re-grade that undoes it lets a later one play.
+    elimination_seen_week = db.Column(db.Integer, nullable=True)
 
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC))
 

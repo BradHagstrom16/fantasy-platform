@@ -95,6 +95,10 @@
   --door-in: 800ms;
   --door-out: 500ms;
   --ease-door: cubic-bezier(.33, 1, .68, 1);
+  /* A terminal moment's long parts (CFB's Observer's Seat, ADR-078): the
+     same cubic ease-out as the door, for the same reason, named for its own
+     job so the door's curve stays the door's. */
+  --ease-moment: cubic-bezier(.33, 1, .68, 1);
 
   /* Lounge headliner accents (multi-featured lounge, ruled 2026-08-18):
      the ONLY place room-family hues are written for lounge use. The lounge

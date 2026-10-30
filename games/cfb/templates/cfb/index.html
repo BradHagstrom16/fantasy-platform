@@ -188,9 +188,12 @@
                2026-09-08). The verdict family's shape: raised surface, an
                outcome-colored top rule, headline → supporting line
                → the viewer's own line. Never a pick control: there is nothing
-               to pick in here. #}
+               to pick in here. On the week the viewer's run ended the
+               viewer's line closes with the run's end, and its verdict is
+               the Observer's Seat (6.14, ADR-078): .is-ended, data-moment
+               plays it once, the still state is its end. #}
             {% if lead_card %}
-            <div class="cfb-week-lead is-{{ lead_card.tone }} mb-4 animate-in stagger-1">
+            <div class="cfb-week-lead is-{{ lead_card.tone }}{% if lead_card.ended %} is-ended{% endif %} mb-4 animate-in stagger-1"{% if lead_card.moment %} data-moment="elimination" data-moment-seen="{{ url_for('cfb.elimination_moment_seen') }}"{% endif %}>
                 <div class="cfb-week-lead-main">
                     <div class="cfb-week-lead-headline">{{ lead_card.headline }}</div>
                     {% if lead_card.derivation %}
@@ -223,11 +226,12 @@
                 <div class="cfb-week-lead-aside">
                     <span class="lives-indicator">
                         {% for i in range(lives) %}<span class="life"></span>{% endfor %}
-                        {% for i in range(2 - lives) %}<span class="life lost"></span>{% endfor %}
+                        {% for i in range(2 - lives) %}<span class="life lost{% if lead_card.moment and loop.first %} cfb-run-pip{% endif %}"></span>{% endfor %}
                     </span>
-                    <span class="cfb-season-lives-label">{% if cfb_enrollment.is_eliminated %}Eliminated{% else %}{{ lives }} {{ 'life' if lives == 1 else 'lives' }}{% endif %}</span>
+                    <span class="cfb-season-lives-label">{% if lead_card.moment %}<span class="cfb-run-label"><span class="cfb-run-was" aria-hidden="true">1 life</span><span class="cfb-run-now">Eliminated</span></span>{% elif cfb_enrollment.is_eliminated %}Eliminated{% else %}{{ lives }} {{ 'life' if lives == 1 else 'lives' }}{% endif %}</span>
                 </div>
                 {% endif %}
+                {% if lead_card.run_end_line %}<p class="cfb-run-end"><span class="cfb-run-end-text">{{ lead_card.run_end_line }}</span></p>{% endif %}
             </div>
             {% endif %}
 
@@ -477,4 +481,8 @@
 </div>
 {% endif %}
 
+{% endblock %}
+
+{% block scripts %}
+{% if lead_card and lead_card.moment %}<script src="{{ url_for('static', filename='js/cfb-run-end.js') }}?v={{ asset_version }}" defer></script>{% endif %}
 {% endblock %}

@@ -35,6 +35,7 @@ from games.cfb.models import CfbEnrollment, CfbGame, CfbPick, CfbTeam, CfbWeek
 from games.cfb.services import board as board_service
 from games.cfb.services import weeks as week_reads
 from games.cfb.services.card import build_player_card, build_season_ledger
+from games.cfb.services.enrollment import get_enrollment
 from games.cfb.services.field import build_field
 from games.cfb.services.game_logic import (
     calculate_cumulative_spread,
@@ -50,6 +51,12 @@ from games.cfb.services.game_logic import (
     reverse_game_grade,
 )
 from games.cfb.services.history import get_season_2025
+from games.cfb.services.moments import (
+    elimination_moment_due,
+    mark_elimination_seen,
+    run_end_line,
+    run_end_week,
+)
 from games.cfb.services.payment import payment_nudge_for
 from games.cfb.services.receipts import send_pick_receipt
 from games.cfb.services.reminders import push_survivor_verdicts
@@ -201,14 +208,20 @@ def _matchup(game):
     return f'{game.get_away_team_display()} at {game.get_home_team_display()}'
 
 
-def _lead_card(room, games_by_team, viewer_pick, enrollment):
+def _lead_card(room, games_by_team, viewer_pick, enrollment, run_end=None):
     """The room's lead panel (DESIGN.md 4.1, 9.2; ruled 2026-09-08): the
     reveal week while it is unfinished (LOCKED, or the overlap with the
     next week's call) or its verdict while nothing newer is open. Headline
     (the week and its verdict or what is left) → supporting line opening
     on the week's state word → the viewer's own line; no eyebrow above the
     headline (ADR-066). Copy is factual, stoic, and never guesses a time it
-    does not have."""
+    does not have.
+
+    ``run_end`` is the week the viewer's run ended, once final
+    (``moments.run_end_week``). On that week's card the viewer's own line
+    closes with ``run_end_line`` (the weekly call's eliminated note says it
+    in the overlap); on its verdict the card itself is ``ended``, a step
+    down the ramp with an ash rule (the Observer's Seat, §6.14)."""
     lead = room.lead
     label = get_week_display_name(lead)
     card = {
@@ -216,10 +229,14 @@ def _lead_card(room, games_by_team, viewer_pick, enrollment):
         'pick': None,
         'no_pick_line': None,
         'next_line': None,
+        'run_end_line': None,
+        'ended': False,
         # Lives ride the aside only when no weekly call follows (the call's
         # status row already carries them in the overlap).
         'show_lives': enrollment is not None and room.state != OVERLAP,
     }
+    if run_end is not None and run_end.id == lead.id and room.state != OVERLAP:
+        card['run_end_line'] = run_end_line(lead.week_number)
     game = games_by_team.get(viewer_pick.team_id) if viewer_pick else None
     state = _pick_state(viewer_pick, game) if viewer_pick else None
     if viewer_pick is not None:
@@ -268,7 +285,10 @@ def _lead_card(room, games_by_team, viewer_pick, enrollment):
         season_year = week_reads.current_season()
         following_number = next_pool_week(season_year, lead.week_number)
         following = week_reads.week_by_number(following_number)
-        if following is not None and CfbGame.query.filter_by(week_id=following.id).count():
+        if card['run_end_line']:
+            # The pool's next week is no longer the viewer's to open.
+            card['ended'] = True
+        elif following is not None and CfbGame.query.filter_by(week_id=following.id).count():
             card['next_line'] = f'{get_week_display_name(following)} opens with its lines.'
         else:
             card['next_line'] = (f'{pool_week_name(season_year, following_number)} '
@@ -366,10 +386,17 @@ def index():
                 viewer_reveal_pick = pick
     reveal_note = room.note
 
+    # The Observer's Seat (§6.14, ADR-078): the lead card carries it while
+    # it is the week the viewer's run ended, and plays it once.
     lead_card = None
     if room.state in (LOCKED, OVERLAP, VERDICT):
+        run_end = run_end_week(viewer_enrollment)
         lead_card = _lead_card(
-            room, reveal_games_by_team, viewer_reveal_pick, viewer_enrollment)
+            room, reveal_games_by_team, viewer_reveal_pick, viewer_enrollment,
+            run_end=run_end)
+        lead_card['moment'] = bool(
+            lead_card['run_end_line']
+            and elimination_moment_due(viewer_enrollment, run_end=run_end))
 
     # Official standings order + competition ranks via the central helper
     # (shared with the lounge -- DESIGN.md 10.5 room/lounge consistency).
@@ -682,6 +709,19 @@ def weekly_results(week_number=None):
                 None,
             )
 
+    # The Observer's Seat (§6.14, ADR-078): on the week the viewer's run
+    # ended, their verdict closes with the closing line a step down the ramp,
+    # and plays the moment once.
+    run_end_text = None
+    run_moment = False
+    if current_user.is_authenticated:
+        viewer_enrollment = enrollment_by_user.get(current_user.id)
+        run_end = run_end_week(viewer_enrollment)
+        if run_end is not None and run_end.id == week.id:
+            run_end_text = run_end_line(week.week_number)
+            run_moment = elimination_moment_due(
+                viewer_enrollment, run_end=run_end) is not None
+
     distribution = pick_distribution(picks, games)
 
     return render_template(
@@ -702,6 +742,8 @@ def weekly_results(week_number=None):
         current_user_pick=current_user_pick,
         current_user_nopick=current_user_nopick,
         current_user_out=current_user_out,
+        run_end_line=run_end_text,
+        run_moment=run_moment,
         distribution=distribution,
     )
 
@@ -1010,6 +1052,16 @@ def make_pick(week_number):
         legend_states=legend_states,
         cfp_eliminated_names=cfp_eliminated_names,
     )
+
+
+@cfb_bp.route('/moment/elimination/seen', methods=['POST'])
+@login_required
+@enrollment_required('cfb')
+def elimination_moment_seen():
+    """The Observer's Seat started on the member's screen (ADR-078): record
+    it so it never plays again. The page names no week; the server does."""
+    mark_elimination_seen(get_enrollment(current_user.id))
+    return '', 204
 
 
 @cfb_bp.route('/my-picks')
