@@ -322,3 +322,148 @@ def test_tiebreaker_prefers_current_total_then_falls_back():
     # no designation
     assert edge.tiebreaker_total(SimpleNamespace(tiebreaker_game_id=None),
                                  [game], with_cur) == (None, None)
+
+
+# ── planning around a member's held picks ──────────────────────────────────
+
+KO = datetime(2026, 10, 31, 17, 0, tzinfo=UTC)
+
+
+def _row(gid, prob, *, market='spread', side_key='home', minutes=0):
+    return {'game_id': gid, 'market': market, 'side_key': side_key,
+            'side': f'G{gid} {market} {side_key}', 'prob': prob,
+            'matchup': f'A{gid} @ H{gid}',
+            'kickoff': KO.replace(minute=minutes)}
+
+
+def _pick(gid, slot, *, market='spread', side='home', is_best=False,
+          points=None, prob=None, minutes=0):
+    return {'game_id': gid, 'market': market, 'side': side, 'slot': slot,
+            'is_best': is_best, 'label': f'P{gid} {market} {side}',
+            'matchup': f'A{gid} @ H{gid}',
+            'kickoff': KO.replace(minute=minutes), 'prob': prob,
+            'points': points}
+
+
+def _ranked(n=12):
+    return [_row(g, 0.70 - g * 0.01) for g in range(1, n + 1)]
+
+
+def test_rows_carry_the_pick_side_they_stand_for():
+    home = edge._spread_side(_game(home_spread=-3.0), _cons(spread=-7.0))
+    away = edge._spread_side(_game(home_spread=-1.5), _cons(spread=0.5))
+    over = edge._total_side(_game(total_points=45.0), _cons(total=49.0))
+    under = edge._total_side(_game(total_points=45.0), _cons(total=41.0))
+    assert [r['side_key'] for r in (home, away, over, under)] == [
+        'home', 'away', 'over', 'under']
+
+
+def test_plan_with_nothing_held_is_the_blank_sheet():
+    rows = _ranked()
+    rows.insert(8, _row(3, 0.615, market='total', side_key='over'))
+    plan = edge.plan_sheet(rows)
+    assert plan['open'] == rows[:8]
+    assert plan['headliner'] is rows[0] and not plan['headliner_locked']
+    assert plan['reserve']['game_id'] == 9      # skips game 3's total
+    assert edge.build_sheet(rows) == plan['open'] + [plan['reserve']]
+    outlook = edge.sheet_outlook(plan)
+    assert abs(outlook['projected']
+               - edge.expected_points(edge.build_sheet(rows))) < 1e-9
+
+
+def test_a_held_headliner_stays_and_six_slots_open():
+    rows = _ranked()
+    held = [_pick(100, 1, is_best=True, points=2.0), _pick(101, 2, points=0.0)]
+    plan = edge.plan_sheet(rows, held)
+    assert plan['open'] == rows[:6]
+    assert plan['headliner'] is held[0] and plan['headliner_locked']
+    assert plan['reserve'] is rows[6]
+    outlook = edge.sheet_outlook(plan)
+    assert outlook['banked'] == 2.0 and outlook['graded'] == 2
+    assert outlook['pending'] == 0
+    # no doubling on the open side: the headliner is already spent
+    assert abs(outlook['open_ev'] - sum(r['prob'] for r in rows[:6])) < 1e-9
+
+
+def test_a_held_plain_pick_sends_the_headliner_to_the_top_open_row():
+    rows = _ranked()
+    held = [_pick(100, 1, points=1.0), _pick(101, 2)]       # 101 still live
+    plan = edge.plan_sheet(rows, held)
+    assert plan['headliner'] is rows[0] and not plan['headliner_locked']
+    outlook = edge.sheet_outlook(plan)
+    assert outlook['banked'] == 1.0 and outlook['pending'] == 1
+    expected = sum(r['prob'] for r in rows[:6]) + rows[0]['prob']
+    assert abs(outlook['open_ev'] - expected) < 1e-9
+    assert abs(outlook['projected'] - (1.0 + expected)) < 1e-9
+
+
+def test_a_held_reserve_is_kept():
+    rows = _ranked()
+    held = [_pick(100, 9)]
+    plan = edge.plan_sheet(rows, held)
+    assert plan['reserve'] is held[0] and plan['reserve_locked']
+    assert plan['open'] == rows[:8]
+
+
+def test_the_reserve_skips_a_game_a_held_pick_is_on():
+    # a held spread on game 100 whose total is still on the board
+    rows = _ranked(7) + [_row(100, 0.55, market='total', side_key='under'),
+                         _row(8, 0.54)]
+    plan = edge.plan_sheet(rows, [_pick(100, 3)])
+    assert plan['open'] == rows[:7]
+    assert plan['reserve']['game_id'] == 8
+
+
+def test_top_below_nine_plans_no_reserve():
+    plan = edge.plan_sheet(_ranked(), [_pick(100, 1)], top=5)
+    assert len(plan['open']) == 4 and plan['reserve'] is None
+
+
+def test_sheet_changes_lists_the_edits_in_sheet_order():
+    rows = [_row(1, 0.66, minutes=30), _row(2, 0.64, minutes=10),
+            _row(3, 0.62, minutes=50), _row(4, 0.60, minutes=20),
+            _row(5, 0.58), _row(6, 0.57), _row(7, 0.56), _row(8, 0.55),
+            _row(9, 0.54)]
+    held = [_pick(100, 1, points=1.0), _pick(101, 2, points=0.0)]
+    plan = edge.plan_sheet(rows, held)          # opens 1-6, reserve 7
+    current = [
+        _pick(1, 3, prob=0.66, minutes=30),                   # keep
+        _pick(2, 4, side='away', prob=0.36, minutes=10),      # flip
+        _pick(50, 5, market='total', side='over', is_best=True,
+              prob=0.45),                                     # remove
+        _pick(60, 9, prob=0.5),                               # reserve moves
+    ]
+    changes = edge.sheet_changes(current, plan)
+    assert [(c['action'], c['label']) for c in changes] == [
+        ('remove', 'P50 total over'),
+        ('flip', 'G2 spread home'),
+        ('reserve', 'G7 spread home'),
+        ('add', 'G5 spread home'),          # earliest kickoff first
+        ('add', 'G6 spread home'),
+        ('add', 'G4 spread home'),
+        ('add', 'G3 spread home'),
+        ('headliner', 'G1 spread home'),
+        ('keep', 'P1 spread home'),
+    ]
+    by_action = {c['action']: c for c in changes}
+    assert by_action['flip']['was'] == 'P2 spread away'
+    assert by_action['reserve']['was'] == 'P60 spread home'
+    assert by_action['headliner']['was'] == 'P50 total over'
+
+
+def test_sheet_changes_quiet_when_the_sheet_already_matches():
+    rows = _ranked()
+    plan = edge.plan_sheet(rows)
+    current = [_pick(r['game_id'], i, is_best=i == 1, prob=r['prob'])
+               for i, r in enumerate(plan['open'], 1)]
+    current.append(_pick(plan['reserve']['game_id'], 9, prob=0.5))
+    changes = edge.sheet_changes(current, plan)
+    assert {c['action'] for c in changes} == {'keep'}
+
+
+def test_a_held_headliner_needs_no_headliner_change():
+    rows = _ranked()
+    plan = edge.plan_sheet(rows, [_pick(100, 1, is_best=True, points=0.0)])
+    changes = edge.sheet_changes([], plan)
+    assert 'headliner' not in {c['action'] for c in changes}
+    assert sum(c['action'] == 'add' for c in changes) == 7

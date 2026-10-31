@@ -30,6 +30,7 @@ from math import isfinite
 from statistics import NormalDist, median
 
 from games.docket.services import nfl_margin
+from games.docket.services.grading.snapshots import BACKUP_SLOT, SCORING_SLOTS
 from games.docket.services.importer import SPORTS, decode_payload
 from games.docket.utils import now_utc
 from utils.odds_api import odds_api_get, sport_base_url
@@ -189,12 +190,13 @@ def _spread_side(game, cons, model=None, weight=SVA_WEIGHT):
         return None
     p_home = _home_cover(game, frozen, market, model, weight)
     if p_home >= 0.5:
-        side, prob = f'{game.home_team} {frozen:+g}', p_home
+        side_key, side, prob = 'home', f'{game.home_team} {frozen:+g}', p_home
     else:
-        side, prob = f'{game.away_team} {-frozen:+g}', 1.0 - p_home
+        side_key, side, prob = ('away', f'{game.away_team} {-frozen:+g}',
+                                1.0 - p_home)
     keys = _crosses_key_numbers(frozen, market) if game.sport == NFL else []
-    return _side_row(game, 'spread', side, prob, frozen, market, keys,
-                     cons['spreads'], model)
+    return _side_row(game, 'spread', side_key, side, prob, frozen, market,
+                     keys, cons['spreads'], model)
 
 
 def _total_side(game, cons, model=None, weight=SVA_WEIGHT):
@@ -205,19 +207,24 @@ def _total_side(game, cons, model=None, weight=SVA_WEIGHT):
         return None
     mean = _blend(market, model, weight)
     p_over = _Z.cdf((mean - frozen) / SIGMA[game.sport]['total'])
-    side, prob = ((f'Over {frozen:g}', p_over) if p_over >= 0.5
-                  else (f'Under {frozen:g}', 1.0 - p_over))
-    return _side_row(game, 'total', side, prob, frozen, market, [],
+    side_key, side, prob = (('over', f'Over {frozen:g}', p_over)
+                            if p_over >= 0.5
+                            else ('under', f'Under {frozen:g}', 1.0 - p_over))
+    return _side_row(game, 'total', side_key, side, prob, frozen, market, [],
                      cons['totals'], model)
 
 
-def _side_row(game, market, side, prob, frozen, current, key_cross, points,
-              model):
+def _side_row(game, market, side_key, side, prob, frozen, current, key_cross,
+              points, model):
+    """One scored side. ``side_key`` is the DocketPick.side value
+    (home/away/over/under) and ``side`` its printed label. Only a market's
+    value side is emitted; its other side is worth ``1 - prob`` (push
+    probability counts half on both)."""
     book = game.spread_book if market == 'spread' else game.total_book
     return {
         'sport': SPORT_LABEL[game.sport], 'sport_key': game.sport,
         'game_id': game.id, 'matchup': f'{game.away_team} @ {game.home_team}',
-        'market': market, 'side': side, 'prob': prob,
+        'market': market, 'side_key': side_key, 'side': side, 'prob': prob,
         'frozen': frozen, 'current': current, 'move': current - frozen,
         'model': model, 'book': book, 'key_cross': key_cross,
         'n_books': len(points), 'range': (min(points), max(points)),
@@ -301,19 +308,131 @@ def expected_points(sheet):
     return base + headliner
 
 
+def plan_sheet(pickable, held=(), top=9):
+    """The best sheet around the picks the user can no longer change.
+
+    ``pickable`` is the ranked pickable rows, best first. ``held`` is the
+    user's frozen picks (``sheet_state`` pick dicts): sides on games that
+    kicked off, which the sheet will not let them touch. Frozen scoring picks
+    keep their slots and the open slots take the top rows. The headliner is a
+    frozen pick that carries it (it froze at its own kickoff), else the top
+    open row, since a headliner never moves onto a kicked-off market. The
+    reserve is a frozen slot 9 when there is one, else the best remaining row
+    on a game no scoring side is on: the sheet refuses a reserve on a held
+    case (DESIGN.md §1.5), as it would die on the same No Contest it is meant
+    to cover. ``top`` below 9 asks for scoring sides only.
+
+    Returns a dict: ``locked`` (frozen scoring picks), ``open`` (rows for the
+    open slots), ``headliner`` (+ ``headliner_locked``), ``reserve``
+    (+ ``reserve_locked``)."""
+    held = list(held)
+    locked = [p for p in held if p['slot'] != BACKUP_SLOT]
+    locked_reserve = next((p for p in held if p['slot'] == BACKUP_SLOT), None)
+    open_rows = pickable[:max(0, min(top, SCORING_SLOTS) - len(locked))]
+    locked_best = next((p for p in locked if p['is_best']), None)
+    headliner = locked_best or (open_rows[0] if open_rows else None)
+    reserve = locked_reserve
+    if reserve is None and top >= BACKUP_SLOT:
+        taken = ({p['game_id'] for p in locked}
+                 | {r['game_id'] for r in open_rows})
+        reserve = next((r for r in pickable[len(open_rows):]
+                        if r['game_id'] not in taken), None)
+    return {
+        'locked': locked, 'open': open_rows,
+        'headliner': headliner, 'headliner_locked': locked_best is not None,
+        'reserve': reserve, 'reserve_locked': locked_reserve is not None,
+    }
+
+
 def build_sheet(pickable, top=9):
-    """The recommended sheet from pickable rows ranked best-first: the top
-    scoring sides (at most 8), then, when ``top`` reaches 9, the reserve — the
-    best remaining side on a game no scoring side is on. The sheet refuses a
-    reserve on a held case (DESIGN.md §1.5: it would die on the same No
-    Contest it is meant to cover), so a bare ninth-best side can be illegal."""
-    scoring = pickable[:min(top, 8)]
-    if top < 9:
-        return scoring
-    held = {r['game_id'] for r in scoring}
-    reserve = next((r for r in pickable[len(scoring):]
-                    if r['game_id'] not in held), None)
-    return scoring + ([reserve] if reserve else [])
+    """The recommended sheet from pickable rows ranked best-first, for a blank
+    sheet: the top scoring sides (at most 8, the first one headlining), then,
+    when ``top`` reaches 9, the reserve (see plan_sheet). A bare ninth-best
+    side can be illegal as the reserve."""
+    plan = plan_sheet(pickable, (), top)
+    return plan['open'] + ([plan['reserve']] if plan['reserve'] else [])
+
+
+def sheet_outlook(plan):
+    """Where a planned sheet stands. ``banked``: points already won by the
+    frozen scoring picks the caller graded (each carries ``points``,
+    headliner doubled; None while its game is live). ``pending``: frozen
+    picks with no points yet, not guessed, since in-game odds would mislead.
+    ``open_ev``: expected points of the open picks, headliner doubled.
+    ``projected``: banked + open_ev, out of 9.0."""
+    graded = [p['points'] for p in plan['locked']
+              if p.get('points') is not None]
+    open_ev = sum(r['prob'] for r in plan['open'])
+    if plan['headliner'] is not None and not plan['headliner_locked']:
+        open_ev += plan['headliner']['prob']
+    banked = sum(graded)
+    return {
+        'banked': banked, 'graded': len(graded),
+        'pending': len(plan['locked']) - len(graded),
+        'open_ev': open_ev, 'projected': banked + open_ev,
+    }
+
+
+# The order the sheet takes the changes in: removals free slots and markets,
+# the reserve moves before an add could need its market, and the headliner is
+# set last, onto a pick that exists by then.
+CHANGE_ORDER = ('remove', 'flip', 'reserve', 'add', 'headliner', 'keep')
+
+
+def _change(action, item, *, was=None):
+    """One sheet change. ``item`` is a plan row or a pick dict the caller
+    annotated with ``matchup``, ``kickoff`` and ``prob``."""
+    return {
+        'action': action, 'label': item.get('label') or item['side'],
+        'matchup': item['matchup'], 'kickoff': item['kickoff'],
+        'prob': item.get('prob'), 'was': was,
+    }
+
+
+def sheet_changes(current, plan):
+    """The edits that turn the user's changeable picks into ``plan``.
+
+    ``current`` is their open picks (``sheet_state`` dicts annotated with
+    ``matchup``, ``kickoff`` and ``prob``). A held market whose plan side
+    differs is a flip (the sheet re-sides it in place, same slot); a held
+    market the plan lacks is a removal; a plan row on no held market is an
+    add. Returns change dicts in CHANGE_ORDER, earliest kickoff first within
+    each action; ``keep`` entries confirm the picks that stand."""
+    scoring = [p for p in current if p['slot'] != BACKUP_SLOT]
+    reserve = next((p for p in current if p['slot'] == BACKUP_SLOT), None)
+    wanted = {(r['game_id'], r['market']): r for r in plan['open']}
+    changes, held_markets = [], set()
+    for pick in scoring:
+        row = wanted.get((pick['game_id'], pick['market']))
+        if row is None:
+            changes.append(_change('remove', pick))
+            continue
+        held_markets.add((pick['game_id'], pick['market']))
+        if row['side_key'] == pick['side']:
+            changes.append(_change('keep', pick))
+        else:
+            changes.append(_change('flip', row, was=pick['label']))
+    changes += [_change('add', r) for r in plan['open']
+                if (r['game_id'], r['market']) not in held_markets]
+
+    target = plan['reserve']
+    if target is not None and not plan['reserve_locked']:
+        if reserve is None:
+            changes.append(_change('reserve', target))
+        elif (reserve['game_id'], reserve['market'], reserve['side']) != (
+                target['game_id'], target['market'], target['side_key']):
+            changes.append(_change('reserve', target, was=reserve['label']))
+
+    head = plan['headliner']
+    if head is not None and not plan['headliner_locked']:
+        now = next((p for p in scoring if p['is_best']), None)
+        if now is None or (now['game_id'], now['market']) != (
+                head['game_id'], head['market']):
+            changes.append(_change('headliner', head,
+                                   was=now['label'] if now else None))
+
+    changes.sort(key=lambda c: (CHANGE_ORDER.index(c['action']), c['kickoff']))
+    return changes
 
 
 def tiebreaker_total(week, games, consensus_by_event, projections=None,
