@@ -107,12 +107,13 @@ from datetime import UTC, datetime
 import click
 from flask import current_app
 from flask.cli import AppGroup
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 
 from extensions import db
 from games.docket.models import (
     DocketGame,
     DocketPick,
+    DocketTiebreakerPrediction,
     DocketWeekResult,
 )
 from games.docket.services import edge, week_reads
@@ -126,14 +127,19 @@ from games.docket.services.enrollment import (
     roster_user_ids,
     roster_user_ids_as_of,
 )
+from games.docket.services.grading.engine import slot_points
+from games.docket.services.grading.snapshots import BACKUP_SLOT, Outcome
 from games.docket.services.grading_pass import try_grade_week
 from games.docket.services.importer import import_week
 from games.docket.services.notifications import push_docket_verdicts
 from games.docket.services.opener import open_week
+from games.docket.services.picks import describe_pick, format_tenths
 from games.docket.services.record import run_record_pass
 from games.docket.services.scores import sync_scores
+from games.docket.services.sheets import _result, _snapshot
 from games.docket.services.tiebreaker_rule import default_tiebreaker_game
 from games.docket.services.weeks import (
+    CT,
     FIRST_NFL_WEEK,
     SEASON_YEAR,
     TOTAL_WEEKS,
@@ -141,6 +147,7 @@ from games.docket.services.weeks import (
     week_number_for,
 )
 from games.docket.utils import now_utc, to_naive_utc
+from models.user import User
 from utils.sync_runs import mark_run, record_run
 
 docket_cli = AppGroup('docket', help="The Docket (NFL+CFB pick'em) commands.")
@@ -656,6 +663,139 @@ def _fmt_edge_row(row, deadline, index=None):
             f'        {row["matchup"]}  [{books}]')
 
 
+def _resolve_member(ident):
+    """The member ``--user`` names: a username or an email, any case."""
+    needle = ident.strip().lower()
+    if not needle:
+        _fail('--user needs a username or email')
+    user = db.session.scalars(
+        select(User).where(or_(func.lower(User.username) == needle,
+                               func.lower(User.email) == needle))).first()
+    if user is None:
+        _fail(f'--user {ident!r}: no member with that username or email')
+    return user
+
+
+_RESULT_MARK = {'win': 'W', 'loss': 'L', 'push': 'P'}
+
+
+def _member_sheet(user, week, games_by_id, rows, submit, deadline):
+    """The member's picks split for the planner: (held, current).
+
+    ``current`` is the picks they can still change, each priced at its
+    frozen line (``prob``; a market's other side is worth 1 - prob).
+    ``held`` is the rest: the game started, is final, the deadline passed, or
+    there is no current line to price an alternative against, so the plan
+    builds around them. A graded held pick carries ``points`` (sheets'
+    _result, the rule All Sheets shows; the headliner doubles; the reserve
+    never scores here). Every pick gets a printable ``status``."""
+    picks = db.session.scalars(
+        select(DocketPick).filter_by(user_id=user.id, week_id=week.id)
+        .order_by(DocketPick.slot)).all()
+    by_market = {(r['game_id'], r['market']): r for r in rows}
+    held, current = [], []
+    for pick in picks:
+        game = games_by_id[pick.game_id]
+        entry = {
+            'game_id': pick.game_id, 'market': pick.market,
+            'side': pick.side, 'slot': pick.slot, 'is_best': pick.is_best,
+            'label': describe_pick(pick), 'matchup': _matchup(game),
+            'kickoff': _aware_utc(game.kickoff), 'prob': None,
+            'points': None,
+        }
+        row = by_market.get((pick.game_id, pick.market))
+        pickable = edge.is_pickable(game, submit, deadline)
+        if pickable and row is not None:
+            entry['prob'] = (row['prob'] if row['side_key'] == pick.side
+                             else 1.0 - row['prob'])
+            entry['status'] = f'open {entry["prob"] * 100:.1f}%'
+            current.append(entry)
+            continue
+        result = _result(pick, game, _snapshot(game))
+        if result in _RESULT_MARK and pick.slot == BACKUP_SLOT:
+            entry['status'] = f'{_RESULT_MARK[result]} (reserve)'
+        elif result in _RESULT_MARK:
+            entry['points'] = slot_points(Outcome(result), pick.is_best)
+            entry['status'] = f'{_RESULT_MARK[result]} +{entry["points"]:.1f}'
+        elif result == 'no_contest':
+            entry['status'] = 'no contest'
+        elif entry['kickoff'] <= submit:
+            entry['status'] = 'live'
+        elif pickable:
+            entry['status'] = 'open, no line'
+        else:
+            entry['status'] = 'closed'
+        held.append(entry)
+    return held, current
+
+
+def _ct(dt):
+    """'Sat 1:00 PM CT' for an aware UTC kickoff."""
+    local = dt.astimezone(CT)
+    return f'{local:%a} {local.hour % 12 or 12}:{local:%M %p} CT'
+
+
+def _fmt_member_pick(pick):
+    slot = 'R' if pick['slot'] == BACKUP_SLOT else str(pick['slot'])
+    tag = '  HEADLINER (x2)' if pick['is_best'] else ''
+    return (f'    {slot:>2}. {pick["label"]:<30} {pick["status"]:<15} '
+            f'{pick["matchup"]}{tag}')
+
+
+_CHANGE_VERB = {'remove': 'Remove', 'flip': 'Flip to', 'reserve': 'Reserve',
+                'add': 'Add', 'headliner': 'Headliner'}
+
+
+def _fmt_change(change):
+    prob = f'  {change["prob"] * 100:.1f}%' if change['prob'] is not None else ''
+    was = ''
+    if change['was']:
+        was = (f'  (was {change["was"]})' if change['action'] != 'reserve'
+               else f'  (replaces {change["was"]})')
+    return (f'    {_CHANGE_VERB[change["action"]]:<10} {change["label"]:<30}'
+            f'{prob}  {change["matchup"]}, locks {_ct(change["kickoff"])}{was}')
+
+
+def _echo_member_plan(plan, current, deadline, top):
+    """The plan around the member's held picks, the edits that get there,
+    and where the sheet stands."""
+    click.echo(f'\n  Recommended sheet around your {len(plan["locked"])} '
+               f'held pick(s) (top {top} by expected points):')
+    for pick in plan['locked']:
+        tag = '  <<< HEADLINER (x2)' if pick['is_best'] else ''
+        click.echo(f'   held {pick["label"]:<30} {pick["status"]:<15} '
+                   f'{pick["matchup"]}{tag}')
+    for i, row in enumerate(plan['open'], len(plan['locked']) + 1):
+        tag = ('  <<< HEADLINER (x2)'
+               if row is plan['headliner'] else '')
+        click.echo(_fmt_edge_row(row, deadline, index=i) + tag)
+    if plan['reserve'] is not None:
+        reserve = plan['reserve']
+        if plan['reserve_locked']:
+            click.echo(f'   held {reserve["label"]:<30} {reserve["status"]:<15} '
+                       f'{reserve["matchup"]}  (reserve, slot 9)')
+        else:
+            click.echo(_fmt_edge_row(reserve, deadline, index=9)
+                       + '  (reserve, slot 9)')
+
+    changes = edge.sheet_changes(current, plan)
+    edits = [c for c in changes if c['action'] != 'keep']
+    click.echo('\n  Changes to make (in this order):')
+    if not edits:
+        click.echo('    none: your sheet already matches the plan')
+    for change in edits:
+        click.echo(_fmt_change(change))
+    keeps = [c['label'] for c in changes if c['action'] == 'keep']
+    if keeps:
+        click.echo(f'    Keep       {", ".join(keeps)}')
+
+    outlook = edge.sheet_outlook(plan)
+    click.secho(f'\n  Banked {outlook["banked"]:.1f} from {outlook["graded"]} '
+                f'graded pick(s), {outlook["pending"]} not graded yet; open '
+                f'picks {outlook["open_ev"]:.2f}; projected '
+                f'{outlook["projected"]:.2f} / 9.0', fg='green')
+
+
 @docket_cli.command('edge')
 @click.option('--week', type=int, default=None,
               help='Docket week to analyze (default: the week containing now).')
@@ -674,7 +814,11 @@ def _fmt_edge_row(row, deadline, index=None):
 @click.option('--sva-weight', 'sva_weight', type=click.FloatRange(0, 1),
               default=edge.SVA_WEIGHT, show_default=True,
               help='Weight of the projections against the market line.')
-def edge_cmd(week, submit_time, top, projections, sva_weight):
+@click.option('--user', 'user_ident', default=None, metavar='NAME|EMAIL',
+              help="Read this member's sheet: show it graded, plan the "
+                   'open slots around the picks already locked, and list '
+                   'the changes to make.')
+def edge_cmd(week, submit_time, top, projections, sva_weight, user_ident):
     """Rank this week's FROZEN lines by how far the market has moved off them.
 
     Every Docket pick grades against Tuesday's frozen number. This compares
@@ -684,13 +828,16 @@ def edge_cmd(week, submit_time, top, projections, sva_weight):
     number (== expected points for the slot: win 1.0 / push 0.5 / loss 0.0,
     headliner doubled; NFL spreads on the key-number margin model). Prints
     the most-vulnerable frozen lines, the top recommended sheet with a
-    headliner, and a tiebreaker number.
+    headliner, and a tiebreaker number. With --user, the plan keeps that
+    member's locked picks (and a locked headliner or reserve) and fills only
+    the open slots, then lists the edits that get their sheet there.
 
     Read-only. Spends 2 Odds API credits per sport on the /odds fetch, from
     DOCKET_EDGE_ODDS_API_KEY when set (else the club's ODDS_API_KEY).
     """
     week_number = _resolve_week_number(week)
     wk = _require_week(week_number, scheduled=False)
+    member = _resolve_member(user_ident) if user_ident is not None else None
 
     api_key = (current_app.config.get('DOCKET_EDGE_ODDS_API_KEY')
                or current_app.config.get('ODDS_API_KEY'))
@@ -746,6 +893,15 @@ def edge_cmd(week, submit_time, top, projections, sva_weight):
                 click.secho(f'  WARNING: no projection for {_matchup(game)} '
                             f'— market only', fg='yellow')
 
+    if member is not None:
+        held, current = _member_sheet(member, wk, {g.id: g for g in games},
+                                      rows, submit, deadline)
+        click.echo(f'\n  Your sheet ({member.username}):')
+        for pick in sorted(held + current, key=lambda p: p['slot']):
+            click.echo(_fmt_member_pick(pick))
+        if not held and not current:
+            click.echo('    no picks yet')
+
     if not pickable:
         if errors:
             _fail('no pickable sides and the current-line fetch failed')
@@ -757,23 +913,35 @@ def edge_cmd(week, submit_time, top, projections, sva_weight):
     for row in sorted(pickable, key=lambda r: abs(r['move']), reverse=True)[:10]:
         click.echo(_fmt_edge_row(row, deadline))
 
-    click.echo(f'\n  Recommended sheet (top {top} by expected points):')
-    sheet = edge.build_sheet(pickable, top)
-    for i, row in enumerate(sheet, 1):
-        tag = ''
-        if i == 1:
-            tag = '  <<< HEADLINER (x2)'
-        elif i == 9:
-            tag = '  (reserve — slot 9)'
-        click.echo(_fmt_edge_row(row, deadline, index=i) + tag)
+    if member is not None:
+        _echo_member_plan(edge.plan_sheet(pickable, held, top), current,
+                          deadline, top)
+    else:
+        click.echo(f'\n  Recommended sheet (top {top} by expected points):')
+        sheet = edge.build_sheet(pickable, top)
+        for i, row in enumerate(sheet, 1):
+            tag = ''
+            if i == 1:
+                tag = '  <<< HEADLINER (x2)'
+            elif i == 9:
+                tag = '  (reserve — slot 9)'
+            click.echo(_fmt_edge_row(row, deadline, index=i) + tag)
 
-    click.secho(f'\n  Expected points: {edge.expected_points(sheet):.2f} / 9.0',
-                fg='green')
+        click.secho(f'\n  Expected points: {edge.expected_points(sheet):.2f}'
+                    ' / 9.0', fg='green')
 
     tb_game, tb_total = edge.tiebreaker_total(wk, games, consensus, proj,
                                               sva_weight)
     if tb_game is not None and tb_total is not None:
-        click.echo(f'  Tiebreaker ({_matchup(tb_game)}): predict {tb_total:.1f}')
+        yours = ''
+        if member is not None:
+            pred = db.session.scalars(
+                select(DocketTiebreakerPrediction).filter_by(
+                    user_id=member.id, week_id=wk.id)).first()
+            yours = (f'  (yours: {format_tenths(pred.prediction_tenths)})'
+                     if pred is not None else '  (yours: none on file)')
+        click.echo(f'  Tiebreaker ({_matchup(tb_game)}): predict '
+                   f'{tb_total:.1f}{yours}')
 
     if unmatched:
         click.echo('\n  Unmatched games (no current line — excluded):')
