@@ -467,3 +467,22 @@ def test_a_held_headliner_needs_no_headliner_change():
     changes = edge.sheet_changes([], plan)
     assert 'headliner' not in {c['action'] for c in changes}
     assert sum(c['action'] == 'add' for c in changes) == 7
+
+
+def test_a_reserve_on_a_planned_game_goes_when_no_reserve_is_left():
+    rows = _ranked(6)                       # all six fill the open slots
+    held = [_pick(100, 1, points=1.0), _pick(101, 2, points=0.0)]
+    plan = edge.plan_sheet(rows, held)
+    assert plan['reserve'] is None
+    current = [_pick(3, 9, prob=rows[2]['prob'])]   # reserve on planned game 3
+    changes = edge.sheet_changes(current, plan)
+    assert changes[0]['action'] == 'remove'
+    assert changes[0]['label'] == 'P3 spread home'
+    assert ('add', 'G3 spread home') in [(c['action'], c['label'])
+                                         for c in changes]
+
+
+def test_a_reserve_off_the_plan_stays_when_no_reserve_is_left():
+    plan = edge.plan_sheet(_ranked(6), [_pick(100, 1), _pick(101, 2)])
+    changes = edge.sheet_changes([_pick(77, 9, prob=0.5)], plan)
+    assert 'remove' not in {c['action'] for c in changes}

@@ -666,6 +666,8 @@ def _fmt_edge_row(row, deadline, index=None):
 def _resolve_member(ident):
     """The member ``--user`` names: a username or an email, any case."""
     needle = ident.strip().lower()
+    if not needle:
+        _fail('--user needs a username or email')
     user = db.session.scalars(
         select(User).where(or_(func.lower(User.username) == needle,
                                func.lower(User.email) == needle))).first()
@@ -835,7 +837,7 @@ def edge_cmd(week, submit_time, top, projections, sva_weight, user_ident):
     """
     week_number = _resolve_week_number(week)
     wk = _require_week(week_number, scheduled=False)
-    member = _resolve_member(user_ident) if user_ident else None
+    member = _resolve_member(user_ident) if user_ident is not None else None
 
     api_key = (current_app.config.get('DOCKET_EDGE_ODDS_API_KEY')
                or current_app.config.get('ODDS_API_KEY'))

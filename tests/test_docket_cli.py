@@ -970,3 +970,13 @@ def test_edge_without_user_keeps_the_blank_sheet(app, runner, monkeypatch):
     assert 'Your sheet' not in result.output
     assert 'Recommended sheet (top 9 by expected points)' in result.output
     assert 'Expected points:' in result.output
+
+
+def test_edge_user_refuses_a_blank_name(app, runner, monkeypatch):
+    app.config['ODDS_API_KEY'] = 'k'
+    _member_week(monkeypatch)
+
+    result = _invoke(runner, 'edge', '--week', '1', '--user', '  ')
+
+    assert result.exit_code == 1
+    assert '--user needs a username or email' in result.output

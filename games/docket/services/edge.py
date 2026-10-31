@@ -416,6 +416,13 @@ def sheet_changes(current, plan):
                 if (r['game_id'], r['market']) not in held_markets]
 
     target = plan['reserve']
+    if target is None and reserve is not None:
+        # No legal reserve left (or --top below 9): a reserve on a game the
+        # plan scores on would block the add and break the reserve rule.
+        scoring_games = ({p['game_id'] for p in plan['locked']}
+                         | {r['game_id'] for r in plan['open']})
+        if reserve['game_id'] in scoring_games:
+            changes.append(_change('remove', reserve))
     if target is not None and not plan['reserve_locked']:
         if reserve is None:
             changes.append(_change('reserve', target))
