@@ -165,14 +165,15 @@ Two lines, and no more (Brad chose "fewer details"): the pick in Teko with its s
 autopick line: the tile already says those, and the rest is the room's. A mouse previews the
 slip on hover; a click or tap pins it, the same tile closes it, another tile moves it; Esc and
 a press outside close it; the held tiles are one tab stop with the arrows, Home and End moving
-along them (`static/js/hl-board.js`, loaded only when a tile is held). An open slot stays an
-inert span. Only the viewer's own sides ever reach the board, which the owner always sees
-(§7.13), so nothing sealed leaks. The data rides `viewer_marks`' one query (`SlotMark.pick`,
-`caption`, `kickoff`, `final_score`). This withdraws the earlier "never a control" line; the
-room still owns every case list and every side control. Hit area: a phone tile is about
-25x30px, so a `::before` reaches 44px tall and half of each gap (about 31px wide, past WCAG
-2.5.8's 24px), an informed trade-off for nine tiles on one row. Locked by
-`tests/test_docket_lounge.py`.
+along them (`static/js/hl-board.js`, loaded only when a tile is held). The server sends a held
+tile `inert` and the script lifts it, so a board whose script never ran offers no button that
+does nothing. An open slot stays an inert span. Only the viewer's own sides ever reach the
+board, which the owner always sees (§7.13), so nothing sealed leaks. The data rides
+`viewer_marks`' one query (`SlotMark.pick`, `caption`, `kickoff`, `final_score`). This
+withdraws the earlier "never a control" line; the room still owns every case list and every
+side control. Hit area: a phone tile is about 25x30px, so a `::before` reaches 44px tall and
+half of each gap (about 31px wide, past WCAG 2.5.8's 24px), an informed trade-off for nine
+tiles on one row. Locked by `tests/test_docket_lounge.py`.
 
 **The standings board (bolder pass 2026-09-12).** Brad's ask: the panel should carry the
 field, like the survivor section. The earlier doctrine kept "standings gravity on the ledger

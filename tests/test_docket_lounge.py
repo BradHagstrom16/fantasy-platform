@@ -366,17 +366,19 @@ def test_lounge_renders_the_board_and_the_record(app, client, monkeypatch):
     docket = html[html.index('hl-panel--docket'):]
     # The board is a group named by the whole sentence; a held tile is a
     # button that opens its slip, an open slot stays an inert span (the
-    # slip, Brad 2026-10-30). The server sends the buttons inert (out of the
-    # tab order, no aria-expanded) and hl-board.js wires them; each name
+    # slip, Brad 2026-10-30). The server sends the buttons inert (the
+    # attribute: no focus, no click, nothing for a screen reader; no
+    # tabindex, no aria-expanded) and hl-board.js wires them; each name
     # carries what its face shows, then the pick (label in name).
     assert '<div class="hl-board" role="group" aria-label="1 win, 1 loss; 1 to play; x2 on slot 3">' in docket
-    assert ('<button type="button" class="hl-tile is-win" tabindex="-1" '
+    assert ('<button type="button" class="hl-tile is-win" inert '
             'data-slip="hl-slip-1" aria-label="Slot 1, W win: Home Team -3.5">W</button>') in docket
-    assert ('<button type="button" class="hl-tile is-loss" tabindex="-1" '
+    assert ('<button type="button" class="hl-tile is-loss" inert '
             'data-slip="hl-slip-2" aria-label="Slot 2, L loss: Over 51.5">L</button>') in docket
-    assert ('class="hl-tile is-held is-x2" tabindex="-1" data-slip="hl-slip-3" '
+    assert ('class="hl-tile is-held is-x2" inert data-slip="hl-slip-3" '
             'aria-label="Slot 3, x2: Home Team -3.5">3<span class="hl-tile-x2">x2</span></button>') in docket
     assert 'aria-expanded' not in docket and 'aria-controls' not in docket
+    assert 'tabindex' not in docket
     assert '<span class="hl-tile" aria-hidden="true">4</span>' in docket
     assert '<span class="hl-tile hl-tile--reserve" aria-hidden="true">R</span>' in docket
     assert 'class="hl-record" role="img" aria-label="1-1 · 1 to play"' in docket
@@ -510,14 +512,16 @@ def test_lounge_board_without_a_held_pick_loads_no_script(app, client, monkeypat
 
 
 def test_board_script_is_what_makes_the_tiles_a_control():
-    """The server sends the held tiles inert; hl-board.js alone wires them:
-    the toolbar role, aria-controls from data-slip, aria-expanded, the
-    roving tab stop, and the .is-wired class every control style hangs on."""
+    """The server sends the held tiles inert; hl-board.js alone lifts that
+    and wires them: the toolbar role, aria-controls from data-slip,
+    aria-expanded, the roving tab stop, and the .is-wired class every
+    control style hangs on."""
     from pathlib import Path
 
     root = Path(__file__).resolve().parent.parent
     script = (root / 'static/js/hl-board.js').read_text()
-    for needle in ("setAttribute('role', 'toolbar')",
+    for needle in ('tile.inert = false',
+                   "setAttribute('role', 'toolbar')",
                    "setAttribute('aria-controls', tile.getAttribute('data-slip'))",
                    "setAttribute('aria-expanded', 'false')",
                    "classList.add('is-wired')",

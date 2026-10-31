@@ -24,6 +24,7 @@
     // The server sends the tiles inert; only a wired board is a control.
     wrap.querySelector('.hl-board').setAttribute('role', 'toolbar');
     tiles.forEach(function (tile) {
+      tile.inert = false;
       tile.setAttribute('aria-controls', tile.getAttribute('data-slip'));
       tile.setAttribute('aria-expanded', 'false');
       // A tap on the open slip clears it, so it never sits over the action
