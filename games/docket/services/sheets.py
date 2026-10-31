@@ -103,8 +103,9 @@ class StripMark:
 class SlotMark:
     """One of the viewer's OWN nine slots, as the lounge board paints it.
 
-    Nothing here is sealed from its owner, so every held slot carries its
-    result the moment the case is final; ``in_play`` is a kicked-off case
+    Nothing here is sealed from its owner, so every held scoring slot
+    carries its result the moment the case is final (the reserve only a No
+    Contest: it never shows a win, loss or mistrial); ``in_play`` is a kicked-off case
     still waiting on a score (the live dot). A held slot also carries what
     its slip prints (the pick, the case, the kickoff, the final score);
     an open slot carries None for all four."""
@@ -457,9 +458,14 @@ def viewer_marks(user_id: int, week: DocketWeek, now: datetime) -> tuple[SlotMar
         pick, game = entry
         snap = _snapshot(game)
         result = _result(pick, game, snap)
+        in_play = result is None and game_locked(game, now)
+        # The reserve scores only on a substitution, so it never shows a
+        # win, loss or mistrial (the room's rule); a thrown-out case stays.
+        if is_reserve and result != 'no_contest':
+            result = None
         marks.append(SlotMark(
             slot=slot, held=True, is_reserve=is_reserve, is_best=pick.is_best,
-            in_play=result is None and game_locked(game, now), result=result,
+            in_play=in_play, result=result,
             pick=describe_pick(pick), caption=_caption(game),
             kickoff=game.kickoff,
             final_score=(f'{snap.away_score}-{snap.home_score}'

@@ -141,7 +141,9 @@ and digit; held = the accent as a tinted chip (root §1.6); a case that has kick
 the platform live dot (`.is-live`); a final case lights its tile and prints its letter (W /
 L / M, `NC` dashed), color **only** through the lounge's `--live-green` / `--live-red` /
 `--bone-dim` (never `--success`/`--danger`, never a room hex), the letter in `--purple-950`
-because bone on live-red is 3.6:1 and fails (4.6:1 and ~10:1 verified). The x2 slot carries a
+because bone on live-red is 3.6:1 and fails (4.6:1 and ~10:1 verified). The reserve's tile
+never lights W / L / M (it scores only on a substitution, §7.3): its final case stays a held
+`R` with the score on its slip, and only a thrown-out case reads `NC`. The x2 slot carries a
 2px accent ring and a garnet `x2` tag on its top edge, the one ceremonial mark reaching the
 lounge as a tinted chip. Once any scoring side is final, **the record** (`.hl-record`, wins
 green and losses red, e.g. `3-1`) takes the sentence's place at the summons' 2.7rem/700

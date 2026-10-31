@@ -489,6 +489,51 @@ def test_lounge_board_slips_read_back_each_held_pick(app, client, monkeypatch):
     assert 'docket-sheet' not in docket and '--game-accent' not in docket
 
 
+def test_lounge_board_reserve_never_carries_a_verdict(app, client, monkeypatch):
+    """The reserve scores only on a substitution, so its tile never prints a
+    win, loss or mistrial (§7.3, the room's rule): a final reserve case reads
+    held, R, with the score on its slip and no live dot. A thrown-out case
+    is the case's fact, not a verdict, so it still reads No Contest."""
+    from games.docket.services.sheets import viewer_marks
+
+    monkeypatch.setenv('CFB_FAKE_NOW', IN_WEEK1_OPEN)
+    at(monkeypatch, IN_WEEK1_OPEN)                      # Wed Sep 2 12:00 UTC
+    with app.app_context():
+        user = make_user('reserver')
+        make_enrollment(user)
+        week = make_week(1)
+        done = make_game(week, kickoff=datetime(2026, 9, 1, 23, 30))
+        _final(done, 31, 17)
+        tossed = make_game(week, kickoff=datetime(2026, 9, 1, 22, 0))
+        tossed.no_contest = True
+        _hold(user, week, done, slot=1)
+        # Under 51.5 on 48 would grade a win; the reserve never shows it.
+        _hold(user, week, done, market='total', side='under', slot=9,
+              line=51.5)
+        other = make_user('tosser')
+        make_enrollment(other)
+        _hold(other, week, tossed, market='total', side='under', slot=9,
+              line=51.5)
+        db.session.commit()
+        auth_id, other_id = user.auth_id, other.id
+        now = datetime(2026, 9, 2, 12, 0)
+        reserve = {m.slot: m for m in viewer_marks(user.id, week, now)}[9]
+        thrown_out = {m.slot: m for m in viewer_marks(other_id, week, now)}[9]
+    assert reserve.result is None and reserve.in_play is False
+    assert reserve.final_score == '17-31'
+    assert thrown_out.result == 'no_contest'
+    with client.session_transaction() as sess:
+        sess['_user_id'] = auth_id
+        sess['_fresh'] = True
+    html = client.get('/').get_data(as_text=True)
+    docket = html[html.index('hl-panel--docket'):]
+    assert ('<button type="button" class="hl-tile is-held hl-tile--reserve" inert '
+            'data-slip="hl-slip-9" aria-label="Reserve R: Under 51.5">R</button>') in docket
+    start = docket.index('<div class="hl-slip" id="hl-slip-9" hidden>')
+    assert '<span class="hl-slip-state">Final 17-31</span>' in docket[start:]
+    assert 'class="hl-record" role="img" aria-label="1-0"' in docket
+
+
 def test_lounge_board_without_a_held_pick_loads_no_script(app, client, monkeypatch):
     """An empty board has nothing to read back: every tile an inert span,
     no slip, no script."""
