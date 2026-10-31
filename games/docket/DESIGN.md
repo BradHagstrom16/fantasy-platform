@@ -146,14 +146,32 @@ because bone on live-red is 3.6:1 and fails (4.6:1 and ~10:1 verified). The x2 s
 lounge as a tinted chip. Once any scoring side is final, **the record** (`.hl-record`, wins
 green and losses red, e.g. `3-1`) takes the sentence's place at the summons' 2.7rem/700
 register, the one size the lounge lets live-red color text at, with "N to play" in the meta
-line. The board is `role="img"` with the whole sentence as its label ("1 win, 1 loss; 2 to
-play; 1 in play; x2 on slot 3; reserve held"); the letter is the state, color is the second
+line. The board is a `role="group"` named by the whole sentence ("1 win, 1 loss; 2 to play;
+1 in play; x2 on slot 3; reserve held"); the letter is the state, color is the second
 channel. Closed and adjourned keep painting the board and the record (`_context_live`
 attaches `progress` to both open and closed; `_week_result` carries `marks`). Data comes from
 `sheets.viewer_marks` — the viewer's ≤9 picks joined to their own games, one query, results by
 the engine's rule through the All Sheets final gate — so the card can never disagree with the
 sheet, and the record string is `sheets.record_label`, the same words the room prints. Still no
 `.docket-*` class, no `--game-*` variable, and the `.hl-cta` untouched. Locked by
+`tests/test_docket_lounge.py`.
+
+**The slip (Brad, 2026-10-30).** Brad's ask: a hover or a click on a tile that holds a pick
+should show the pick. A held tile is now a `<button>` that opens its **slip** (`.hl-slip`)
+under the board, notched to the tile and laid over the lines below rather than pushing them.
+Two lines, and no more (Brad chose "fewer details"): the pick in Teko with its state beside it
+(the CT kickoff, the live dot and "In play", "Final 17-24" away-home in the room's order, or
+"No Contest"), then the case caption in Newsreader. No slot number, sport, x2, reserve or
+autopick line: the tile already says those, and the rest is the room's. A mouse previews the
+slip on hover; a click or tap pins it, the same tile closes it, another tile moves it; Esc and
+a press outside close it; the held tiles are one tab stop with the arrows, Home and End moving
+along them (`static/js/hl-board.js`, loaded only when a tile is held). An open slot stays an
+inert span. Only the viewer's own sides ever reach the board, which the owner always sees
+(§7.13), so nothing sealed leaks. The data rides `viewer_marks`' one query (`SlotMark.pick`,
+`caption`, `kickoff`, `final_score`). This withdraws the earlier "never a control" line; the
+room still owns every case list and every side control. Hit area: a phone tile is about
+25x30px, so a `::before` reaches 44px tall and half of each gap (about 31px wide, past WCAG
+2.5.8's 24px), an informed trade-off for nine tiles on one row. Locked by
 `tests/test_docket_lounge.py`.
 
 **The standings board (bolder pass 2026-09-12).** Brad's ask: the panel should carry the

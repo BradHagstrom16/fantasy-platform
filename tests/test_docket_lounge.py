@@ -364,11 +364,21 @@ def test_lounge_renders_the_board_and_the_record(app, client, monkeypatch):
         sess['_fresh'] = True
     html = client.get('/').get_data(as_text=True)
     docket = html[html.index('hl-panel--docket'):]
-    assert 'class="hl-tile is-win" aria-hidden="true">W</span>' in docket
-    assert 'class="hl-tile is-loss" aria-hidden="true">L</span>' in docket
-    assert 'hl-tile is-held is-x2" aria-hidden="true">3<span class="hl-tile-x2">x2</span>' in docket
-    assert 'class="hl-tile" aria-hidden="true">4</span>' in docket
-    assert 'hl-tile hl-tile--reserve" aria-hidden="true">R</span>' in docket
+    # The board is a group named by the whole sentence; a held tile is a
+    # button that opens its slip, an open slot stays an inert span (the
+    # slip, Brad 2026-10-30). The server sends the buttons inert (out of the
+    # tab order, no aria-expanded) and hl-board.js wires them; each name
+    # carries what its face shows, then the pick (label in name).
+    assert '<div class="hl-board" role="group" aria-label="1 win, 1 loss; 1 to play; x2 on slot 3">' in docket
+    assert ('<button type="button" class="hl-tile is-win" tabindex="-1" '
+            'data-slip="hl-slip-1" aria-label="Slot 1, W win: Home Team -3.5">W</button>') in docket
+    assert ('<button type="button" class="hl-tile is-loss" tabindex="-1" '
+            'data-slip="hl-slip-2" aria-label="Slot 2, L loss: Over 51.5">L</button>') in docket
+    assert ('class="hl-tile is-held is-x2" tabindex="-1" data-slip="hl-slip-3" '
+            'aria-label="Slot 3, x2: Home Team -3.5">3<span class="hl-tile-x2">x2</span></button>') in docket
+    assert 'aria-expanded' not in docket and 'aria-controls' not in docket
+    assert '<span class="hl-tile" aria-hidden="true">4</span>' in docket
+    assert '<span class="hl-tile hl-tile--reserve" aria-hidden="true">R</span>' in docket
     assert 'class="hl-record" role="img" aria-label="1-1 · 1 to play"' in docket
     assert 'Your sheet is complete.' not in docket
     assert 'Your sheet is not finished.' not in docket
@@ -376,6 +386,145 @@ def test_lounge_renders_the_board_and_the_record(app, client, monkeypatch):
     assert 'class="hl-cta" href="/docket/">Open Your Sheet</a>' in docket
     # No room class or variable leaks into the lounge (the accent firewall).
     assert 'docket-sheet' not in docket and '--game-accent' not in docket
+
+
+def test_viewer_marks_carry_each_slip_in_one_query(app, monkeypatch):
+    """The slip's four facts ride the board's own read: a held slot carries
+    its pick, its case, its kickoff and (once final) the away-home score; an
+    open slot carries None for all four; still one statement for the nine."""
+    from sqlalchemy import event
+
+    from games.docket.services.sheets import viewer_marks
+
+    at(monkeypatch, IN_WEEK1_OPEN)
+    with app.app_context():
+        user = make_user('reader')
+        make_enrollment(user)
+        week = make_week(1)
+        done = make_game(week, kickoff=datetime(2026, 9, 1, 23, 30),
+                         home='Utah Utes', away='Idaho Vandals')
+        _final(done, 31, 17)
+        later = make_game(week, kickoff=datetime(2026, 9, 3, 23, 30))
+        _hold(user, week, done, slot=1)
+        _hold(user, week, later, market='total', side='under', slot=9,
+              line=51.5)
+        db.session.commit()
+        db.session.expire_all()
+        user_id, now = user.id, datetime(2026, 9, 2, 12, 0)
+        _ = (week.id,)
+        statements = []
+
+        def count(conn, cursor, statement, parameters, context, executemany):
+            statements.append(statement)
+
+        event.listen(db.engine, 'before_cursor_execute', count)
+        try:
+            marks = viewer_marks(user_id, week, now)
+        finally:
+            event.remove(db.engine, 'before_cursor_execute', count)
+    assert len(statements) == 1, statements
+    by_slot = {m.slot: m for m in marks}
+    assert by_slot[1].pick == 'Utah Utes -3.5'
+    assert by_slot[1].caption == 'Idaho Vandals at Utah Utes'
+    assert by_slot[1].kickoff == datetime(2026, 9, 1, 23, 30)
+    assert by_slot[1].final_score == '17-31'
+    assert by_slot[9].pick == 'Under 51.5' and by_slot[9].final_score is None
+    assert (by_slot[2].pick, by_slot[2].caption, by_slot[2].kickoff,
+            by_slot[2].final_score) == (None, None, None, None)
+
+
+def test_lounge_board_slips_read_back_each_held_pick(app, client, monkeypatch):
+    """Rendered: one hidden slip per held tile, two lines, the pick and then
+    the case with its state: the final score, In play with the live dot, the
+    CT kickoff, or No Contest. No slip for an open slot, and the script
+    rides once with its cache-busting version."""
+    monkeypatch.setenv('CFB_FAKE_NOW', IN_WEEK1_OPEN)
+    at(monkeypatch, IN_WEEK1_OPEN)                      # Wed Sep 2 12:00 UTC
+    with app.app_context():
+        user = make_user('slips')
+        make_enrollment(user)
+        week = make_week(1)
+        done = make_game(week, kickoff=datetime(2026, 9, 1, 23, 30))
+        _final(done, 31, 17)
+        live = make_game(week, kickoff=datetime(2026, 9, 2, 0, 0))
+        later = make_game(week, kickoff=datetime(2026, 9, 3, 23, 30))
+        tossed = make_game(week, kickoff=datetime(2026, 9, 1, 22, 0))
+        tossed.no_contest = True
+        _hold(user, week, done, slot=1)
+        # line_value is the home spread (describe_pick flips it for away).
+        _hold(user, week, live, side='away', slot=2)
+        _hold(user, week, later, slot=3)
+        _hold(user, week, tossed, slot=4)
+        _hold(user, week, later, market='total', side='over', slot=9,
+              line=51.5)
+        db.session.commit()
+        auth_id = user.auth_id
+    with client.session_transaction() as sess:
+        sess['_user_id'] = auth_id
+        sess['_fresh'] = True
+    html = client.get('/').get_data(as_text=True)
+    docket = html[html.index('hl-panel--docket'):]
+    def slip(slot):
+        start = docket.index(f'<div class="hl-slip" id="hl-slip-{slot}" hidden>')
+        return ' '.join(docket[start:docket.index('</div>\n</div>', start)].split())
+
+    assert slip(1) == (
+        '<div class="hl-slip" id="hl-slip-1" hidden> <div class="hl-slip-head"> '
+        '<span class="hl-slip-pick">Home Team&nbsp;-3.5</span> '
+        '<span class="hl-slip-state">Final 17-31</span> </div> '
+        '<div class="hl-slip-case">Away Team at Home Team')
+    assert ('<span class="hl-slip-pick">Away Team&nbsp;+3.5</span> <span class="hl-slip-state">'
+            '<span class="hl-slip-live" aria-hidden="true"></span>In play</span>') in slip(2)
+    assert '<span class="hl-slip-state">Thu 6:30 PM CT</span>' in slip(3)
+    assert '<span class="hl-slip-state">No Contest</span>' in slip(4)
+    assert 'aria-label="Reserve R: Over 51.5">R</button>' in docket
+    assert 'aria-label="Slot 2, in play: Away Team +3.5">2</button>' in docket
+    assert 'aria-label="Slot 4, NC no contest: Home Team -3.5">NC</button>' in docket
+    assert 'id="hl-slip-9"' in docket
+    assert 'id="hl-slip-5"' not in docket
+    assert docket.count('hl-board.js') == 1
+    assert '/static/js/hl-board.js?v=' in docket
+    assert 'docket-sheet' not in docket and '--game-accent' not in docket
+
+
+def test_lounge_board_without_a_held_pick_loads_no_script(app, client, monkeypatch):
+    """An empty board has nothing to read back: every tile an inert span,
+    no slip, no script."""
+    monkeypatch.setenv('CFB_FAKE_NOW', IN_WEEK1_OPEN)
+    at(monkeypatch, IN_WEEK1_OPEN)
+    with app.app_context():
+        user = make_user('blank')
+        make_enrollment(user)
+        week = make_week(1)
+        make_game(week, kickoff=datetime(2026, 9, 3, 23, 30))
+        db.session.commit()
+        auth_id = user.auth_id
+    with client.session_transaction() as sess:
+        sess['_user_id'] = auth_id
+        sess['_fresh'] = True
+    html = client.get('/').get_data(as_text=True)
+    docket = html[html.index('hl-panel--docket'):]
+    assert '<div class="hl-board" role="group" aria-label="0 of 8 sides held">' in docket
+    assert '<button type="button" class="hl-tile' not in docket
+    assert 'hl-slip' not in docket and 'hl-board.js' not in docket
+
+
+def test_board_script_is_what_makes_the_tiles_a_control():
+    """The server sends the held tiles inert; hl-board.js alone wires them:
+    the toolbar role, aria-controls from data-slip, aria-expanded, the
+    roving tab stop, and the .is-wired class every control style hangs on."""
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parent.parent
+    script = (root / 'static/js/hl-board.js').read_text()
+    for needle in ("setAttribute('role', 'toolbar')",
+                   "setAttribute('aria-controls', tile.getAttribute('data-slip'))",
+                   "setAttribute('aria-expanded', 'false')",
+                   "classList.add('is-wired')",
+                   't.tabIndex = t === tile ? 0 : -1'):
+        assert needle in script, needle
+    css = (root / 'static/css/style.css').read_text()
+    assert '.home-shell .hl-board-wrap.is-wired button.hl-tile {\n  cursor: pointer;' in css
 
 
 def test_context_live_view_mode_unenrolled(app, monkeypatch):

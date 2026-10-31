@@ -105,13 +105,19 @@ class SlotMark:
 
     Nothing here is sealed from its owner, so every held slot carries its
     result the moment the case is final; ``in_play`` is a kicked-off case
-    still waiting on a score (the live dot)."""
+    still waiting on a score (the live dot). A held slot also carries what
+    its slip prints (the pick, the case, the kickoff, the final score);
+    an open slot carries None for all four."""
     slot: int
     held: bool
     is_reserve: bool
     is_best: bool
     in_play: bool
     result: str | None           # 'win' | 'loss' | 'push' | 'no_contest' | None
+    pick: str | None = None      # 'Utah Utes -3.5' / 'Over 51.5'
+    caption: str | None = None   # 'Idaho Vandals at Utah Utes'
+    kickoff: datetime | None = None   # naive UTC; the template renders with |ct
+    final_score: str | None = None    # 'away-home' once final
 
 
 @dataclass(frozen=True, slots=True)
@@ -449,10 +455,15 @@ def viewer_marks(user_id: int, week: DocketWeek, now: datetime) -> tuple[SlotMar
                                   is_best=False, in_play=False, result=None))
             continue
         pick, game = entry
-        result = _result(pick, game, _snapshot(game))
+        snap = _snapshot(game)
+        result = _result(pick, game, snap)
         marks.append(SlotMark(
             slot=slot, held=True, is_reserve=is_reserve, is_best=pick.is_best,
-            in_play=result is None and game_locked(game, now), result=result))
+            in_play=result is None and game_locked(game, now), result=result,
+            pick=describe_pick(pick), caption=_caption(game),
+            kickoff=game.kickoff,
+            final_score=(f'{snap.away_score}-{snap.home_score}'
+                         if snap is not None else None)))
     return tuple(marks)
 
 

@@ -5301,8 +5301,9 @@ html:active-view-transition-type(door-in, door-out) .golf-context-items > :first
    tokens (the summons ruling above), and the letter rides in dark ink:
    bone on live-red measures 3.6:1 and fails, purple-950 clears 4.6:1 on
    live-red and ~10:1 on live-green. Structure before color: the letter is
-   the state, the board is role="img" with the whole sentence, never a
-   control. Tiles flex to one row at every width (nine fit 375px). */
+   the state, and the board is a group named by the whole sentence. A held
+   tile is a button that opens its slip (below); an open slot stays an
+   inert span. Tiles flex to one row at every width (nine fit 375px). */
 .home-shell .hl-board {
   display: flex;
   gap: .4rem;
@@ -5384,6 +5385,140 @@ html:active-view-transition-type(door-in, door-out) .golf-context-items > :first
   letter-spacing: .06em;
   line-height: 1.15;
   text-transform: lowercase;
+}
+/* The slip (Brad, 2026-10-30): a held tile reads back its pick. The slip
+   drops under the board, notched to its tile (hl-board.js sets --notch),
+   over the lines below rather than pushing them: two lines, the pick in
+   Teko with its state beside it (the kickoff, In play, the final score),
+   then the case in Newsreader. Hover previews it, a click or tap pins it. Elevation is the border alone, on a ground darker
+   than the panel; the notch shares both. bone-dim on purple-950 ~12:1. */
+.home-shell .hl-board-wrap {
+  position: relative;
+  max-width: 26rem;
+}
+.home-shell button.hl-tile {
+  margin: 0;
+  padding: 0;
+  background-color: transparent;
+}
+/* The server sends the tiles inert; hl-board.js marks the wrap .is-wired,
+   and only then does a held tile look and act like a control. */
+.home-shell .hl-board-wrap.is-wired button.hl-tile {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: filter var(--motion-feedback) var(--ease-out);
+}
+/* The hit area spans half of each gap and reaches 44px tall on a phone
+   (a 25x30 tile at 390px); the width stays the tile's share of one row,
+   about 31px, past WCAG 2.5.8's 24px. */
+.home-shell .hl-board-wrap.is-wired button.hl-tile::before {
+  content: '';
+  position: absolute;
+  inset: -7px -.2rem;
+}
+@media (hover: hover) and (pointer: fine) {
+  .home-shell .hl-board-wrap.is-wired button.hl-tile:hover { filter: brightness(1.18); }
+}
+.home-shell .hl-tile[aria-expanded="true"] {
+  outline: 2px solid var(--bone);
+  outline-offset: 3px;
+}
+.home-shell button.hl-tile:focus-visible {
+  outline: 2px solid var(--gold-light);
+  outline-offset: 3px;
+}
+.home-shell .hl-slip {
+  --slip-edge: color-mix(in srgb, var(--hl-accent, var(--gold)) 60%, var(--purple-950));
+  position: absolute;
+  top: calc(100% + .6rem);
+  left: 0;
+  right: 0;
+  z-index: 3;
+  padding: .55rem .85rem .6rem;
+  border: 1px solid var(--slip-edge);
+  border-radius: 10px;
+  background: var(--purple-950);
+  text-align: left;
+  animation: hl-slip-in var(--motion-feedback) var(--ease-out);
+}
+.home-shell .hl-slip[hidden] { display: none; }
+/* A move from one open slip to the next swaps in place, no second entrance. */
+.home-shell .hl-slip.is-swap { animation: none; }
+/* A bridge over the gap to the board, so a hover preview stays put while
+   the pointer travels from the tile onto the slip (WCAG 1.4.13). */
+.home-shell .hl-slip::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 100%;
+  height: .7rem;
+}
+.home-shell .hl-slip::before {
+  content: '';
+  position: absolute;
+  top: -6px;
+  left: var(--notch, 1.25rem);
+  width: 10px;
+  height: 10px;
+  margin-left: -5px;
+  background: var(--purple-950);
+  border-top: 1px solid var(--slip-edge);
+  border-left: 1px solid var(--slip-edge);
+  transform: rotate(45deg);
+}
+/* The pick and its state share the first line; a long pick pushes the
+   state under it whole, never broken inside ("Sat 2:30 PM CT"). */
+.home-shell .hl-slip-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  column-gap: .75rem;
+  padding-top: .1rem;
+}
+.home-shell .hl-slip-pick {
+  font-family: var(--font-teko);
+  font-weight: 600;
+  font-size: clamp(1.15rem, 5vw, 1.4rem);
+  line-height: 1.05;
+  letter-spacing: .02em;
+  color: var(--lounge-warm-white);
+}
+.home-shell .hl-slip-state {
+  font-family: var(--font-teko);
+  font-weight: 500;
+  font-size: 1rem;
+  line-height: 1.1;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--bone-dim);
+}
+.home-shell .hl-slip-case {
+  font-family: var(--font-news);
+  font-style: italic;
+  font-size: 1rem;
+  line-height: 1.4;
+  color: var(--bone-dim);
+  margin-top: .15rem;
+}
+/* The platform live dot, paired with its words ("In play"). */
+.home-shell .hl-slip-live {
+  display: inline-block;
+  width: .5rem;
+  height: .5rem;
+  margin-right: .35rem;
+  border-radius: 50%;
+  background: var(--live-red);
+  vertical-align: .08em;
+}
+@keyframes hl-slip-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .home-shell .hl-slip { animation: fade-in var(--motion-feedback) ease-out; }
 }
 /* The record as the verdict word: the summons' 2.7rem/700 register (the
    one size live-red may color text at, per the summons ruling), wins and

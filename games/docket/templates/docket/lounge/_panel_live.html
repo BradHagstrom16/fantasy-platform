@@ -1,9 +1,9 @@
 {# The Docket live headliner panel: one weekly beat at a time, in the
    clerk's voice. awaiting → open → closed → adjourned (§4.1 projected
-   onto the lounge). The lounge summarizes; the sheet completes — no
-   cases, no lines, no per-slot controls here. Members get the
-   Clerk's-Ledger facts; non-members get the sell while the join window
-   is open. Deadlines state the literal time, always.
+   onto the lounge). The lounge summarizes; the sheet completes: no
+   case list, no side controls here, only the viewer's own picks read
+   back. Members get the Clerk's-Ledger facts; non-members get the sell
+   while the join window is open. Deadlines state the literal time, always.
 
    The board (bolder pass 2026-09-12): the viewer's nine slots as verdict
    tiles. Held slots wear the headliner's accent as a tinted chip; a case
@@ -11,19 +11,61 @@
    its tile and prints its letter (W / L / M), color through the lounge's
    live tokens only, the letter always inside (structure before color, the
    CFB pips' own grammar). Once any case is final the record takes the
-   2.7rem verdict register in place of the sentence. The board is a
-   role="img" with the whole sentence as its label, never a control. #}
+   2.7rem verdict register in place of the sentence.
+
+   The slip (Brad, 2026-10-30): a held tile is a button that opens its
+   slip under the board, two lines: the pick with its state beside it (the
+   kickoff, In play, the final score, or No Contest), then the case. Hover previews
+   it, a click or tap pins it (static/js/hl-board.js). An open slot stays
+   an inert span. The board is a group named by the whole sentence, so a
+   screen reader still hears the summary first; without the script the
+   tiles are exactly the old board. Only the viewer's own sides are here,
+   which the owner always sees (§7.13). #}
 {% set g = h.ctx %}
 {% from 'docket/lounge/_standings.html' import standings with context %}
+{% macro tile_face(m) -%}
+  {%- if m.result == 'win' %}W{% elif m.result == 'loss' %}L{% elif m.result == 'push' %}M{% elif m.result == 'no_contest' %}NC{% elif m.is_reserve %}R{% else %}{{ m.slot }}{% endif -%}
+  {%- if m.is_best %}<span class="hl-tile-x2">x2</span>{% endif -%}
+{%- endmacro %}
+{#- A held tile's name says what its face shows (the letter, R, x2) and then
+    the pick, so a voice command for the visible letter reaches it and a
+    screen reader hears the verdict: "Slot 1, W win, x2: Utah Utes -3.5". #}
+{% macro tile_label(m) -%}
+  {{ 'Reserve' ~ ('' if m.result else ' R') if m.is_reserve else 'Slot ' ~ m.slot }}
+  {%- if m.result == 'win' %}, W win{% elif m.result == 'loss' %}, L loss{% elif m.result == 'push' %}, M mistrial{% elif m.result == 'no_contest' %}, NC no contest{% elif m.in_play %}, in play{% endif -%}
+  {%- if m.is_best %}, x2{% endif %}: {{ m.pick }}
+{%- endmacro %}
+{#- Served inert: hl-board.js wires each held tile (aria-controls,
+    aria-expanded, the roving tab stop) and makes the group a toolbar, so
+    without the script nothing announces a control that does nothing. #}
 {% macro board(p) -%}
-<div class="hl-board" role="img" aria-label="{{ p.board_label }}">
+{% set held = p.marks|selectattr('held')|list %}
+<div class="hl-board-wrap" data-hl-board>
+<div class="hl-board" role="group" aria-label="{{ p.board_label }}">
   {%- for m in p.marks -%}
-  <span class="hl-tile{% if m.result %} is-{{ m.result }}{% elif m.in_play %} is-live{% elif m.held %} is-held{% endif %}{% if m.is_reserve %} hl-tile--reserve{% endif %}{% if m.is_best %} is-x2{% endif %}" aria-hidden="true">
-    {%- if m.result == 'win' %}W{% elif m.result == 'loss' %}L{% elif m.result == 'push' %}M{% elif m.result == 'no_contest' %}NC{% elif m.is_reserve %}R{% else %}{{ m.slot }}{% endif -%}
-    {%- if m.is_best %}<span class="hl-tile-x2">x2</span>{% endif -%}
-  </span>
+  {%- set tile_class = 'hl-tile' ~ (' is-' ~ m.result if m.result else (' is-live' if m.in_play else (' is-held' if m.held else ''))) ~ (' hl-tile--reserve' if m.is_reserve else '') ~ (' is-x2' if m.is_best else '') -%}
+  {%- if m.held -%}
+  <button type="button" class="{{ tile_class }}" tabindex="-1" data-slip="hl-slip-{{ m.slot }}" aria-label="{{ tile_label(m) }}">{{ tile_face(m) }}</button>
+  {%- else -%}
+  <span class="{{ tile_class }}" aria-hidden="true">{{ tile_face(m) }}</span>
+  {%- endif -%}
   {%- endfor -%}
 </div>
+{%- for m in held %}
+<div class="hl-slip" id="hl-slip-{{ m.slot }}" hidden>
+  <div class="hl-slip-head">
+    {#- The number never wraps away from its side ("Gophers&nbsp;-12.5"). #}
+    {%- set side, number = m.pick.rsplit(' ', 1) %}
+    <span class="hl-slip-pick">{{ side }}&nbsp;{{ number }}</span>
+    <span class="hl-slip-state">{% if m.result == 'no_contest' %}No Contest{% elif m.final_score %}Final {{ m.final_score }}{% elif m.in_play %}<span class="hl-slip-live" aria-hidden="true"></span>In play{% else %}{{ m.kickoff|ct('%a %-I:%M %p CT') }}{% endif %}</span>
+  </div>
+  <div class="hl-slip-case">{{ m.caption }}</div>
+</div>
+{%- endfor %}
+</div>
+{%- if held %}
+<script src="{{ url_for('static', filename='js/hl-board.js') }}?v={{ asset_version }}" defer></script>
+{%- endif %}
 {%- endmacro %}
 {% macro record(p) -%}
 <div class="hl-record" role="img" aria-label="{{ p.record }}">
