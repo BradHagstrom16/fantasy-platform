@@ -13,7 +13,7 @@ import pytest
 from sqlalchemy import select
 
 from extensions import db
-from games.docket.models import DocketPick, DocketWeekResult
+from games.docket.models import DocketGame, DocketPick, DocketWeekResult
 from tests._docket_fixtures import (
     at,
     make_enrollment,
@@ -894,3 +894,123 @@ def test_edge_submit_time_flag_reopens_earlier_games(app, runner, monkeypatch):
     assert result.exit_code == 0, result.output
     assert 'Recommended sheet' in result.output
     assert 'Over 45' in result.output
+
+
+def _member_week(monkeypatch):
+    """Week 1 on Saturday night: one final game (the member's headliner won),
+    one live game (a plain pick), and nine open games, two of whose totals
+    moved. The member also holds an open coin-flip pick the plan won't keep."""
+    at(monkeypatch, '2026-09-05T20:00:00')
+    week = make_week(1)
+    final = make_game(week, kickoff=datetime(2026, 9, 5, 16, 0), home='FH',
+                      away='FA', home_spread=-3.0, total=45.0)
+    final.is_final, final.home_score, final.away_score = True, 27, 17
+    live = make_game(week, kickoff=datetime(2026, 9, 5, 19, 0), home='LH',
+                     away='LA', home_spread=-3.0, total=45.0)
+    opens = [make_game(week, kickoff=datetime(2026, 9, 6, 16, 0),
+                       home=f'H{i}', away=f'A{i}', home_spread=-3.0,
+                       total=45.0) for i in range(9)]
+    week.tiebreaker_game_id = opens[0].id
+    user = make_user('planner')
+    for game, market, side, slot, best in (
+            (final, 'spread', 'home', 1, True),
+            (live, 'total', 'over', 2, False),
+            (opens[8], 'spread', 'away', 3, False)):
+        db.session.add(DocketPick(
+            user_id=user.id, week_id=week.id, game_id=game.id, market=market,
+            side=side, slot=slot, is_best=best,
+            line_value=game.home_spread if market == 'spread'
+            else game.total_points, book='draftkings'))
+    db.session.commit()
+    consensus = _edge_consensus([final, live, *opens])
+    _move_total(consensus, opens[1], 52.0)
+    _move_total(consensus, opens[2], 50.0)
+    _patch_fetch(monkeypatch, consensus)
+    return week
+
+
+def test_edge_user_plans_around_held_picks(app, runner, monkeypatch):
+    app.config['ODDS_API_KEY'] = 'k'
+    _member_week(monkeypatch)
+
+    result = _invoke(runner, 'edge', '--week', '1', '--user', 'PLANNER@test.com')
+
+    assert result.exit_code == 0, result.output
+    out = result.output
+    assert 'Your sheet (planner):' in out
+    assert 'FH -3' in out and 'W +2.0' in out and 'HEADLINER' in out
+    assert 'live' in out                       # the started, unfinished total
+    assert 'open 50.0%' in out                 # the coin-flip pick, priced
+    assert 'around your 2 held pick(s)' in out
+    assert 'Remove     A8 +3' in out           # the coin flip goes
+    assert 'Add        Over 45' in out         # the moved totals come in
+    assert 'Headliner' not in out.split('Changes to make')[1]  # spent already
+    assert 'Banked 2.0 from 1 graded pick(s), 1 not graded yet' in out
+    assert 'locks Sun 11:00 AM CT' in out
+    assert '(yours: none on file)' in out
+
+
+def test_edge_user_refuses_an_unknown_member(app, runner, monkeypatch):
+    app.config['ODDS_API_KEY'] = 'k'
+    _member_week(monkeypatch)
+
+    result = _invoke(runner, 'edge', '--week', '1', '--user', 'nobody')
+
+    assert result.exit_code == 1
+    assert 'no member with that username or email' in result.output
+
+
+def test_edge_without_user_keeps_the_blank_sheet(app, runner, monkeypatch):
+    app.config['ODDS_API_KEY'] = 'k'
+    _member_week(monkeypatch)
+
+    result = _invoke(runner, 'edge', '--week', '1')
+
+    assert result.exit_code == 0, result.output
+    assert 'Your sheet' not in result.output
+    assert 'Recommended sheet (top 9 by expected points)' in result.output
+    assert 'Expected points:' in result.output
+
+
+def test_edge_user_refuses_a_blank_name(app, runner, monkeypatch):
+    app.config['ODDS_API_KEY'] = 'k'
+    _member_week(monkeypatch)
+
+    result = _invoke(runner, 'edge', '--week', '1', '--user', '  ')
+
+    assert result.exit_code == 1
+    assert '--user needs a username or email' in result.output
+
+
+def test_edge_user_keeps_the_outlook_when_nothing_is_pickable(
+        app, runner, monkeypatch):
+    # Sunday night, every kickoff gone: no sides to rank, but the member
+    # still gets where their sheet stands and an empty change list
+    app.config['ODDS_API_KEY'] = 'k'
+    _member_week(monkeypatch)
+
+    result = _invoke(runner, 'edge', '--week', '1', '--user', 'planner',
+                     '--submit-time', '2026-09-07T12:00:00Z')
+
+    assert result.exit_code == 0, result.output
+    out = result.output
+    assert 'no pickable sides' in out
+    assert 'around your 3 held pick(s)' in out
+    assert 'none: your sheet already matches the plan' in out
+    assert 'Banked 2.0 from 1 graded pick(s), 2 not graded yet' in out
+
+
+def test_edge_user_counts_a_thrown_out_case_apart(app, runner, monkeypatch):
+    app.config['ODDS_API_KEY'] = 'k'
+    _member_week(monkeypatch)
+    live = db.session.scalars(
+        select(DocketGame).filter_by(home_team='LH')).one()
+    live.no_contest = True
+    db.session.commit()
+
+    result = _invoke(runner, 'edge', '--week', '1', '--user', 'planner')
+
+    assert result.exit_code == 0, result.output
+    assert 'no contest' in result.output        # the pick's own status
+    assert ('Banked 2.0 from 1 graded pick(s), 0 not graded yet, '
+            '1 thrown out (No Contest)') in result.output
