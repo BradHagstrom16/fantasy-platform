@@ -13,7 +13,7 @@ import pytest
 from sqlalchemy import select
 
 from extensions import db
-from games.docket.models import DocketPick, DocketWeekResult
+from games.docket.models import DocketGame, DocketPick, DocketWeekResult
 from tests._docket_fixtures import (
     at,
     make_enrollment,
@@ -980,3 +980,37 @@ def test_edge_user_refuses_a_blank_name(app, runner, monkeypatch):
 
     assert result.exit_code == 1
     assert '--user needs a username or email' in result.output
+
+
+def test_edge_user_keeps_the_outlook_when_nothing_is_pickable(
+        app, runner, monkeypatch):
+    # Sunday night, every kickoff gone: no sides to rank, but the member
+    # still gets where their sheet stands and an empty change list
+    app.config['ODDS_API_KEY'] = 'k'
+    _member_week(monkeypatch)
+
+    result = _invoke(runner, 'edge', '--week', '1', '--user', 'planner',
+                     '--submit-time', '2026-09-07T12:00:00Z')
+
+    assert result.exit_code == 0, result.output
+    out = result.output
+    assert 'no pickable sides' in out
+    assert 'around your 3 held pick(s)' in out
+    assert 'none: your sheet already matches the plan' in out
+    assert 'Banked 2.0 from 1 graded pick(s), 2 not graded yet' in out
+
+
+def test_edge_user_counts_a_thrown_out_case_apart(app, runner, monkeypatch):
+    app.config['ODDS_API_KEY'] = 'k'
+    _member_week(monkeypatch)
+    live = db.session.scalars(
+        select(DocketGame).filter_by(home_team='LH')).one()
+    live.no_contest = True
+    db.session.commit()
+
+    result = _invoke(runner, 'edge', '--week', '1', '--user', 'planner')
+
+    assert result.exit_code == 0, result.output
+    assert 'no contest' in result.output        # the pick's own status
+    assert ('Banked 2.0 from 1 graded pick(s), 0 not graded yet, '
+            '1 thrown out (No Contest)') in result.output

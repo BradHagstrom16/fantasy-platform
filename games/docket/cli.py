@@ -688,7 +688,8 @@ def _member_sheet(user, week, games_by_id, rows, submit, deadline):
     there is no current line to price an alternative against, so the plan
     builds around them. A graded held pick carries ``points`` (sheets'
     _result, the rule All Sheets shows; the headliner doubles; the reserve
-    never scores here). Every pick gets a printable ``status``."""
+    never scores here); one on a case thrown out carries ``no_contest``.
+    Every pick gets a printable ``status``."""
     picks = db.session.scalars(
         select(DocketPick).filter_by(user_id=user.id, week_id=week.id)
         .order_by(DocketPick.slot)).all()
@@ -701,7 +702,7 @@ def _member_sheet(user, week, games_by_id, rows, submit, deadline):
             'side': pick.side, 'slot': pick.slot, 'is_best': pick.is_best,
             'label': describe_pick(pick), 'matchup': _matchup(game),
             'kickoff': _aware_utc(game.kickoff), 'prob': None,
-            'points': None,
+            'points': None, 'no_contest': False,
         }
         row = by_market.get((pick.game_id, pick.market))
         pickable = edge.is_pickable(game, submit, deadline)
@@ -718,6 +719,7 @@ def _member_sheet(user, week, games_by_id, rows, submit, deadline):
             entry['points'] = slot_points(Outcome(result), pick.is_best)
             entry['status'] = f'{_RESULT_MARK[result]} +{entry["points"]:.1f}'
         elif result == 'no_contest':
+            entry['no_contest'] = True
             entry['status'] = 'no contest'
         elif entry['kickoff'] <= submit:
             entry['status'] = 'live'
@@ -790,10 +792,12 @@ def _echo_member_plan(plan, current, deadline, top):
         click.echo(f'    Keep       {", ".join(keeps)}')
 
     outlook = edge.sheet_outlook(plan)
+    thrown_out = (f', {outlook["no_contest"]} thrown out (No Contest)'
+                  if outlook['no_contest'] else '')
     click.secho(f'\n  Banked {outlook["banked"]:.1f} from {outlook["graded"]} '
-                f'graded pick(s), {outlook["pending"]} not graded yet; open '
-                f'picks {outlook["open_ev"]:.2f}; projected '
-                f'{outlook["projected"]:.2f} / 9.0', fg='green')
+                f'graded pick(s), {outlook["pending"]} not graded yet'
+                f'{thrown_out}; open picks {outlook["open_ev"]:.2f}; '
+                f'projected {outlook["projected"]:.2f} / 9.0', fg='green')
 
 
 @docket_cli.command('edge')
@@ -907,6 +911,10 @@ def edge_cmd(week, submit_time, top, projections, sva_weight, user_ident):
             _fail('no pickable sides and the current-line fetch failed')
         click.secho('  no pickable sides — every game has started or lacks a '
                     'current line', fg='yellow')
+        if member is not None:
+            # nothing left to change, but where the sheet stands still reads
+            _echo_member_plan(edge.plan_sheet(pickable, held, top), current,
+                              deadline, top)
         return
 
     click.echo('\n  Most vulnerable frozen lines (biggest favorable drift):')

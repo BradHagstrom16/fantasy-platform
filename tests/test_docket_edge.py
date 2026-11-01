@@ -414,6 +414,30 @@ def test_the_reserve_skips_a_game_a_held_pick_is_on():
     assert plan['reserve']['game_id'] == 8
 
 
+def test_a_held_reserve_keeps_scoring_sides_off_its_game():
+    # the reserve's spread has no current line (held, 'open, no line') but
+    # game 100's total tops the board: the sheet refuses a scoring side on
+    # the reserve's case, so the plan must too
+    rows = [_row(100, 0.80, market='total', side_key='over')] + _ranked()
+    held = [_pick(100, 9)]
+    plan = edge.plan_sheet(rows, held)
+    assert all(r['game_id'] != 100 for r in plan['open'])
+    assert plan['open'] == rows[1:9]
+    assert plan['headliner'] is rows[1]
+    assert plan['reserve'] is held[0] and plan['reserve_locked']
+
+
+def test_outlook_counts_a_no_contest_apart_from_pending():
+    # thrown out is not awaiting a grade: the reserve's substitution decides
+    # that slot, so it is counted on its own
+    held = [_pick(100, 1, points=1.0), _pick(101, 2),
+            {**_pick(102, 3), 'no_contest': True}]
+    outlook = edge.sheet_outlook(edge.plan_sheet(_ranked(), held))
+    assert outlook['graded'] == 1 and outlook['banked'] == 1.0
+    assert outlook['pending'] == 1
+    assert outlook['no_contest'] == 1
+
+
 def test_top_below_nine_plans_no_reserve():
     plan = edge.plan_sheet(_ranked(), [_pick(100, 1)], top=5)
     assert len(plan['open']) == 4 and plan['reserve'] is None

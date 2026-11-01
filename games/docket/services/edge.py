@@ -320,7 +320,10 @@ def plan_sheet(pickable, held=(), top=9):
     reserve is a frozen slot 9 when there is one, else the best remaining row
     on a game no scoring side is on: the sheet refuses a reserve on a held
     case (DESIGN.md §1.5), as it would die on the same No Contest it is meant
-    to cover. ``top`` below 9 asks for scoring sides only.
+    to cover. A frozen reserve's case takes no scoring side either, the same
+    rule from the other side: its game can still be open with the reserve
+    frozen only because its market lacks a current line. ``top`` below 9
+    asks for scoring sides only.
 
     Returns a dict: ``locked`` (frozen scoring picks), ``open`` (rows for the
     open slots), ``headliner`` (+ ``headliner_locked``), ``reserve``
@@ -328,14 +331,16 @@ def plan_sheet(pickable, held=(), top=9):
     held = list(held)
     locked = [p for p in held if p['slot'] != BACKUP_SLOT]
     locked_reserve = next((p for p in held if p['slot'] == BACKUP_SLOT), None)
-    open_rows = pickable[:max(0, min(top, SCORING_SLOTS) - len(locked))]
+    reserve_game = locked_reserve['game_id'] if locked_reserve else None
+    available = [r for r in pickable if r['game_id'] != reserve_game]
+    open_rows = available[:max(0, min(top, SCORING_SLOTS) - len(locked))]
     locked_best = next((p for p in locked if p['is_best']), None)
     headliner = locked_best or (open_rows[0] if open_rows else None)
     reserve = locked_reserve
     if reserve is None and top >= BACKUP_SLOT:
         taken = ({p['game_id'] for p in locked}
                  | {r['game_id'] for r in open_rows})
-        reserve = next((r for r in pickable[len(open_rows):]
+        reserve = next((r for r in available[len(open_rows):]
                         if r['game_id'] not in taken), None)
     return {
         'locked': locked, 'open': open_rows,
@@ -358,17 +363,22 @@ def sheet_outlook(plan):
     frozen scoring picks the caller graded (each carries ``points``,
     headliner doubled; None while its game is live). ``pending``: frozen
     picks with no points yet, not guessed, since in-game odds would mislead.
-    ``open_ev``: expected points of the open picks, headliner doubled.
-    ``projected``: banked + open_ev, out of 9.0."""
+    ``no_contest``: frozen picks on a case thrown out (flagged
+    ``no_contest``), not pending: the reserve substitutes into the earliest
+    such slot, which this outlook does not model, so banked and projected
+    leave that substitution out. ``open_ev``: expected points of the open
+    picks, headliner doubled. ``projected``: banked + open_ev, out of 9.0."""
     graded = [p['points'] for p in plan['locked']
               if p.get('points') is not None]
+    thrown_out = sum(1 for p in plan['locked'] if p.get('no_contest'))
     open_ev = sum(r['prob'] for r in plan['open'])
     if plan['headliner'] is not None and not plan['headliner_locked']:
         open_ev += plan['headliner']['prob']
     banked = sum(graded)
     return {
         'banked': banked, 'graded': len(graded),
-        'pending': len(plan['locked']) - len(graded),
+        'pending': len(plan['locked']) - len(graded) - thrown_out,
+        'no_contest': thrown_out,
         'open_ev': open_ev, 'projected': banked + open_ev,
     }
 
