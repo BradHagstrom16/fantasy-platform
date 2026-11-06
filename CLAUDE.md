@@ -361,38 +361,3 @@ SENTRY_DSN=...           # Errors only, no PII, no request bodies (utils/observa
 HEALTHCHECKS_PING_KEY=... # healthchecks.io ping key for the job dead-man (utils/job_alert.py). Blank = no pings; failure mail still goes
 SYNC_MODE=...            # Golf SlashGolf tier: 'standard' (default) | 'free' — prod is FREE (250 calls/mo)
 ```
-FLASK_APP=app.py
-ENVIRONMENT=development|testing|production
-SECRET_KEY=...
-# Dev default if unset: SQLite. This machine's .env points at local Postgres `ccc_local` — use it for smoke; the SQLite file is stale
-DATABASE_URL=sqlite:///instance/fantasy_platform.db
-TEST_DATABASE_URL=...    # Optional, tests only: run the suite on Postgres (postgresql:///ccc_test). Deliberately NOT DATABASE_URL — the fixtures empty it; the name must end in `_test`
-# Prod: DO Managed Postgres (requires ?sslmode=require)
-# DATABASE_URL=postgresql://doadmin:<pw>@<host>.db.ondigitalocean.com:25060/defaultdb?sslmode=require
-SITE_URL=...             # Used in password-reset and reminder email links (https://<domain> in prod)
-PLATFORM_TIMEZONE=...    # Default: America/Chicago
-RATELIMIT_STORAGE_URI=...  # Leave unset: dev/test memory://; prod redis://localhost:6379/0 (ProductionConfig). Set only to override.
-ODDS_API_KEY=...         # The Odds API (CFB + Docket scores/spreads)
-DOCKET_EDGE_ODDS_API_KEY=...  # Optional: a separate Odds API key for `flask docket edge` only, so the commissioner's line scans never spend the club key. Blank = ODDS_API_KEY
-FOOTBALL_DATA_API_KEY=...  # football-data.org (WC results sync — archived; retained for a revival)
-SLASHGOLF_API_KEY=...    # SlashGolf API (Golf leaderboards)
-EMAIL_ADDRESS=...        # SMTP auth login (prod: Brevo SMTP login, e.g. ad34xxxxx@smtp-brevo.com)
-EMAIL_PASSWORD=...       # SMTP key/password (prod: Brevo SMTP key)
-MAIL_FROM_ADDRESS=...    # Visible From; prod: commish@cccfantasy.com. REQUIRED in prod — the EMAIL_ADDRESS fallback is the bare SMTP login Gmail silently drops, so it's dev/test-safe only
-ADMIN_EMAIL=...          # Game-admin alert inbox. MUST be a real mailbox in prod (EMAIL_ADDRESS there is the Brevo login, not an inbox). Falls back to EMAIL_ADDRESS
-SMTP_SERVER=...          # Dev default smtp.gmail.com; prod smtp-relay.brevo.com
-SMTP_PORT=...            # Dev default 587; prod 2525 (DO blocks 587)
-CFB_SEASON_YEAR=...      # Default 2026 (config.py); CFB_ENTRY_FEE default 25
-DOCKET_ENTRY_FEE=...     # Default 60
-DOCKET_WEEKLY_PRIZE=...  # Default 20 — the purse (ADR-059): $ to each week's top sheet across TOTAL_WEEKS
-DOCKET_PODIUM_SPLIT=...  # Default 65,25,10 — percent split of what's left into 1st/2nd/3rd; must sum to 100
-SEASON_YEAR=...          # GOLF's season (bare name — golf owns the unprefixed keys; also scopes /admin/announce's golf list). Default 2026. Golf's fees and penalty live on each `golf_league` row (`flask golf league set`), not in env
-PAYMENT_VENMO_HANDLE=... # Member payment rails (utils/payment.py); defaults = the live values, blank to hide every "Settle the Tab" nudge
-PAYMENT_ZELLE_PHONE=...  # Same; the copyable Zelle number on the card + in the picks-open emails
-VAPID_PUBLIC_KEY=...     # Web push (The Wire). `vapid --applicationServerKey` output, 87 chars. Blank private key or subject = push is a no-op
-VAPID_PRIVATE_KEY=...    # Raw base64url private scalar, 43 chars, single line (never the PEM). A SECRET_KEY-grade secret: never print, never rotate (orphans every subscription)
-VAPID_SUBJECT=...        # mailto:commish@cccfantasy.com
-SENTRY_DSN=...           # Error tracking (utils/observability.py): errors only, no PII, no request bodies. Blank = Sentry never initialized
-HEALTHCHECKS_PING_KEY=... # healthchecks.io project ping key for the job dead-man (utils/job_alert.py). Blank = no pings; failure mail still goes
-SYNC_MODE=...            # Golf SlashGolf tier: 'standard' (default) | 'free' — prod is FREE (250 calls/mo)
-```
