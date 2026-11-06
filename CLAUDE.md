@@ -285,7 +285,7 @@ static/css/      # tokens.css loads BEFORE style.css
 migrations/      # Alembic history
 deploy/          # nginx.conf (manual install), *.service + *.timer + *.preset (synced by deploy.sh)
 deploy.sh        # one-command deploy, runs on the server
-scripts/         # utility scripts (logo rasters, 2025 history export, WC scoring audit, Docket manual unenroll, bridge sheet)
+scripts/         # utility scripts (logo rasters, 2025 history export, WC scoring audit, Docket manual unenroll)
 tests/           # pytest suite (+ tests/test-deploy-guards.sh, a bash harness)
 docs/            # rulings, roadmaps, designs/, superpowers/{plans,specs}, archive/ (see the header pointers)
 .github/workflows/  # test.yml (pytest + pytest-postgres), lint.yml (ruff) — job names are the required checks

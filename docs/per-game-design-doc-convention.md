@@ -39,7 +39,7 @@ The impeccable setup step's project-relative invocation (`.agents/skills/impecca
 Impeccable is an **npm-package skill**, installed globally at `~/.agents/skills/impeccable/` and symlinked into `~/.claude/skills/impeccable/` (same pattern as `find-skills`). It is **not** a Claude marketplace plugin, so `claude plugin update` does not cover it.
 
 - **Update only via `/update-plugins`.** It runs `~/.claude/scripts/impeccable-skills-update.sh`, which updates the global install from `$HOME` (the one location that resolves to the global providers) and re-normalizes the `.agents`-canonical / `.claude`-symlink topology that the updater would otherwise break.
-- **Never run `npx impeccable skills update` from a repo root.** Its `findProjectRoot()` targets the nearest `.git`, so it installs a stray project-local copy under `<repo>/.claude/skills/impeccable/` instead of updating the global one. A `PreToolUse` guardrail hook in `~/.claude/settings.json` blocks this; `.claude/skills/impeccable/` is also gitignored so a stray copy can never be committed (`add-game` is the only intended tracked project skill).
+- **Never run `npx impeccable skills update` from a repo root.** Its `findProjectRoot()` targets the nearest `.git`, so it installs a stray project-local copy under `<repo>/.claude/skills/impeccable/` instead of updating the global one. A `PreToolUse` guardrail hook in `~/.claude/settings.json` blocks this; `.claude/skills/impeccable/` is also gitignored so a stray copy can never be committed.
 
 ## If you ever want auto-injection back
 
