@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "if echo \"$CLAUDE_TOOL_INPUT\" | grep -q '\\.env\"'; then echo 'BLOCKED: .env is protected. Edit .env.example instead.' && exit 1; fi"
+            "command": "fp=$(jq -r '.tool_input.file_path // empty') || { echo 'BLOCKED: jq is required to protect .env.' >&2; exit 2; }; case \"$fp\" in .env|*/.env) echo 'BLOCKED: .env is protected. Edit .env.example instead.' >&2; exit 2 ;; esac"
           }
         ]
       }
@@ -17,16 +17,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "if echo \"$CLAUDE_TOOL_INPUT\" | grep -qE '(routes|models|app)\\.py'; then cd \"$(git rev-parse --show-toplevel)\" && FLASK_APP=app.py ENVIRONMENT=testing venv/bin/python -c \"from app import create_app; app = create_app('testing'); print('Smoke test OK')\" 2>&1 | tail -5; fi"
-          }
-        ]
-      },
-      {
-        "matcher": "Edit|Write",
-        "hooks": [
+            "command": "fp=$(jq -r '.tool_input.file_path // empty'); case \"$fp\" in */routes.py|*/models.py|*/app.py) ;; *) exit 0 ;; esac; dir=$(dirname \"$fp\"); root=$(git -C \"$dir\" rev-parse --show-toplevel 2>/dev/null) || exit 0; common=$(git -C \"$dir\" rev-parse --path-format=absolute --git-common-dir) || exit 0; py=\"${common%/.git}/venv/bin/python\"; [ -x \"$py\" ] || exit 0; out=$(cd \"$root\" && FLASK_APP=app.py ENVIRONMENT=testing \"$py\" -c \"from app import create_app; app = create_app('testing'); print('Smoke test OK')\" 2>&1) || { echo \"$out\" | tail -5 >&2; exit 2; }"
+          },
           {
             "type": "command",
-            "command": "fp=$(echo \"$CLAUDE_TOOL_INPUT\" | jq -r '.file_path // empty'); root=$(git rev-parse --show-toplevel 2>/dev/null); if [ -n \"$root\" ] && [ -n \"$fp\" ]; then case \"$fp\" in \"$root\"/*.py) out=$(\"$root/venv/bin/ruff\" check --no-cache \"$fp\" 2>&1) || { echo \"$out\" 1>&2; exit 2; } ;; esac; fi"
+            "command": "fp=$(jq -r '.tool_input.file_path // empty'); case \"$fp\" in *.py) ;; *) exit 0 ;; esac; dir=$(dirname \"$fp\"); root=$(git -C \"$dir\" rev-parse --show-toplevel 2>/dev/null) || exit 0; [ -f \"$root/ruff.toml\" ] || exit 0; common=$(git -C \"$dir\" rev-parse --path-format=absolute --git-common-dir) || exit 0; ruff=\"${common%/.git}/venv/bin/ruff\"; [ -x \"$ruff\" ] || { echo 'Ruff not found: install requirements-dev.txt into the main checkout venv.' >&2; exit 2; }; out=$(\"$ruff\" check --no-cache \"$fp\" 2>&1) || { echo \"$out\" >&2; exit 2; }"
           }
         ]
       }

@@ -42,7 +42,7 @@ logs/
 .claude/worktrees/
 # impeccable is ONE user-level install (~/.agents/skills, symlinked into ~/.claude).
 # `npx impeccable update` is scope-aware since the v4 CLI and never creates a copy, but
-# a bare `npx impeccable install` in a repo can; add-game is the only tracked project skill.
+# a bare `npx impeccable install` in a repo can. This repo tracks no project skills.
 .claude/skills/impeccable/
 
 # DO NOT ignore migrations/ — these must be committed

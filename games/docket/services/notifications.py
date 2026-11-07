@@ -70,9 +70,8 @@ def letter(week, *, headline, **fields) -> Letter:
 def deadline_line(week) -> str:
     """'Sunday, Sep 6 · 12:00 PM CT' for the week's deadline.
 
-    A render boundary, so this is one of the sanctioned places a D6 naive-UTC
-    column becomes America/Chicago (bridge_sheet._format_ct is the other);
-    the platform formatter reads naive input as UTC.
+    A render boundary, so this is a sanctioned place for a D6 naive-UTC column
+    to become America/Chicago; the platform formatter reads naive input as UTC.
     """
     return format_deadline_short(week.deadline_at)
 
