@@ -217,11 +217,11 @@ The room owns participation and inspection: the pick sheet (this slice), then st
 rules, and admin (T9/T10). The lounge orients and summarizes. When placing any new Docket
 surface, ask "lounge or room?" first (platform §1.6).
 
-The walk in from the lounge is The Door (root §4.5, ADR-077). The court paper opens out of the
-Docket panel's rectangle through a clip window, never an opacity blend, so the dark lounge and
-the bone room never mix. The panel head grows into the oxblood `.page-hero` band, and the panel's
-name travels into the H1 ("The Week N Docket", or "Join The Docket" on the redirect for a
-non-member).
+The walk in from the lounge is The Door (root §4.5, ADR-077 as amended by ADR-079). Two doors
+part from a seam down the middle of the Docket panel and the court paper is behind them, shown
+through a clip window, never an opacity blend, so the dark lounge and the bone room never mix.
+Nothing in the room moves: the oxblood `.page-hero` band and its H1 ("The Week N Docket", or
+"Join The Docket" on the redirect for a non-member) are already in their place.
 
 ---
 

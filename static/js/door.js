@@ -1,19 +1,26 @@
-/* The Door (DESIGN.md §4.5, ADR-077): the walk from a lounge headliner panel
-   into its room is one cross-document view transition, and Back walks it in
-   reverse. style.css opts every same-origin navigation in (only with script
-   and without reduced motion); this file stands down every one that is not
-   the lounge and a room of the panel's own game, so the rest stay plain
-   loads. Loaded render-blocking in <head>: pagereveal must be registered
-   before the first render.
+/* The Door (DESIGN.md §4.5, ADR-077 as amended by ADR-079): the walk from a
+   lounge headliner panel into its room is one cross-document view transition,
+   and Back walks it in reverse. style.css opts every same-origin navigation
+   in (only with script and without reduced motion); this file stands down
+   every one that is not the lounge and a room of the panel's own game, so the
+   rest stay plain loads. Loaded render-blocking in <head>: pagereveal must be
+   registered before the first render.
 
-   The pairs, named here and only for the transition:
-     door        the panel's head  <->  the room's masthead (.page-hero, golf .golf-context)
-     door-words  the panel's name  <->  the masthead's H1 (golf: the league's name)
-   The room opens out of the panel's rectangle (--door-t/r/b/l), never a blend. */
+   Two doors part from a seam down the middle of the panel and the room is
+   behind them, already in its place: nothing in the room moves, so this file
+   names no element. It hands the stylesheet the doorway (the panel's
+   rectangle, --door-t/r/b/l), the seam (--door-sl/sr), the point the lounge
+   falls back from (--door-cx/cy) and the navbar's lower edge (--door-nav),
+   and it answers the tap: the panel
+   takes .is-unlatched, which draws the seam before the room has loaded. */
 (function () {
   'use strict';
 
   var STASH = 'ccc-door';
+  var SCROLL = 'ccc-door-scroll';
+  var LATCH = 'is-unlatched';
+  // How long a tap's seam waits for its navigation before it gives up.
+  var LATCH_MS = 4000;
 
   function pathOf(url) {
     try { return new URL(url).pathname; } catch (e) { return null; }
@@ -28,15 +35,11 @@
     return slug ? document.querySelector('.home-shell .hl-panel-link[data-door-slug="' + slug + '"]') : null;
   }
 
-  // The room's masthead and the words in it: the platform .page-hero and its
-  // H1 (every CFB and Docket player page), or the Pay Sheet's first line,
-  // which opens with the league's name.
+  // The room's masthead: the platform .page-hero (every CFB and Docket player
+  // page) or the Pay Sheet's first line. The door only opens onto a page that
+  // has one, so a member always lands on the room's name.
   function masthead() {
-    var hero = document.querySelector('.page-hero');
-    if (hero) return { block: hero, words: hero.querySelector('h1') };
-    var line = document.querySelector('.golf-context');
-    if (line) return { block: line, words: line.querySelector('.golf-context-items > :first-child') };
-    return null;
+    return document.querySelector('.page-hero') || document.querySelector('.golf-context');
   }
 
   // Seen means inside the window and below the sticky navbar: a panel
@@ -48,42 +51,26 @@
            Math.min(rect.right, window.innerWidth) > Math.max(rect.left, 0);
   }
 
-  // Every element this file named. A page restored from the back/forward
-  // cache keeps its inline styles, and two elements under one name abort the
-  // transition, so each handler resets before it names.
-  var named = [];
-
-  function reset() {
-    named.forEach(function (el) { el.style.viewTransitionName = ''; });
-    named = [];
-  }
-
-  function name(el, value) {
-    if (!el) return;
-    el.style.viewTransitionName = value;
-    named.push(el);
-  }
-
-  function nameLounge(link) {
-    name(link, 'door');
-    name(link.querySelector('.hl-panel-name'), 'door-words');
-  }
-
-  function nameRoom(m) {
-    name(m.block, 'door');
-    name(m.words, 'door-words');
-  }
-
-  // The window the room opens from (or closes into): the panel's rectangle as
-  // clip-path insets, clamped to the viewport.
-  function setWindow(rect, vw, vh) {
+  // The doorway: the panel's rectangle as clip-path insets, clamped to the
+  // viewport, the seam down its middle, and its centre.
+  function setDoorway(rect, vw, vh) {
     var s = document.documentElement.style;
-    s.setProperty('--door-t', Math.max(0, rect.top) + 'px');
-    s.setProperty('--door-r', Math.max(0, vw - rect.right) + 'px');
-    s.setProperty('--door-b', Math.max(0, vh - rect.bottom) + 'px');
-    s.setProperty('--door-l', Math.max(0, rect.left) + 'px');
-    // Back shuts the room up into the panel's top edge (style.css door-close).
-    s.setProperty('--door-shut', Math.max(0, vh - rect.top) + 'px');
+    var left = Math.max(0, rect.left);
+    var right = Math.min(vw, rect.right);
+    var top = Math.max(0, rect.top);
+    var bottom = Math.min(vh, rect.bottom);
+    var cx = (left + right) / 2;
+    s.setProperty('--door-t', top + 'px');
+    s.setProperty('--door-r', (vw - right) + 'px');
+    s.setProperty('--door-b', (vh - bottom) + 'px');
+    s.setProperty('--door-l', left + 'px');
+    s.setProperty('--door-sl', cx + 'px');
+    s.setProperty('--door-sr', (vw - cx) + 'px');
+    s.setProperty('--door-cx', cx + 'px');
+    s.setProperty('--door-cy', ((top + bottom) / 2) + 'px');
+    // Where the sticky navbar ends: the lounge's picture is cut off there.
+    var nav = document.querySelector('.navbar');
+    s.setProperty('--door-nav', (nav ? Math.max(0, nav.getBoundingClientRect().bottom) : 0) + 'px');
   }
 
   function panelOf(link) {
@@ -104,15 +91,73 @@
     return value;
   }
 
-  // Clear the names once the transition is over, so nothing else on the
-  // page (a later same-document morph) inherits them.
-  function clearAfter(transition) {
-    transition.finished.then(reset, reset);
+  // Where the lounge was scrolled to when the member walked in. A lounge
+  // reloaded by Back (a signed-in page is no-store, so it is never kept in
+  // the back/forward cache) reveals at the top, before the browser puts the
+  // scroll back, and a panel further down the page (the second one on a
+  // phone) would be out of sight: no doorway, no door. So Back puts the
+  // scroll back itself, first, to where the browser is about to put it.
+  function stashScroll(y) {
+    try { sessionStorage.setItem(SCROLL, String(Math.round(y))); } catch (e) { /* as stash() */ }
   }
+
+  function restoreScroll() {
+    var y = 0;
+    try { y = parseInt(sessionStorage.getItem(SCROLL), 10) || 0; } catch (e) { y = 0; }
+    if (y > 0 && window.scrollY === 0) window.scrollTo({ top: y, behavior: 'instant' });
+  }
+
+  // The door is the arriving page's entrance, so its own load-in (the cards'
+  // rise, a stagger) is finished before the first frame: seen through the
+  // doorway, the room is already in its place. A loop (a live dot) and a
+  // terminal moment ([data-moment], which waits the door out) are left alone.
+  function settle() {
+    if (!document.getAnimations) return;
+    document.getAnimations().forEach(function (a) {
+      var fx = a.effect;
+      var el = fx && fx.target;
+      if (!el || (fx.pseudoElement && fx.pseudoElement.indexOf('::view-transition') === 0)) return;
+      if (fx.getComputedTiming().iterations === Infinity || el.closest('[data-moment]')) return;
+      a.finish();
+    });
+  }
+
+  // The latch. A page restored from the back/forward cache keeps the class a
+  // tap left on it, so every way back to the lounge clears it: the door out
+  // when it lands, pageshow when no door ran.
+  var latchTimer = 0;
+  var closing = false;
+
+  function unlatch() {
+    clearTimeout(latchTimer);
+    var held = document.querySelectorAll('.home-shell .' + LATCH);
+    for (var i = 0; i < held.length; i++) held[i].classList.remove(LATCH);
+  }
+
+  function latch(panel) {
+    unlatch();
+    panel.classList.add(LATCH);
+  }
+
+  // The tap's answer: a plain click on any link into a seated panel's game
+  // draws that panel's seam at once, while the room is still loading.
+  document.addEventListener('click', function (e) {
+    if (location.pathname !== '/' || e.defaultPrevented || e.button !== 0 ||
+        e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    var a = e.target.closest ? e.target.closest('a[href]') : null;
+    if (!a || a.target === '_blank' || a.origin !== location.origin) return;
+    var link = panelLink(a.pathname.split('/')[1]);
+    if (!link || !inView(panelOf(link).getBoundingClientRect())) return;
+    latch(panelOf(link));
+    latchTimer = setTimeout(unlatch, LATCH_MS);
+  });
+
+  window.addEventListener('pageshow', function () {
+    if (!closing) unlatch();
+  });
 
   window.addEventListener('pageswap', function (e) {
     var t = e.viewTransition;
-    reset();
     if (!t) return;
     var to = e.activation && e.activation.entry ? pathOf(e.activation.entry.url) : null;
     if (to === null) { t.skipTransition(); return; }
@@ -124,21 +169,18 @@
       if (!rect || !inView(rect)) { t.skipTransition(); return; }
       stash({ top: rect.top, right: rect.right, bottom: rect.bottom, left: rect.left,
               vw: window.innerWidth, vh: window.innerHeight });
-      nameLounge(link);
+      stashScroll(window.scrollY);
       t.types.add('door-in');
       return;
     }
 
     // Room -> lounge: a page with the room's masthead, on its way home.
-    var m = to === '/' && roomSlug() ? masthead() : null;
-    if (!m) { t.skipTransition(); return; }
-    nameRoom(m);
+    if (to !== '/' || !roomSlug() || !masthead()) { t.skipTransition(); return; }
     t.types.add('door-out');
   });
 
   window.addEventListener('pagereveal', function (e) {
     var t = e.viewTransition;
-    reset();
     if (!t) return;
     var from = window.navigation && navigation.activation && navigation.activation.from;
     var fromPath = from ? pathOf(from.url) : null;
@@ -147,22 +189,25 @@
     // Room side of the door in.
     if (fromPath === '/') {
       var s = unstash();
-      var m = roomSlug() ? masthead() : null;
-      if (!s || !m) { t.skipTransition(); return; }
-      setWindow(s, s.vw, s.vh);
-      nameRoom(m);
+      if (!s || !roomSlug() || !masthead()) { t.skipTransition(); return; }
+      setDoorway(s, s.vw, s.vh);
+      settle();
       t.types.add('door-in');
-      clearAfter(t);
       return;
     }
 
-    // Lounge side of the door out: the panel of the room we came from.
+    // Lounge side of the door out: the panel of the room we came from. The
+    // doors shut onto its seam, which lets go once they have landed.
     var link = location.pathname === '/' ? panelLink(fromPath.split('/')[1]) : null;
+    if (link && navigation.activation.navigationType === 'traverse') restoreScroll();
     var rect = link ? panelOf(link).getBoundingClientRect() : null;
     if (!rect || !inView(rect)) { t.skipTransition(); return; }
-    setWindow(rect, window.innerWidth, window.innerHeight);
-    nameLounge(link);
+    setDoorway(rect, window.innerWidth, window.innerHeight);
+    closing = true;
+    settle();
+    latch(panelOf(link));
     t.types.add('door-out');
-    clearAfter(t);
+    var landed = function () { closing = false; unlatch(); };
+    t.finished.then(landed, landed);
   });
 })();

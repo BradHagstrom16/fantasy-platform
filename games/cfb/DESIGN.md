@@ -181,7 +181,7 @@ The room is operational: act, compare, inspect, verify. The lounge is orienting 
 
 The canonical CFB landing page is the standings/home experience. It is not merely a leaderboard. It answers, in order: *Am I alive? How many lives do I have? Have I made this week's pick? When does the decision lock? What is happening to the field? Where do I go to act?* When the active player has not made a pick, their card outranks the standings. Returning must feel immediately useful even when no new pick is required.
 
-The walk in from the lounge is The Door (root §4.5, ADR-077): the room opens out of the Survivor panel's rectangle, the panel head grows into the crimson `.page-hero` band and "CFB Survivor" travels into the H1. It plays into every player page that opens on the band, and Back plays it in reverse. Midnight opens out of the lounge's dark, so this room's door is the quietest of the three.
+The walk in from the lounge is The Door (root §4.5, ADR-077 as amended by ADR-079): two doors part from a seam down the middle of the Survivor panel and the room is behind them, already in its place, as the lounge dims and falls back. Nothing in the room moves, and the door is the page's entrance: the cards' own load-in does not play behind it. It plays into every player page that opens on the crimson `.page-hero` band, and Back plays it in reverse. Midnight opens out of the lounge's dark, so this room's door is the quietest of the three.
 
 ### 3.3 The lounge owns orientation
 
