@@ -5019,6 +5019,37 @@ body.game-golf {
   border-radius: 14px;
   padding: 1.6rem 1.6rem 1.5rem;
   min-width: 0;
+  position: relative;        /* the latch's seam is drawn against the panel */
+}
+/* The latch (The Door, DESIGN.md §4.5): a tap on any way into the room draws
+   the seam the doors part from, down the middle of the panel, before the
+   room has loaded (static/js/door.js sets .is-unlatched). Letting go, the
+   seam fades where it stands. */
+.home-shell .hl-panel::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(50% - 1px);
+  width: 2px;
+  background: var(--hl-accent-bright, var(--bone));
+  pointer-events: none;
+  opacity: 0;
+  transform: scaleY(0);
+  transition: opacity .24s linear, transform 0s .24s;
+}
+.home-shell .hl-panel.is-unlatched::after {
+  opacity: 1;
+  transform: scaleY(1);
+  transition: transform .18s var(--ease-out), opacity 0s;
+}
+.home-shell .hl-panel.is-unlatched .hl-panel-chev { transform: translateX(3px); }
+@media (prefers-reduced-motion: reduce) {
+  .home-shell .hl-panel::after,
+  .home-shell .hl-panel.is-unlatched::after {
+    transform: none;
+    transition: opacity var(--motion-feedback) linear;
+  }
 }
 .home-shell .hl-panel-head {
   display: flex;
@@ -5068,8 +5099,13 @@ body.game-golf {
   outline: 2px solid var(--hl-accent-bright, var(--bone));
   outline-offset: 2px;
 }
+/* Reduced motion: the chevron stays put (the latch keeps its seam, a hover
+   its underline); each selector matches the rule it overrides. */
 @media (prefers-reduced-motion: reduce) {
   .home-shell .hl-panel-chev { transition: none; }
+  .home-shell .hl-panel.is-unlatched .hl-panel-chev,
+  .home-shell .hl-panel-link:hover .hl-panel-chev,
+  .home-shell .hl-panel-link:focus-visible .hl-panel-chev { transform: none; }
 }
 .home-shell .hl-panel-mark { font-size: 1.15rem; line-height: 1; }
 .home-shell .hl-panel-name {
@@ -5091,17 +5127,30 @@ body.game-golf {
   color: var(--bone-mute);
   text-align: right;
 }
-/* === THE DOOR (lounge <-> room, ADR-077; DESIGN.md §4.5) ===
+/* === THE DOOR (lounge <-> room; ADR-077, amended by ADR-079; DESIGN.md §4.5) ===
    The walk from a headliner panel into its room is one cross-document view
-   transition: the room opens out of the panel's own rectangle (a clip-path
-   window, never an opacity blend, so the dark lounge and a light room never
-   mix into a muddy middle), the panel head becomes the room's masthead, and
-   the panel's name travels into its H1, fading through. Back closes the room
-   into the panel. static/js/door.js names the pairs and stands every other
+   transition, and it is a pair of doors. They part from a seam down the
+   middle of the panel (the line the tap drew, .is-unlatched above) until the
+   doorway is the panel, then the doorway grows to the screen as the member
+   walks through, while the lounge dims and falls back behind it. The room is
+   a clip-path window, never an opacity blend, so the dark lounge and a light
+   room never mix into a muddy middle; the room itself is already in its
+   place and nothing in it moves. Back is the same film run backwards (the
+   same keyframes and curves under animation-direction: reverse): the doorway
+   draws in to the panel, the doors shut to the seam, the lounge comes back
+   up. static/js/door.js hands over the doorway and stands every other
    navigation down; every rule below waits for its door-in / door-out type.
    No script or reduced motion: the at-rule is never declared, so every
    navigation is a plain load (the page itself is the confirmation), as in
-   Firefox. */
+   Firefox.
+
+   The run starts soft on purpose. The arriving page spends its first frames
+   on its own start-up, and a curve that moves fastest at zero (the first
+   build's) spent its biggest jump on exactly those frames.
+
+   Each beat is its own animation because a keyframe's own
+   animation-timing-function does not take a var(): the tokens would be
+   dropped and both beats would run on the default curve. */
 @media (scripting: enabled) and (prefers-reduced-motion: no-preference) {
   @view-transition { navigation: auto; }
 }
@@ -5112,86 +5161,68 @@ html:active-view-transition-type(door-in, door-out)::view-transition-group(ccc-n
 html:active-view-transition-type(door-in, door-out)::view-transition-old(ccc-nav) { display: none; }
 html:active-view-transition-type(door-in, door-out)::view-transition-new(ccc-nav) { animation: none; }
 
-/* The page: the lounge holds while the room opens out of the panel; on the
-   way back the room closes into it over the waiting lounge. */
-html:active-view-transition-type(door-in)::view-transition-old(root) { animation: none; }
-html:active-view-transition-type(door-in)::view-transition-new(root) {
-  animation: door-open var(--door-in) var(--ease-door) both;
+/* The dark the lounge falls back into. Without it the dimmed lounge would
+   show the arriving room's own ground through itself. */
+html:active-view-transition-type(door-in, door-out)::view-transition { background: var(--ink); }
+
+/* The two pages are laid one over the other and never added together, and
+   both scale about the middle of the doorway. */
+html:active-view-transition-type(door-in, door-out)::view-transition-old(root),
+html:active-view-transition-type(door-in, door-out)::view-transition-new(root) {
+  mix-blend-mode: normal;
+  transform-origin: var(--door-cx) var(--door-cy);
 }
+
+/* In: the lounge falls back while the room opens over it, the doors parting
+   for the first two fifths of the run and the walk through taking the rest.
+   The lounge's picture is cut off at the navbar (--door-nav): the strip of
+   page behind the bar is bare ground, and falling back would slide it into
+   view. */
+html:active-view-transition-type(door-in)::view-transition-old(root) {
+  clip-path: inset(var(--door-nav) 0 0 0);
+  animation: door-recede var(--door-in) var(--ease-door) both;
+}
+html:active-view-transition-type(door-in)::view-transition-new(root) {
+  animation: door-part calc(var(--door-in) * .4) var(--ease-door-part) both,
+             door-walk calc(var(--door-in) * .6) var(--ease-door) calc(var(--door-in) * .4) forwards;
+}
+/* Out: the room, on top, shuts over the lounge as it comes back up. */
 html:active-view-transition-type(door-out)::view-transition-old(root) {
   z-index: 1;
-  animation: door-close var(--door-out) var(--ease-door) both;
+  animation: door-walk calc(var(--door-out) * .6) var(--ease-door) reverse both,
+             door-part calc(var(--door-out) * .4) var(--ease-door-part) calc(var(--door-out) * .6) reverse forwards;
 }
-html:active-view-transition-type(door-out)::view-transition-new(root) { animation: none; }
-
-/* The masthead: a window that grows from the panel head to the masthead's
-   place. Both images keep their natural size, so the band is uncovered,
-   never stretched. */
-html:active-view-transition-type(door-in, door-out)::view-transition-group(door) {
-  overflow: clip;
-  z-index: 1;
-  animation-timing-function: var(--ease-door);
-}
-html:active-view-transition-type(door-in)::view-transition-group(door) { animation-duration: var(--door-in); }
-html:active-view-transition-type(door-out)::view-transition-group(door) { animation-duration: var(--door-out); }
-html:active-view-transition-type(door-in, door-out)::view-transition-old(door),
-html:active-view-transition-type(door-in, door-out)::view-transition-new(door) {
-  inline-size: auto;
-  block-size: auto;
-}
-html:active-view-transition-type(door-in)::view-transition-old(door) { animation: door-fade-out 160ms linear both; }
-html:active-view-transition-type(door-in)::view-transition-new(door) { animation: none; }
-html:active-view-transition-type(door-out)::view-transition-old(door) {
-  animation: door-fade-out 140ms linear calc(var(--door-out) - 140ms) both;
-}
-html:active-view-transition-type(door-out)::view-transition-new(door) {
-  animation: fade-in 140ms linear calc(var(--door-out) - 140ms) both;
+html:active-view-transition-type(door-out)::view-transition-new(root) {
+  clip-path: inset(var(--door-nav) 0 0 0);
+  animation: door-recede var(--door-out) var(--ease-door) reverse both;
 }
 
-/* The words fade through as they travel: the old name is gone before the
-   new one arrives, so no frame holds both. They scale by line height, not
-   by width: an H1 is a full-width block, and width scaling blew the panel
-   name up to five times its size. */
-html:active-view-transition-type(door-in, door-out)::view-transition-group(door-words) {
-  z-index: 2;
-  animation-timing-function: var(--ease-door);
+/* The doors part: the seam widens to the doorway. The room stands a step
+   back behind them. */
+@keyframes door-part {
+  from {
+    clip-path: inset(var(--door-t) var(--door-sr) var(--door-b) var(--door-sl) round 14px);
+    transform: scale(.985);
+  }
+  to {
+    clip-path: inset(var(--door-t) var(--door-r) var(--door-b) var(--door-l) round 14px);
+    transform: scale(.985);
+  }
 }
-html:active-view-transition-type(door-in, door-out)::view-transition-old(door-words),
-html:active-view-transition-type(door-in, door-out)::view-transition-new(door-words) {
-  inline-size: auto;
-  block-size: 100%;
+/* The walk through: the doorway grows to the screen and the room comes up
+   to full size. The screen starts at the navbar (--door-nav), as the lounge
+   does: the bar is drawn over that strip, and the step back would slide the
+   bare ground behind it into view. */
+@keyframes door-walk {
+  from {
+    clip-path: inset(var(--door-t) var(--door-r) var(--door-b) var(--door-l) round 14px);
+    transform: scale(.985);
+  }
+  to { clip-path: inset(var(--door-nav) 0 0 0 round 0); transform: scale(1); }
 }
-html:active-view-transition-type(door-in)::view-transition-group(door-words) { animation-duration: var(--door-in); }
-html:active-view-transition-type(door-out)::view-transition-group(door-words) { animation-duration: var(--door-out); }
-html:active-view-transition-type(door-in)::view-transition-old(door-words) { animation: door-fade-out 160ms linear both; }
-html:active-view-transition-type(door-in)::view-transition-new(door-words) {
-  animation: fade-in calc(var(--door-in) - 140ms) var(--ease-door) 140ms both;
+@keyframes door-recede {
+  to { transform: scale(.96); opacity: .55; }
 }
-html:active-view-transition-type(door-out)::view-transition-old(door-words) { animation: door-fade-out 120ms linear both; }
-html:active-view-transition-type(door-out)::view-transition-new(door-words) {
-  animation: fade-in calc(var(--door-out) - 110ms) var(--ease-door) 110ms both;
-}
-
-/* The Pay Sheet's words are the first item of its context line, whose dot
-   hangs in a margin the line clips. Lifted into its own snapshot the item
-   escapes that clip, so the dot hides for the walk (visibility keeps the
-   line where it lands). */
-html:active-view-transition-type(door-in, door-out) .golf-context-items > :first-child::before {
-  visibility: hidden;
-}
-
-@keyframes door-open {
-  from { clip-path: inset(var(--door-t) var(--door-r) var(--door-b) var(--door-l) round 14px); }
-  to { clip-path: inset(0 round 0); }
-}
-/* The room shuts up into the panel's top edge (--door-shut puts the bottom
-   inset there): the closing edge uncovers the lounge panel pixel for pixel,
-   never a dissolve, which blended a light room into the dark panel. */
-@keyframes door-close {
-  from { clip-path: inset(0 round 0); }
-  to { clip-path: inset(var(--door-t) var(--door-r) var(--door-shut) var(--door-l) round 14px); }
-}
-@keyframes door-fade-out { to { opacity: 0; } }
 
 /* Panels own their interior spacing; interior cards lose their outer card
    chrome inside a panel (the panel is the card). */
