@@ -178,7 +178,7 @@ def test_the_door_is_the_arriving_pages_entrance():
     # sides; a loop and a terminal moment are left alone.
     body = DOOR_JS[DOOR_JS.index('function settle'):DOOR_JS.index('// The latch.')]
     assert 'a.finish()' in body
-    assert 'iterations === Infinity' in body and "closest('[data-moment]')" in body
+    assert 'iterations === Infinity' in body and "closest('[data-moment], [role=\"alert\"]')" in body
     assert '::view-transition' in body
     reveal = DOOR_JS[DOOR_JS.index("addEventListener('pagereveal'"):]
     assert reveal.count('settle()') == 2
@@ -215,6 +215,24 @@ def test_the_seam_is_the_panels_accent_and_keeps_its_confirmation():
     assert '.home-shell .hl-panel.is-unlatched::after' in override
     assert 'transform: none' in override
     assert 'transition: opacity var(--motion-feedback)' in override
+
+
+def test_the_chevron_stays_put_under_reduced_motion():
+    # The latch and a hover both step the chevron forward; under reduced
+    # motion neither moves it (DESIGN.md §4.5), each at the specificity of the
+    # rule it overrides and below it.
+    css = _strip_comments(STYLE)
+    steps = [
+        '.home-shell .hl-panel.is-unlatched .hl-panel-chev',
+        '.home-shell .hl-panel-link:hover .hl-panel-chev',
+        '.home-shell .hl-panel-link:focus-visible .hl-panel-chev',
+    ]
+    last = max(css.index(s) for s in steps)
+    guard = css.index('@media (prefers-reduced-motion: reduce)', last)
+    override = css[guard:css.index('.home-shell .hl-panel-mark', guard)]
+    for s in steps:
+        assert s in override, s
+    assert 'transform: none' in override
 
 
 # ── 4. The moment ────────────────────────────────────────────────────────

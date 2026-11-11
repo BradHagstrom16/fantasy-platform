@@ -109,15 +109,16 @@
 
   // The door is the arriving page's entrance, so its own load-in (the cards'
   // rise, a stagger) is finished before the first frame: seen through the
-  // doorway, the room is already in its place. A loop (a live dot) and a
-  // terminal moment ([data-moment], which waits the door out) are left alone.
+  // doorway, the room is already in its place. A loop (a live dot), a
+  // terminal moment ([data-moment], which waits the door out) and a flash
+  // message ([role="alert"], whose timed fade ends hidden) are left alone.
   function settle() {
     if (!document.getAnimations) return;
     document.getAnimations().forEach(function (a) {
       var fx = a.effect;
       var el = fx && fx.target;
       if (!el || (fx.pseudoElement && fx.pseudoElement.indexOf('::view-transition') === 0)) return;
-      if (fx.getComputedTiming().iterations === Infinity || el.closest('[data-moment]')) return;
+      if (fx.getComputedTiming().iterations === Infinity || el.closest('[data-moment], [role="alert"]')) return;
       a.finish();
     });
   }

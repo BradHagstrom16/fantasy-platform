@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-30T00:00:00Z",
+  "generatedAt": "2026-11-11T22:01:13Z",
   "title": "Design System: Corrupt Commish Club",
   "extensions": {
     "colorMeta": {
@@ -582,10 +582,12 @@
       "Don't apply the hero-metric template (big number + small label + supporting stats + gradient accent) without justification. Listed in shared design laws as an absolute ban for SaaS cliches.",
       "Don't add a third top-level color outside CCC purple plus gold without scoping it under a game class. WC navy/red, CFB crimson, the Pay Sheet's pen blue only ever appear on body.game-worldcup / body.game-cfb / body.game-golf surfaces.",
       "Don't use match.stage|title in Jinja templates. Use the stage_label SSoT helper. (Documented gotcha in CLAUDE.md; surfaces as a typography slip.)",
-      "Don't mock dark mode on light surfaces. The auth pages (Tribunal Black backdrop) plus each game's named ceremonial dark primitive (the World Cup .wc-champion-banner, The Docket's .docket-verdict-banner) are the platform-default first-party dark surfaces; otherwise bone-on-light is the default. Carve-out: a game may establish a *dark room* as its entire body substrate when its games/<slug>/DESIGN.md documents the choice and scopes it under body.game-<slug> only (never a global dark mode) — e.g., CFB Survivor's warm-midnight room (games/cfb/DESIGN.md). What stays banned is an *undocumented* third dark register. New game-scoped dark primitives, or a documented dark room, belong in the game's DESIGN.md.",
-      "Don't use bounce or elastic easing on motion. No curve in the system overshoots, card hover included (ADR-076 retired its 1.56 peak); ease out with --ease-out, cubic-bezier(0.4, 0, 0.2, 1) or a steeper exponential curve.",
+      "Don't mock dark mode on light surfaces. The auth pages (Tribunal Black backdrop) plus each game's named ceremonial dark primitive (the World Cup .wc-champion-banner, The Docket's .docket-verdict-banner) are the platform-default first-party dark surfaces; otherwise bone-on-light is the default. Carve-out: a game may establish a *dark room* as its entire body substrate when its games/<slug>/DESIGN.md documents the choice and scopes it under body.game-<slug> only (never a global dark mode) — e.g., CFB Survivor's warm-midnight room (games/cfb/DESIGN.md). What stays banned is an *undocumented* third dark register. New game-scoped dark primitives, or a documented dark room, belong in the game's DESIGN.md. A *light* room may likewise re-paper itself only by documenting it: The Pay Sheet rebases four tokens (--bg-page, --surface-card, --text-primary, --text-secondary) under body.game-golf and nothing else (games/golf/DESIGN.md §6.2, tests/test_golf_design_doc.py).",
+      "Don't use bounce or elastic easing on motion. No curve in the system overshoots, card hover included (ADR-076 retired its 1.56 peak); ease out with var(--ease-out), cubic-bezier(0.4, 0, 0.2, 1) or a steeper exponential curve, and The Door with var(--ease-door) and var(--ease-door-part) (§4.5).",
+      "Don't lift a card that is not a link. A hover lift says \"click me\"; a card that only holds content stays at rest (§4).",
+      "Don't turn reduced motion into no feedback. Under prefers-reduced-motion the movement stops and the confirming fade or color change stays (§4.5).",
       "Don't use em dashes (—) or double hyphens (--) in UI copy, error messages, button labels, or any prose generated for CCC surfaces. Replace with commas, colons, semicolons, periods, or parentheses. (Carried from PRODUCT.md's Copy Discipline.)",
-      "Don't add a navbar item beyond the joined-games list plus auth links. PRODUCT.md flags \"navigation overload\" as an ESPN/Yahoo anti-reference.",
+      "Don't add a navbar item beyond the joined-games list, the club's two pages (The Tribune, The Record) and the auth links. PRODUCT.md flags \"navigation overload\" as an ESPN/Yahoo anti-reference.",
       "Don't introduce a \"Powered by\" footer, trust badges, marketing-style hero aimed at strangers, or any platform signal. The site belongs to the club, not to a vendor. PRODUCT.md design principle #1."
     ]
   }

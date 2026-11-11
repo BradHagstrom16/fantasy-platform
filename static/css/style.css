@@ -5099,8 +5099,13 @@ body.game-golf {
   outline: 2px solid var(--hl-accent-bright, var(--bone));
   outline-offset: 2px;
 }
+/* Reduced motion: the chevron stays put (the latch keeps its seam, a hover
+   its underline); each selector matches the rule it overrides. */
 @media (prefers-reduced-motion: reduce) {
   .home-shell .hl-panel-chev { transition: none; }
+  .home-shell .hl-panel.is-unlatched .hl-panel-chev,
+  .home-shell .hl-panel-link:hover .hl-panel-chev,
+  .home-shell .hl-panel-link:focus-visible .hl-panel-chev { transform: none; }
 }
 .home-shell .hl-panel-mark { font-size: 1.15rem; line-height: 1; }
 .home-shell .hl-panel-name {
