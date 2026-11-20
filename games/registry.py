@@ -299,6 +299,23 @@ def lounge_games() -> list[GameRegistryEntry]:
     ]
 
 
+def in_member_order(entries: list[GameRegistryEntry], user) -> list[GameRegistryEntry]:
+    """`entries` in the member's own order (`User.lounge_order`).
+
+    Saved slugs lead, in the order saved; every entry the member never
+    placed follows in its given order, so a game that joins the bill later
+    lands after the member's own. A saved slug that matches no entry (a game
+    since retired from the bill) is skipped. Anonymous viewers and members
+    with no saved order get `entries` unchanged.
+    """
+    saved = getattr(user, 'lounge_order', None) if _is_authenticated(user) else None
+    if not saved:
+        return list(entries)
+    by_slug = {entry.slug: entry for entry in entries}
+    lead = [by_slug[slug] for slug in dict.fromkeys(saved.split(',')) if slug in by_slug]
+    return lead + [entry for entry in entries if entry not in lead]
+
+
 def wire_preview_for(user_id: int, now: datetime) -> dict | None:
     """The one push a member would get next, from the first game in billing
     order that has something to promise (ADR-074, PR B): Survivor locks on

@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 
 from extensions import db
-from games.registry import joined_games
+from games.registry import in_member_order, joined_games
 from models.push import PushSubscription
 
 
@@ -73,7 +73,7 @@ def register_context_processors(app):
     @app.context_processor
     def inject_nav_games():
         try:
-            games = joined_games(current_user)
+            games = in_member_order(joined_games(current_user), current_user)
         except SQLAlchemyError:
             # DB session may be in a bad state when the navbar renders during
             # 500-page handling — degrade to empty nav rather than re-500.

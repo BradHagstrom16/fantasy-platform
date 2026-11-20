@@ -15,7 +15,7 @@ from core.main.home_context import (
     build_home_context,
     visible_headliners,
 )
-from games.registry import lounge_games
+from games.registry import in_member_order, lounge_games
 
 
 @main_bp.route('/')
@@ -55,6 +55,9 @@ def index():
         return render_template('main/index.html', state='out',
                                lounge_tree=None, **ctx)
 
+    # The member's own billing (/profile → Lounge order); unset keeps
+    # registry order. Panels, seal and tiles all read this sequence.
+    games = in_member_order(games, current_user)
     resolved = [(game, game.lounge_state()) for game in games]
     visible = visible_headliners(current_user, resolved)
     state = aggregate_lounge_state([s for _, s in visible])

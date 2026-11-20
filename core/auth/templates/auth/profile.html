@@ -138,6 +138,38 @@
                 </div>
             </form>
 
+            {# The member's own lounge billing (POST /profile/lounge-order):
+               the games the lounge shows them, in the order it shows them.
+               One game has nothing to order, so the block needs two. Each
+               arrow is its own POST form, so it works without JS. #}
+            {% if lounge_bill|length > 1 %}
+            <section class="lounge-order mt-4 mb-4" aria-labelledby="lounge-order-label">
+                <h2 class="form-label" id="lounge-order-label">Lounge order</h2>
+                <div class="form-text mt-0 mb-2">The order your games appear on the lounge and in the games menu. First leads.</div>
+                <ol class="lounge-order-list">
+                    {% for game in lounge_bill %}
+                    {% set name = game.short_name or game.display_name %}
+                    <li class="lounge-order-row" data-slug="{{ game.slug }}">
+                        <span class="lounge-order-place" aria-hidden="true">{{ loop.index }}</span>
+                        <span class="lounge-order-name">{{ name }}</span>
+                        <form method="POST" action="{{ url_for('auth.lounge_order') }}" class="lounge-order-move">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                            <input type="hidden" name="slug" value="{{ game.slug }}">
+                            <button type="submit" name="direction" value="up" class="lounge-order-btn"
+                                    aria-label="Move {{ name }} up"{% if loop.first %} disabled{% endif %}>
+                                <i class="bi bi-arrow-up" aria-hidden="true"></i>
+                            </button>
+                            <button type="submit" name="direction" value="down" class="lounge-order-btn"
+                                    aria-label="Move {{ name }} down"{% if loop.last %} disabled{% endif %}>
+                                <i class="bi bi-arrow-down" aria-hidden="true"></i>
+                            </button>
+                        </form>
+                    </li>
+                    {% endfor %}
+                </ol>
+            </section>
+            {% endif %}
+
             <hr>
             <p class="auth-link-row mb-0">
                 <a href="{{ url_for('auth.change_password') }}">

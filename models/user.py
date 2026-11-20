@@ -30,6 +30,10 @@ class User(UserMixin, db.Model):
     display_name = db.Column(db.String(100), nullable=True)
     avatar_emoji = db.Column(db.String(4), nullable=True)
     phone = db.Column(db.String(20), nullable=True)
+    # The member's own lounge billing: comma-joined game slugs, first leads
+    # (`games.registry.in_member_order`). NULL keeps registry order. Written
+    # only by POST /profile/lounge-order.
+    lounge_order = db.Column(db.String(120), nullable=True)
 
     # Platform role
     is_admin = db.Column(db.Boolean, default=False)

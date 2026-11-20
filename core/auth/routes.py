@@ -14,7 +14,9 @@ from sqlalchemy import func, select
 
 from core.auth import auth_bp
 from core.auth.tokens import generate_reset_token, verify_reset_token
+from core.main.home_context import visible_headliners
 from extensions import db, limiter
+from games.registry import in_member_order, lounge_games
 from games.worldcup.services import enrollment as worldcup_enrollment
 from games.worldcup.services.state import worldcup_state
 from models.user import User
@@ -329,15 +331,13 @@ def profile():
         for error in (display_name_error, phone_error):
             if error:
                 flash(error, 'error')
-                return render_template('auth/profile.html',
-                                       avatar_categories=AVATAR_CATEGORIES)
+                return _render_profile()
 
         if email != current_user.email:
             if db.session.scalar(select(User).where(
                     func.lower(User.email) == normalize_identifier(email))):
                 flash('That email is already registered.', 'error')
-                return render_template('auth/profile.html',
-                                       avatar_categories=AVATAR_CATEGORIES)
+                return _render_profile()
             current_user.email = email
 
         current_user.display_name = display_name
@@ -346,4 +346,41 @@ def profile():
         db.session.commit()
         flash('Profile updated.', 'success')
 
-    return render_template('auth/profile.html', avatar_categories=AVATAR_CATEGORIES)
+    return _render_profile()
+
+
+def _lounge_bill(user):
+    """The games this member's lounge shows, in the member's order: the
+    same sequence `core.main.routes.index` bills."""
+    ordered = in_member_order(lounge_games(), user)
+    return [entry for entry, _ in visible_headliners(user, [(g, None) for g in ordered])]
+
+
+def _render_profile():
+    return render_template('auth/profile.html',
+                           avatar_categories=AVATAR_CATEGORIES,
+                           lounge_bill=_lounge_bill(current_user))
+
+
+@auth_bp.route('/profile/lounge-order', methods=['POST'])
+@login_required
+def lounge_order():
+    """Move one game a place up or down the member's lounge bill.
+
+    Stores the whole visible order, so the saved string always reads as
+    the lounge the member saw when they moved it.
+    """
+    bill = [entry.slug for entry in _lounge_bill(current_user)]
+    slug = request.form.get('slug', '')
+    step = {'up': -1, 'down': 1}.get(request.form.get('direction', ''))
+    if step is None or slug not in bill:
+        flash('That game is not on your lounge.', 'error')
+        return redirect(url_for('auth.profile'))
+    i = bill.index(slug)
+    j = i + step
+    if 0 <= j < len(bill):
+        bill[i], bill[j] = bill[j], bill[i]
+        current_user.lounge_order = ','.join(bill)
+        db.session.commit()
+        flash('Lounge order saved.', 'success')
+    return redirect(url_for('auth.profile'))
